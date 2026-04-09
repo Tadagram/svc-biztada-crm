@@ -14,7 +14,11 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true
+    "ignoreDeprecations": "5.0",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@plugins/*": ["./src/plugins/*"]
+    }
   },
   "include": ["**/*.ts"],
   "exclude": ["node_modules", "dist"]

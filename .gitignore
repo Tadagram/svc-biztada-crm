@@ -21,6 +21,9 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
+# Private keys
+certs/private.pem
+
 # IDE specific files
 .vscode/
 .idea/
@@ -29,3 +32,5 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+/generated/prisma

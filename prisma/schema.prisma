@@ -1,0 +1,152 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Ghi chú: DATABASE_URL được quản lý tại file prisma.config.ts (Prisma 7+)
+}
+
+enum UserRole {
+  mod
+  agency
+  user
+  customer
+}
+
+enum UserStatus {
+  active
+  disabled
+}
+
+enum AssignmentStatus {
+  active
+  completed
+  revoked
+}
+
+enum PermissionType {
+  allow
+  deny
+}
+
+model Users {
+  user_id         String             @id @default(uuid()) @db.Uuid
+  parent_user_id  String?            @db.Uuid
+  agency_name     String?
+  phone_number    String
+  role            UserRole
+  status          UserStatus         @default(active)
+  custom_fields   Json?
+  created_at      DateTime           @default(now()) @db.Timestamptz
+  updated_at      DateTime           @default(now()) @updatedAt @db.Timestamptz
+  deleted_at      DateTime?          @db.Timestamptz
+
+  // Relations
+  parent          Users?               @relation("UserToUser", fields: [parent_user_id], references: [user_id])
+  children        Users[]              @relation("UserToUser")
+  agency_workers  AgencyWorkers[]      @relation("AgencyUser")
+  worker_usages   AgencyWorkers[]      @relation("WorkerUsager")
+  usage_logs_agency WorkerUsageLogs[]  @relation("LogAgency")
+  usage_logs_user   WorkerUsageLogs[]  @relation("LogUser")
+  user_permissions UserPermissions[]
+
+  @@map("users")
+}
+
+model Permissions {
+  permission_id   String             @id @default(uuid()) @db.Uuid
+  name            String
+  code            String             @unique
+  created_at      DateTime           @default(now()) @db.Timestamptz
+  updated_at      DateTime           @default(now()) @updatedAt @db.Timestamptz
+  deleted_at      DateTime?          @db.Timestamptz
+
+  // Relations
+  role_permissions RolePermissions[]
+  user_permissions UserPermissions[]
+
+  @@map("permissions")
+}
+
+model RolePermissions {
+  role_permission_id String          @id @default(uuid()) @db.Uuid
+  role              String
+  permission_id      String          @db.Uuid
+  created_at         DateTime        @default(now()) @db.Timestamptz
+  updated_at         DateTime        @default(now()) @updatedAt @db.Timestamptz
+  deleted_at         DateTime?       @db.Timestamptz
+
+  // Relations
+  permission         Permissions     @relation(fields: [permission_id], references: [permission_id])
+
+  @@map("role_permissions")
+}
+
+model Workers {
+  worker_id       String             @id @default(uuid()) @db.Uuid
+  name            String
+  status          String             @default("ready") // ready, busy, offline
+  created_at      DateTime           @default(now()) @db.Timestamptz
+  updated_at      DateTime           @default(now()) @updatedAt @db.Timestamptz
+  deleted_at      DateTime?          @db.Timestamptz
+
+  // Relations
+  agency_workers  AgencyWorkers[]
+  usage_logs      WorkerUsageLogs[]
+
+  @@map("workers")
+}
+
+model AgencyWorkers {
+  agency_worker_id String            @id @default(uuid()) @db.Uuid
+  agency_user_id   String            @db.Uuid
+  worker_id        String            @db.Uuid
+  using_by         String?           @db.Uuid
+  status           AssignmentStatus  @default(active)
+  created_at       DateTime          @default(now()) @db.Timestamptz
+  updated_at       DateTime          @default(now()) @updatedAt @db.Timestamptz
+  deleted_at       DateTime?         @db.Timestamptz
+
+  // Relations
+  agency           Users             @relation("AgencyUser", fields: [agency_user_id], references: [user_id])
+  worker           Workers           @relation(fields: [worker_id], references: [worker_id])
+  user             Users?            @relation("WorkerUsager", fields: [using_by], references: [user_id])
+
+  @@map("agency_workers")
+}
+
+model WorkerUsageLogs {
+  usage_log_id    String             @id @default(uuid()) @db.Uuid
+  worker_id       String             @db.Uuid
+  agency_user_id  String             @db.Uuid
+  user_id         String             @db.Uuid
+  start_at        DateTime           @default(now()) @db.Timestamptz
+  end_at          DateTime?          @db.Timestamptz
+  metadata        Json?
+  created_at      DateTime           @default(now()) @db.Timestamptz
+
+  // Relations
+  worker          Workers            @relation(fields: [worker_id], references: [worker_id])
+  agency          Users              @relation("LogAgency", fields: [agency_user_id], references: [user_id])
+  user            Users              @relation("LogUser", fields: [user_id], references: [user_id])
+
+  @@map("worker_usage_logs")
+}
+
+model UserPermissions {
+  user_permission_id String          @id @default(uuid()) @db.Uuid
+  user_id            String          @db.Uuid
+  permission_id      String          @db.Uuid
+  permission_type    PermissionType
+  created_at         DateTime        @default(now()) @db.Timestamptz
+
+  // Relations
+  user               Users           @relation(fields: [user_id], references: [user_id])
+  permission         Permissions     @relation(fields: [permission_id], references: [permission_id])
+
+  @@map("user_permissions")
+}
