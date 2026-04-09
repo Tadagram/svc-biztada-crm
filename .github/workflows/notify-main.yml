@@ -1,0 +1,34 @@
+name: Notify Main Repo on Push
+
+# Workflow này chạy trong repo svc-biztada-crm
+# Khi có push lên main, dispatch event về main repo (tadagram)
+# để main repo cập nhật submodule pointer
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  notify-main-repo:
+    name: Dispatch Update Event to Main Repo
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send repository_dispatch to tadagram (main repo)
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PAT_TOKEN }}
+          script: |
+            const response = await github.rest.repos.createDispatchEvent({
+              owner: 'Tadagram',
+              repo: 'tadagram',
+              event_type: 'backend-biztada-crm-updated',
+              client_payload: {
+                submodule: 'backends/Micro Service/svc-biztada-crm',
+                repository: context.repo.repo,
+                commit: context.sha,
+                ref: context.ref
+              }
+            });
+            console.log(`✅ Dispatched backend-biztada-crm-updated to tadagram`);
+            console.log(`Commit: ${context.sha}`);
