@@ -12,12 +12,21 @@ export async function createUserHandler(
   const {
     phone_number,
     agency_name,
-    parent_user_id,
     role = UserRole.user,
     status = UserStatus.active,
   } = request.body;
 
   try {
+    // 🔐 Role check: chỉ Mod & Agency được tạo user
+    const caller = request.user as { userId: string; role: string };
+    if (!['mod', 'agency'].includes(caller.role)) {
+      return reply.status(403).send({
+        statusCode: 403,
+        error: 'Forbidden',
+        message: 'Only mod and agency can create users',
+      });
+    }
+
     const existingUser = await checkUserExists(prisma, phone_number);
 
     if (existingUser) {
@@ -28,6 +37,23 @@ export async function createUserHandler(
       });
     }
 
+    // 🔐 Mod tạo agency, Agency tạo user/customer
+    if (caller.role === 'mod' && role !== 'agency') {
+      return reply.status(400).send({
+        statusCode: 400,
+        error: 'Bad Request',
+        message: 'Mod can only create agency',
+      });
+    }
+
+    if (caller.role === 'agency' && role === 'agency') {
+      return reply.status(400).send({
+        statusCode: 400,
+        error: 'Bad Request',
+        message: 'Agency cannot create agency',
+      });
+    }
+
     const userPayload: UserPayload = {
       phone_number,
       role,
@@ -35,7 +61,13 @@ export async function createUserHandler(
     };
 
     if (agency_name) userPayload.agency_name = agency_name;
-    if (parent_user_id) userPayload.parent_user_id = parent_user_id;
+
+    // 🔐 Set parent_user_id
+    if (caller.role === 'mod' && role === 'agency') {
+      userPayload.parent_user_id = caller.userId; // Mod tạo agency → parent = mod
+    } else if (caller.role === 'agency') {
+      userPayload.parent_user_id = caller.userId; // Agency tạo user/customer → parent = agency
+    }
 
     const newUser = await createUserInDatabase(prisma, userPayload);
 

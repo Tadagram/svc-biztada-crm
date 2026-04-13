@@ -15,10 +15,21 @@ function buildUserIsolation(caller: {
   role: string;
   parentUserId?: string | null;
 }): Record<string, string> | null {
+  // Mod: xem tất cả users
   if (caller.role === 'mod') return {};
+
+  // Agency: xem chỉ users của agency nó quản lý
+  //   - Chính nó (role=agency)
+  //   - Users/customers dưới quyền (parent_user_id = agency.userId)
   if (caller.role === 'agency') return { parent_user_id: caller.userId };
+
+  // User: xem chỉ users cùng agency
+  //   - Chính nó (parent_user_id = caller.parentUserId)
+  //   - Users khác cùng agency (parent_user_id = caller.parentUserId)
   if (caller.role === 'user') return { parent_user_id: caller.parentUserId ?? '' };
-  return null; // customer → block
+
+  // Customer: không được xem
+  return null;
 }
 
 export const getUsersHandler = async (

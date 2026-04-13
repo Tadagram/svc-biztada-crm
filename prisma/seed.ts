@@ -44,7 +44,7 @@ const ROLE_DEFAULTS: Record<string, string[]> = {
     'agency_workers:assign_user',
     'agency_workers:release',
   ],
-  user: ['workers:read', 'agency_workers:read'],
+  user: ['users:read', 'workers:read', 'agency_workers:read'],
 };
 
 async function main() {
