@@ -8,6 +8,7 @@ import {
   checkAllPermissionsHandler,
   checkAnyPermissionHandler,
   getUserPermissionsHandler,
+  getCurrentUserPermissionsHandler,
   addUserPermissionOverrideHandler,
   removeUserPermissionOverrideHandler,
 } from '@handlers/permission';
@@ -77,6 +78,13 @@ async function permissionRoutes(fastify: FastifyInstance) {
     '/check-any',
     { schema: checkAnyPermissionSchema, preHandler: [fastify.authenticate] },
     checkAnyPermissionHandler as RouteHandlerMethod,
+  );
+
+  // ==================== Current User Permissions ====================
+  fastify.get(
+    '/me',
+    { preHandler: [fastify.authenticate] },
+    getCurrentUserPermissionsHandler as RouteHandlerMethod,
   );
 
   // ==================== User Permission Overrides ====================

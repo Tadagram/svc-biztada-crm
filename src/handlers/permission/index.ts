@@ -6,5 +6,6 @@ export { checkPermissionHandler } from './checkPermissionHandler';
 export { checkAllPermissionsHandler } from './checkAllPermissionsHandler';
 export { checkAnyPermissionHandler } from './checkAnyPermissionHandler';
 export { getUserPermissionsHandler } from './getUserPermissionsHandler';
+export { getCurrentUserPermissionsHandler } from './getCurrentUserPermissionsHandler';
 export { addUserPermissionOverrideHandler } from './addUserPermissionOverrideHandler';
 export { removeUserPermissionOverrideHandler } from './removeUserPermissionOverrideHandler';
