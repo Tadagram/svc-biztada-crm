@@ -2,7 +2,8 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
+  engineType = "client"
 }
 
 datasource db {
@@ -37,10 +38,11 @@ model Users {
   user_id         String             @id @default(uuid()) @db.Uuid
   parent_user_id  String?            @db.Uuid
   agency_name     String?
-  phone_number    String
-  role            UserRole
+  phone_number    String             @unique
+  role            UserRole           @default(user)
   status          UserStatus         @default(active)
   custom_fields   Json?
+  last_active_at  DateTime?          @db.Timestamptz
   created_at      DateTime           @default(now()) @db.Timestamptz
   updated_at      DateTime           @default(now()) @updatedAt @db.Timestamptz
   deleted_at      DateTime?          @db.Timestamptz
@@ -53,8 +55,24 @@ model Users {
   usage_logs_agency WorkerUsageLogs[]  @relation("LogAgency")
   usage_logs_user   WorkerUsageLogs[]  @relation("LogUser")
   user_permissions UserPermissions[]
+  sessions         UserSessions[]
 
   @@map("users")
+}
+
+model UserSessions {
+  session_id     String    @id @default(uuid()) @db.Uuid
+  user_id        String    @db.Uuid
+  refresh_token  String    @unique
+  expires_at     DateTime  @db.Timestamptz
+  ip_address     String?
+  user_agent     String?
+  created_at     DateTime  @default(now()) @db.Timestamptz
+
+  // Relations
+  user           Users     @relation(fields: [user_id], references: [user_id])
+
+  @@map("user_sessions")
 }
 
 model Permissions {

@@ -3,48 +3,63 @@
 Danh sách các hạng mục cần hoàn thiện để đạt mục tiêu MVP.
 
 ## 🏗️ Cơ sở hạ tầng & Tooling (Sắp hoàn tất)
+
 - [x] Khởi tạo dự án Fastify + TypeScript.
 - [x] Thiết lập Database Schema (PostgreSQL).
 - [x] Cấu hình Prisma ORM & Migrations.
 - [x] Cài đặt ESLint, Prettier, Husky.
 - [x] Thiết lập JWT với RS256 (Public/Private Key).
 - [x] Cấu hình Path Alias (`@plugins`, `@src`).
-- [ ] Hoàn thiện Plugin Compression & Rate Limit.
+- [x] Hoàn thiện Plugin Compression & Rate Limit.
 
 ## 🔐 Authentication & Security
-- [ ] **Middleware JWT**: Xác thực token cho mọi request.
-- [ ] **Telegram Login Service**:
-    - [ ] API nhận callback/data từ Telegram.
-    - [ ] Validate dữ liệu từ Telegram (hash verification).
-    - [ ] Tìm hoặc tạo User dựa trên số điện thoại/id.
-- [ ] **Hybrid RBAC System**:
-    - [ ] Module lấy quyền theo Role.
-    - [ ] Module kiểm tra quyền ghi đè (User Permission Overrides).
 
-## 👥 Management Modules (CRUD)
-- [ ] **Agency Management**: Mod tạo và quản lý các đại lý.
-- [ ] **User Management**: 
-    - [ ] Agency tạo và quản lý nhân viên của mình.
-    - [ ] Tích hợp `Data Isolation` (chỉ thấy user thuộc agency mình).
-- [ ] **Worker Management**:
-    - [ ] Mod nhập kho Worker mới.
-    - [ ] Gán Worker cho từng Agency.
+- [x] **Hybrid RBAC System**:
+  - [x] Module lấy quyền theo Role.
+  - [x] Module kiểm tra quyền ghi đè (User Permission Overrides).
 
-## 🤖 Worker Assignment Logic
-- [ ] **Giao việc (Assignment)**: 
-    - [ ] Agency gán worker cho User cụ thể.
-    - [ ] Xử lý trạng thái (`active`, `completed`).
-- [ ] **Thu hồi/Chuyển đổi**:
-    - [ ] Khi gán lại worker, tự động đóng bản ghi cũ và mở bản ghi mới.
-- [ ] **Logging**:
-    - [ ] Ghi log mỗi khi Worker được bắt đầu/kết thúc sử dụng.
+## 👥 User & Agency Management
+
+- [x] **User CRUD API** (cơ bản):
+  - [x] `POST /users` – Tạo user.
+  - [x] `GET /users` – Lấy danh sách có **pagination** (limit/offset), filter role/status/search.
+  - [x] `GET /users/:userId` – Lấy user theo ID.
+  - [x] `PUT /users/:userId` – Cập nhật user.
+  - [x] `DELETE /users/:userId` – Soft delete user.
+- [x] **Permission API**:
+  - [x] `POST /permissions` – Tạo permission.
+  - [x] `GET /permissions` – Lấy danh sách có pagination.
+  - [x] `PUT /permissions/:permissionId` – Cập nhật.
+  - [x] `DELETE /permissions/:permissionId` – Soft delete.
+- [x] **Data Isolation**: GET /users chỉ trả về user thuộc agency của caller (khi role = agency).
+- [x] **Agency Management**: Mod tạo/xem/khoá agency (filter role=agency trong user API).
+
+## 🤖 Worker Management (Ưu tiên tiếp theo)
+
+- [x] **Worker CRUD** (MOD only):
+  - [x] `POST /workers` – Tạo worker mới vào kho.
+  - [x] `GET /workers` – Danh sách worker có pagination, filter status.
+  - [x] `GET /workers/:workerId` – Chi tiết worker.
+  - [x] `PUT /workers/:workerId` – Cập nhật thông tin worker.
+  - [x] `DELETE /workers/:workerId` – Soft delete (với guard kiểm tra active assignment).
+- [x] **Agency ↔ Worker Assignment** (MOD only):
+  - [x] `POST /agency-workers` – Gán worker cho agency.
+  - [x] `GET /agency-workers` – Danh sách assignments (filter agency_user_id, status).
+  - [x] `DELETE /agency-workers/:agencyWorkerId` – Thu hồi worker khỏi agency.
+- [x] **Worker Usage** (Agency/User):
+  - [x] `POST /agency-workers/:agencyWorkerId/assign-user` – Agency gán worker cho user cụ thể.
+  - [x] `POST /agency-workers/:agencyWorkerId/release` – Agency/User trả worker (set `using_by = null`).
+  - [x] Tự động tạo `WorkerUsageLogs` khi assign/release.
+  - [x] Khi gán lại worker sang user khác → đóng log cũ, mở log mới.
 
 ## 📊 Monitoring & API
-- [ ] API lấy danh sách Worker đang hoạt động của từng Agency.
-- [ ] API báo cáo lịch sử sử dụng (Usage Logs).
-- [ ] API theo dõi sức khỏe hệ thống (`/health`).
+
+- [x] `GET /health` – Health check endpoint (DB ping, uptime).
+- [x] `GET /workers/active?agencyId=` – Danh sách worker đang hoạt động của agency.
+- [x] `GET /usage-logs?workerId=&agencyId=&userId=` – Lịch sử sử dụng có pagination.
 
 ## 🚀 Deployment & Polish
-- [ ] Setup Dockerfile cho Backend.
-- [ ] Viết Scripts Seed dữ liệu mẫu (Roles, Permissions).
-- [ ] Hoàn thiện tài liệu API (Swagger/Scalar).
+
+- [x] Setup Dockerfile cho Backend.
+- [x] Viết Scripts Seed dữ liệu mẫu (Users, Workers, Permissions).
+- [x] Hoàn thiện tài liệu API (Swagger/Scalar đã có, cần cập nhật schemas mới).

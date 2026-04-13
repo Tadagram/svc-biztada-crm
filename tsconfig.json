@@ -3,6 +3,7 @@
     "target": "ESNext",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "types": ["node"],
     "rootDir": "./",
     "outDir": "./dist",
     "esModuleInterop": true,
@@ -17,7 +18,22 @@
     "ignoreDeprecations": "5.0",
     "paths": {
       "@/*": ["./src/*"],
-      "@plugins/*": ["./src/plugins/*"]
+      "@plugins": ["./src/plugins/index"],
+      "@plugins/*": ["./src/plugins/*"],
+      "@routes": ["./src/routes/index"],
+      "@routes/*": ["./src/routes/*"],
+      "@handlers": ["./src/handlers/index"],
+      "@handlers/*": ["./src/handlers/*"],
+      "@utils": ["./src/utils/index"],
+      "@utils/*": ["./src/utils/*"],
+      "@middlewares": ["./src/middlewares/index"],
+      "@middlewares/*": ["./src/middlewares/*"],
+      "@config": ["./src/config/index"],
+      "@config/*": ["./src/config/*"],
+      "@services": ["./src/services/index"],
+      "@services/*": ["./src/services/*"],
+      "@schemas": ["./src/schemas/index"],
+      "@schemas/*": ["./src/schemas/*"]
     }
   },
   "include": ["**/*.ts"],
