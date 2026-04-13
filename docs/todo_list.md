@@ -9,7 +9,7 @@ Danh sách các hạng mục cần hoàn thiện để đạt mục tiêu MVP.
 - [x] Cài đặt ESLint, Prettier, Husky.
 - [x] Thiết lập JWT với RS256 (Public/Private Key).
 - [x] Cấu hình Path Alias (`@plugins`, `@src`).
-- [ ] Hoàn thiện Plugin Compression & Rate Limit.
+- [x] Hoàn thiện Plugin Compression & Rate Limit.
 
 ## 🔐 Authentication & Security
 - [ ] **Middleware JWT**: Xác thực token cho mọi request.

@@ -1,8 +1,24 @@
-import { FastifyInstance, FastifyPluginOptions } from 'fastify';
+import { FastifyInstance, FastifyPluginOptions, FastifyRequest, FastifyReply } from 'fastify';
 import fp from 'fastify-plugin';
 import fastifyJwt from '@fastify/jwt';
 import fs from 'fs';
 import path from 'path';
+
+declare module '@fastify/jwt' {
+  interface FastifyJWT {
+    payload: {
+      userId: string;
+      role: string;
+      agencyName?: string | null;
+    };
+  }
+}
+
+declare module 'fastify' {
+  interface FastifyInstance {
+    authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+  }
+}
 
 async function jwtPlugin(fastify: FastifyInstance, _options: FastifyPluginOptions) {
   const privateKeyPath = process.env.JWT_PRIVATE_KEY_PATH || 'certs/private.pem';
@@ -18,6 +34,15 @@ async function jwtPlugin(fastify: FastifyInstance, _options: FastifyPluginOption
         public: publicKey,
       },
       sign: { algorithm: 'RS256' },
+    });
+
+    // Thêm decorator authenticate để bảo vệ các route
+    fastify.decorate('authenticate', async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        await request.jwtVerify();
+      } catch (err) {
+        reply.send(err);
+      }
     });
 
     fastify.log.info('🔐 JWT Plugin: Certificates loaded and registered successfully.');
