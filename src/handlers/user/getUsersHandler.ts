@@ -8,7 +8,17 @@ interface GetUsersQuerystring {
   role?: UserRole;
   status?: UserStatus;
   all?: boolean;
-  parent_user_id?: string;
+}
+
+function buildUserIsolation(caller: {
+  userId: string;
+  role: string;
+  parentUserId?: string | null;
+}): Record<string, string> | null {
+  if (caller.role === 'mod') return {};
+  if (caller.role === 'agency') return { parent_user_id: caller.userId };
+  if (caller.role === 'user') return { parent_user_id: caller.parentUserId ?? '' };
+  return null; // customer → block
 }
 
 export const getUsersHandler = async (
@@ -23,30 +33,21 @@ export const getUsersHandler = async (
       role,
       status,
       all,
-      parent_user_id,
     } = request.query;
     const limit = Number(queryLimit);
     const offset = Number(queryOffset);
 
-    let isolatedParentId: string | undefined = parent_user_id;
+    // request.user đã có sẵn sau khi authenticate preHandler chạy
+    const caller = request.user;
+    const isolation = buildUserIsolation(caller);
 
-    try {
-      await request.jwtVerify();
-      const caller = request.user;
-      const callerIsAgency = caller?.role === UserRole.agency;
-
-      if (callerIsAgency) {
-        isolatedParentId = caller.userId;
-      }
-    } catch (error) {
-      console.error(
-        'Failed to verify JWT for getUsersHandler. Proceeding without user context.',
-        error,
-      );
+    if (isolation === null) {
+      return reply.status(403).send({ success: false, message: 'Forbidden' });
     }
 
     const where = {
       deleted_at: null,
+      ...isolation,
       ...(search && {
         OR: [
           { phone_number: { contains: search } },
@@ -55,7 +56,6 @@ export const getUsersHandler = async (
       }),
       ...(role && { role }),
       ...(status && { status }),
-      ...(isolatedParentId && { parent_user_id: isolatedParentId }),
     };
 
     const userSelect = {
@@ -86,14 +86,7 @@ export const getUsersHandler = async (
     return reply.send({
       success: true,
       data: users,
-      pagination: {
-        total,
-        limit,
-        offset,
-        totalPages,
-        currentPage,
-        all: isAll,
-      },
+      pagination: { total, limit, offset, totalPages, currentPage, all: isAll },
       message: 'Users retrieved successfully',
     });
   } catch (error) {

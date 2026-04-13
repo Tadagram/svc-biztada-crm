@@ -11,47 +11,76 @@ const pool = new Pool({
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
-// ─── Helper: Idempotent permission assignment ─────────────────────────────────
-async function assignPermission(userId: string, permissionId: string) {
-  const existing = await prisma.userPermissions.findFirst({
-    where: { user_id: userId, permission_id: permissionId },
-  });
-  if (!existing) {
-    await prisma.userPermissions.create({
-      data: { user_id: userId, permission_id: permissionId, permission_type: 'allow' },
-    });
-  }
-}
+// ─── Permission codes chuẩn mới ───────────────────────────────────────────────
+const PERMISSIONS = [
+  { code: 'users:read', name: 'Xem danh sách Users' },
+  { code: 'users:create', name: 'Tạo User' },
+  { code: 'users:update', name: 'Cập nhật User' },
+  { code: 'users:delete', name: 'Xóa User' },
+  { code: 'workers:read', name: 'Xem danh sách Workers' },
+  { code: 'workers:create', name: 'Tạo Worker' },
+  { code: 'workers:update', name: 'Cập nhật Worker' },
+  { code: 'workers:delete', name: 'Xóa Worker' },
+  { code: 'agency_workers:read', name: 'Xem Agency Workers' },
+  { code: 'agency_workers:assign', name: 'Giao Worker cho Agency' },
+  { code: 'agency_workers:revoke', name: 'Thu hồi Worker' },
+  { code: 'agency_workers:assign_user', name: 'Giao Worker cho User' },
+  { code: 'agency_workers:release', name: 'Release Worker' },
+  { code: 'permissions:read', name: 'Xem Permissions' },
+  { code: 'permissions:create', name: 'Tạo Permission' },
+  { code: 'permissions:update', name: 'Cập nhật Permission' },
+  { code: 'permissions:delete', name: 'Xóa Permission' },
+  { code: 'permissions:manage_overrides', name: 'Quản lý Override User' },
+];
+
+// Role defaults — mod bypasses all checks at runtime (không cần seed)
+const ROLE_DEFAULTS: Record<string, string[]> = {
+  agency: [
+    'users:read',
+    'users:create',
+    'users:update',
+    'workers:read',
+    'agency_workers:read',
+    'agency_workers:assign_user',
+    'agency_workers:release',
+  ],
+  user: ['workers:read', 'agency_workers:read'],
+};
 
 async function main() {
   console.log('🌱 Starting database seeding...');
 
-  // ── 1. Permissions ────────────────────────────────────────────────────────
-  const permissionsData = [
-    { name: 'Dashboard View', code: 'dashboard.view' },
-    { name: 'User Manage', code: 'users.manage' },
-    { name: 'Worker Assign', code: 'workers.assign' },
-    { name: 'Settings Manage', code: 'settings.manage' },
-    { name: 'Worker List', code: 'workers.list' },
-    { name: 'Worker Delete', code: 'workers.delete' },
-    { name: 'Agency View', code: 'agency.view' },
-    { name: 'Agency Manage', code: 'agency.manage' },
-    { name: 'Report View', code: 'report.view' },
-    { name: 'System Settings', code: 'system.settings' },
-  ];
+  // ── 1. Clean slate: xóa permissions cũ (cascade xuống rolePermissions, userPermissions) ──
+  await prisma.userPermissions.deleteMany({});
+  await prisma.rolePermissions.deleteMany({});
+  await prisma.permissions.deleteMany({});
+  console.log('🗑️  Cleared old permissions data');
 
-  const permissions: Record<string, string> = {};
-  for (const p of permissionsData) {
-    const perm = await prisma.permissions.upsert({
-      where: { code: p.code },
-      update: { name: p.name, deleted_at: null },
-      create: p,
-    });
-    permissions[p.code] = perm.permission_id;
+  // ── 2. Seed Permissions (18 codes mới) ────────────────────────────────────
+  const permIdMap: Record<string, string> = {};
+  for (const p of PERMISSIONS) {
+    const perm = await prisma.permissions.create({ data: p });
+    permIdMap[p.code] = perm.permission_id;
   }
-  console.log('✅ Permissions seeded:', Object.keys(permissions).length);
+  console.log('✅ Permissions seeded:', PERMISSIONS.length);
 
-  // ── 2. Mod User ───────────────────────────────────────────────────────────
+  // ── 3. Seed RolePermissions defaults ─────────────────────────────────────
+  for (const [role, codes] of Object.entries(ROLE_DEFAULTS)) {
+    for (const code of codes) {
+      await prisma.rolePermissions.create({
+        data: { role, permission_id: permIdMap[code] },
+      });
+    }
+  }
+  console.log(
+    '✅ RolePermissions seeded (agency:',
+    ROLE_DEFAULTS.agency.length,
+    '/ user:',
+    ROLE_DEFAULTS.user.length,
+    ')',
+  );
+
+  // ── 4. Mod User ──────────────────────────────────────────────────────────
   const modUser = await prisma.users.upsert({
     where: { phone_number: '0347503886' },
     update: { status: 'active', deleted_at: null },
@@ -62,15 +91,9 @@ async function main() {
       agency_name: 'System Admin',
     },
   });
-  console.log('✅ Mod user:', modUser.phone_number, `(${modUser.role})`);
+  console.log('✅ Mod user:', modUser.phone_number);
 
-  const MOD_PERMISSIONS = Object.keys(permissions); // mod gets all
-  for (const code of MOD_PERMISSIONS) {
-    await assignPermission(modUser.user_id, permissions[code]);
-  }
-  console.log('✅ Mod permissions assigned:', MOD_PERMISSIONS.length);
-
-  // ── 3. Agency Users ───────────────────────────────────────────────────────
+  // ── 5. Agency Users ───────────────────────────────────────────────────────
   const agenciesData = [
     { phone: '0900000001', name: 'Biztada Agency' },
     { phone: '0900000002', name: 'TechWork Solutions' },
@@ -91,29 +114,15 @@ async function main() {
       },
     });
     agencyIds[a.phone] = agency.user_id;
-
-    const AGENCY_PERMISSIONS = [
-      'workers.list',
-      'workers.assign',
-      'report.view',
-      'agency.view',
-      'dashboard.view',
-    ];
-    for (const code of AGENCY_PERMISSIONS) {
-      await assignPermission(agency.user_id, permissions[code]);
-    }
   }
   console.log('✅ Agency users seeded:', agenciesData.length);
 
-  // ── 4. Regular Users (2 per agency) ──────────────────────────────────────
+  // ── 6. Regular Users (2 per agency) ──────────────────────────────────────
   const regularUsersData = [
-    // Biztada Agency
     { phone: '0911000001', parent: agencyIds['0900000001'] },
     { phone: '0911000002', parent: agencyIds['0900000001'] },
-    // TechWork Solutions
     { phone: '0911000003', parent: agencyIds['0900000002'] },
     { phone: '0911000004', parent: agencyIds['0900000002'] },
-    // Smart Labor Co
     { phone: '0911000005', parent: agencyIds['0900000003'] },
     { phone: '0911000006', parent: agencyIds['0900000003'] },
   ];
@@ -131,15 +140,10 @@ async function main() {
       },
     });
     userIds[u.phone] = user.user_id;
-
-    for (const code of ['workers.list', 'dashboard.view']) {
-      await assignPermission(user.user_id, permissions[code]);
-    }
   }
   console.log('✅ Regular users seeded:', regularUsersData.length);
 
-  // ── 5. Workers ────────────────────────────────────────────────────────────
-  // Check if workers already exist to keep seed idempotent
+  // ── 7. Workers ────────────────────────────────────────────────────────────
   const existingWorkers = await prisma.workers.findMany({ where: { deleted_at: null } });
   let workerIds: string[] = existingWorkers.map((w) => w.worker_id);
 
@@ -159,17 +163,14 @@ async function main() {
     workerIds = created.map((w) => w.worker_id);
     console.log('✅ Workers created:', workerIds.length);
   } else {
-    console.log('✅ Workers already exist, skipping creation:', workerIds.length);
+    console.log('✅ Workers already exist, skipping:', workerIds.length);
   }
 
-  // ── 6. Agency ↔ Worker Assignments (3 workers per agency) ─────────────────
+  // ── 8. Agency ↔ Worker Assignments (3 workers per agency) ─────────────────
   const agencyPhones = Object.keys(agencyIds);
-  const chunkSize = 3;
-
   for (let i = 0; i < agencyPhones.length; i++) {
     const agencyId = agencyIds[agencyPhones[i]];
-    const chunk = workerIds.slice(i * chunkSize, i * chunkSize + chunkSize);
-
+    const chunk = workerIds.slice(i * 3, i * 3 + 3);
     for (const wId of chunk) {
       const existing = await prisma.agencyWorkers.findFirst({
         where: { agency_user_id: agencyId, worker_id: wId, deleted_at: null },
@@ -183,7 +184,7 @@ async function main() {
   }
   console.log('✅ Workers assigned to agencies (3 each)');
 
-  // ── 7. Simulate active worker usage ───────────────────────────────────────
+  // ── 9. Simulate active worker usage ──────────────────────────────────────
   const firstAgencyId = agencyIds['0900000001'];
   const firstAssignment = await prisma.agencyWorkers.findFirst({
     where: { agency_user_id: firstAgencyId, using_by: null, deleted_at: null },
@@ -195,14 +196,8 @@ async function main() {
       where: { agency_worker_id: firstAssignment.agency_worker_id },
       data: { using_by: firstUserId },
     });
-
     const existingLog = await prisma.workerUsageLogs.findFirst({
-      where: {
-        worker_id: firstAssignment.worker_id,
-        agency_user_id: firstAgencyId,
-        user_id: firstUserId,
-        end_at: null,
-      },
+      where: { worker_id: firstAssignment.worker_id, user_id: firstUserId, end_at: null },
     });
     if (!existingLog) {
       await prisma.workerUsageLogs.create({
@@ -214,16 +209,19 @@ async function main() {
         },
       });
     }
-    console.log('✅ Sample usage log created (worker currently in use)');
+    console.log('✅ Sample usage log created');
   }
 
   // ── Summary ───────────────────────────────────────────────────────────────
   console.log('\n🏁 Seeding completed!');
-  console.log(`   • Permissions  : ${Object.keys(permissions).length}`);
-  console.log(`   • Mod users    : 1  → phone: 0347503886`);
-  console.log(`   • Agencies     : ${agenciesData.length}  → 0900000001, 0900000002, 0900000003`);
-  console.log(`   • Users        : ${regularUsersData.length}  → 0911000001–0911000006`);
-  console.log(`   • Workers      : ${workerIds.length}`);
+  console.log(`   • Permissions   : ${PERMISSIONS.length} (codes mới chuẩn resource:action)`);
+  console.log(
+    `   • RolePerms     : agency=${ROLE_DEFAULTS.agency.length}, user=${ROLE_DEFAULTS.user.length}`,
+  );
+  console.log(`   • Mod           : 1  → 0347503886`);
+  console.log(`   • Agencies      : ${agenciesData.length}  → 0900000001~3`);
+  console.log(`   • Users         : ${regularUsersData.length}  → 0911000001~6`);
+  console.log(`   • Workers       : ${workerIds.length}`);
 }
 
 main()

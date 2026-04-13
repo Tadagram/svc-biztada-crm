@@ -336,37 +336,37 @@ Khi backend trả về:
 ## 📅 Todo List — Theo thứ tự ưu tiên
 
 ```
-[ ] Phase 1: Cập nhật JWT payload (thêm parentUserId)
-    [ ] 1.1 — Sửa interface FastifyJWT trong src/plugins/jwt.ts
-    [ ] 1.2 — Sửa generateToken() trong src/handlers/user/userHelper.ts
+[x] Phase 1: Cập nhật JWT payload (thêm parentUserId)
+    [x] 1.1 — Sửa interface FastifyJWT trong src/plugins/jwt.ts
+    [x] 1.2 — Sửa generateToken() trong src/handlers/user/userHelper.ts
 
-[ ] Phase 2: Tạo RBAC Plugin
-    [ ] 2.1 — Tạo file src/plugins/rbac.ts với requirePermission factory
-    [ ] 2.2 — Đăng ký plugin trong index.ts (hoặc app entry point)
-    [ ] 2.3 — Kiểm tra TypeScript: npx tsc --noEmit
+[x] Phase 2: Tạo RBAC Plugin
+    [x] 2.1 — Tạo file src/plugins/rbac.ts với requirePermission factory
+    [x] 2.2 — Đăng ký plugin trong index.ts (hoặc app entry point)
+    [x] 2.3 — Kiểm tra TypeScript: npx tsc --noEmit
 
-[ ] Phase 3: Seed dữ liệu chuẩn hóa
-    [ ] 3.1 — Viết lại prisma/seed.ts với 18 permission codes mới
-    [ ] 3.2 — Thêm seed RolePermissions defaults (agency/user defaults)
+[x] Phase 3: Seed dữ liệu chuẩn hóa
+    [x] 3.1 — Viết lại prisma/seed.ts với 18 permission codes mới
+    [x] 3.2 — Thêm seed RolePermissions defaults (agency/user defaults)
     [ ] 3.3 — Chạy: npx prisma db seed
 
-[ ] Phase 4: Bảo vệ tất cả routes
-    [ ] 4.1 — src/routes/user.routes.ts (5 routes)
-    [ ] 4.2 — src/routes/worker.routes.ts (5 routes)
-    [ ] 4.3 — src/routes/agencyWorker.routes.ts (5 routes)
-    [ ] 4.4 — src/routes/permission.routes.ts (10 routes)
+[x] Phase 4: Bảo vệ tất cả routes
+    [x] 4.1 — src/routes/user.routes.ts (5 routes)
+    [x] 4.2 — src/routes/worker.routes.ts (5 routes)
+    [x] 4.3 — src/routes/agencyWorker.routes.ts (5 routes)
+    [x] 4.4 — src/routes/permission.routes.ts (10 routes)
     [ ] 4.5 — Test: curl /users (không có token → 401)
     [ ] 4.6 — Test: Login → GET /users (có token → 200)
 
-[ ] Phase 5: Data Isolation
-    [ ] 5.1 — Sửa getUsersHandler.ts: tự động filter theo caller.role
-    [ ] 5.2 — Sửa getAgencyWorkersHandler.ts: tự động filter theo caller.role
-    [ ] 5.3 — Sửa getWorkersHandler.ts: filter theo agency assignment
+[x] Phase 5: Data Isolation
+    [x] 5.1 — Sửa getUsersHandler.ts: tự động filter theo caller.role
+    [x] 5.2 — Sửa getAgencyWorkersHandler.ts: tự động filter theo caller.role
+    [x] 5.3 — Sửa getWorkersHandler.ts: filter theo agency assignment
     [ ] 5.4 — Test: Agency login → GET /users (chỉ thấy user của mình)
 
-[ ] Phase 6: Frontend error handling
-    [ ] 6.1 — Axios interceptor: 401 → logout + redirect /login
-    [ ] 6.2 — Axios interceptor: 403 → toast "Không có quyền"
+[x] Phase 6: Frontend error handling
+    [x] 6.1 — Axios interceptor: 401 → logout + redirect /login
+    [x] 6.2 — Axios interceptor: 403 → toast "Không có quyền"
     [ ] 6.3 — Test E2E: Đăng nhập user thường → thử tạo worker → nhận 403 toast
 ```
 

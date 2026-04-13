@@ -1,4 +1,4 @@
-import { FastifyInstance } from 'fastify';
+import { FastifyInstance, RouteHandlerMethod } from 'fastify';
 import {
   createUserHandler,
   getUsersHandler,
@@ -15,22 +15,24 @@ import {
 } from '@schemas/user.schema';
 
 async function userRoutes(fastify: FastifyInstance) {
-  // Create user (mod only)
+  // Create user
   fastify.post(
     '/',
     {
       schema: createUserSchema,
+      preHandler: [fastify.authenticate, fastify.requirePermission('users:create')],
     },
-    createUserHandler,
+    createUserHandler as RouteHandlerMethod,
   );
 
-  // Get all users – data isolation applied inside handler
+  // Get all users
   fastify.get(
     '/',
     {
       schema: getUsersSchema,
+      preHandler: [fastify.authenticate, fastify.requirePermission('users:read')],
     },
-    getUsersHandler,
+    getUsersHandler as RouteHandlerMethod,
   );
 
   // Get user by ID
@@ -38,8 +40,9 @@ async function userRoutes(fastify: FastifyInstance) {
     '/:userId',
     {
       schema: getUserByIdSchema,
+      preHandler: [fastify.authenticate, fastify.requirePermission('users:read')],
     },
-    getUserByIdHandler,
+    getUserByIdHandler as RouteHandlerMethod,
   );
 
   // Update user
@@ -47,8 +50,9 @@ async function userRoutes(fastify: FastifyInstance) {
     '/:userId',
     {
       schema: updateUserSchema,
+      preHandler: [fastify.authenticate, fastify.requirePermission('users:update')],
     },
-    updateUserHandler,
+    updateUserHandler as RouteHandlerMethod,
   );
 
   // Delete user
@@ -56,8 +60,9 @@ async function userRoutes(fastify: FastifyInstance) {
     '/:userId',
     {
       schema: deleteUserSchema,
+      preHandler: [fastify.authenticate, fastify.requirePermission('users:delete')],
     },
-    deleteUserHandler,
+    deleteUserHandler as RouteHandlerMethod,
   );
 }
 

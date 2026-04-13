@@ -8,6 +8,20 @@ interface GetWorkersQuerystring {
   search?: string;
 }
 
+function buildWorkerIsolation(caller: {
+  userId: string;
+  role: string;
+}): Record<string, unknown> | null {
+  if (caller.role === 'mod') return {};
+  if (caller.role === 'agency') {
+    return { agencyWorkers: { some: { agency_user_id: caller.userId, deleted_at: null } } };
+  }
+  if (caller.role === 'user') {
+    return { agencyWorkers: { some: { using_by: caller.userId, deleted_at: null } } };
+  }
+  return null; // customer → block
+}
+
 export async function getWorkersHandler(
   request: FastifyRequest<{ Querystring: GetWorkersQuerystring }>,
   reply: FastifyReply,
@@ -18,12 +32,18 @@ export async function getWorkersHandler(
   const offset = Number(queryOffset);
 
   try {
+    const caller = request.user;
+    const isolation = buildWorkerIsolation(caller);
+
+    if (isolation === null) {
+      return reply.status(403).send({ success: false, message: 'Forbidden' });
+    }
+
     const where = {
       deleted_at: null,
+      ...isolation,
       ...(status && { status }),
-      ...(search && {
-        name: { contains: search, mode: 'insensitive' as const },
-      }),
+      ...(search && { name: { contains: search, mode: 'insensitive' as const } }),
     };
 
     const workerSelect = {
@@ -51,14 +71,7 @@ export async function getWorkersHandler(
     return reply.send({
       success: true,
       data: workers,
-      pagination: {
-        total,
-        limit,
-        offset,
-        totalPages,
-        currentPage,
-        all: isAll,
-      },
+      pagination: { total, limit, offset, totalPages, currentPage, all: isAll },
       message: 'Workers retrieved successfully',
     });
   } catch (error) {
