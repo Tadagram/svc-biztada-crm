@@ -5,7 +5,7 @@ interface AddPermissionBody {
   code: string;
 }
 
-async function addPermissionHandler(
+export async function addPermissionHandler(
   request: FastifyRequest<{
     Body: AddPermissionBody;
   }>,

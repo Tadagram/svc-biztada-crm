@@ -2,6 +2,7 @@ import 'dotenv/config';
 import Fastify from 'fastify';
 import ajvErrors from 'ajv-errors';
 
+import corsPlugin from '@plugins/cors';
 import jwtPlugin from '@plugins/jwt';
 import prismaPlugin from '@plugins/prisma';
 import compressionPlugin from '@plugins/compression';
@@ -21,6 +22,7 @@ const fastify = Fastify({
   },
 });
 
+fastify.register(corsPlugin);
 fastify.register(jwtPlugin);
 fastify.register(prismaPlugin);
 fastify.register(compressionPlugin);

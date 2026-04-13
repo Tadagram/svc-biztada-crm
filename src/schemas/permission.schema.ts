@@ -92,3 +92,281 @@ export const addPermissionSchema: FastifySchema = {
     },
   },
 };
+
+export const checkPermissionSchema: FastifySchema = {
+  description: 'Check if user has a specific permission',
+  tags: ['Permission Check'],
+  summary: 'Check Single Permission',
+  body: {
+    type: 'object',
+    required: ['user_id', 'permission_code'],
+    properties: {
+      user_id: {
+        type: 'string',
+        format: 'uuid',
+        description: 'User ID',
+      },
+      permission_code: {
+        type: 'string',
+        description: 'Permission code (e.g., "worker:assign")',
+      },
+    },
+  },
+  response: {
+    200: {
+      description: 'Permission check result',
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: {
+            user_id: { type: 'string' },
+            permission_code: { type: 'string' },
+            has_permission: { type: 'boolean' },
+          },
+        },
+      },
+    },
+    404: {
+      description: 'User not found',
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+      },
+    },
+  },
+};
+
+export const checkAllPermissionsSchema: FastifySchema = {
+  description: 'Check if user has all specified permissions',
+  tags: ['Permission Check'],
+  summary: 'Check All Permissions',
+  body: {
+    type: 'object',
+    required: ['user_id', 'permission_codes'],
+    properties: {
+      user_id: {
+        type: 'string',
+        format: 'uuid',
+        description: 'User ID',
+      },
+      permission_codes: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Array of permission codes',
+      },
+    },
+  },
+  response: {
+    200: {
+      description: 'Permission check result',
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: {
+            user_id: { type: 'string' },
+            permission_codes: { type: 'array', items: { type: 'string' } },
+            has_all_permissions: { type: 'boolean' },
+          },
+        },
+      },
+    },
+  },
+};
+
+export const checkAnyPermissionSchema: FastifySchema = {
+  description: 'Check if user has at least one of the specified permissions',
+  tags: ['Permission Check'],
+  summary: 'Check Any Permission',
+  body: {
+    type: 'object',
+    required: ['user_id', 'permission_codes'],
+    properties: {
+      user_id: {
+        type: 'string',
+        format: 'uuid',
+        description: 'User ID',
+      },
+      permission_codes: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Array of permission codes',
+      },
+    },
+  },
+  response: {
+    200: {
+      description: 'Permission check result',
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: {
+            user_id: { type: 'string' },
+            permission_codes: { type: 'array', items: { type: 'string' } },
+            has_any_permission: { type: 'boolean' },
+          },
+        },
+      },
+    },
+  },
+};
+
+export const getUserPermissionsSchema: FastifySchema = {
+  description: 'Get all effective permissions for a user',
+  tags: ['User Permissions'],
+  summary: 'Get User Permissions',
+  params: {
+    type: 'object',
+    required: ['userId'],
+    properties: {
+      userId: {
+        type: 'string',
+        format: 'uuid',
+        description: 'User ID',
+      },
+    },
+  },
+  response: {
+    200: {
+      description: 'User permissions list',
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: {
+            user_id: { type: 'string' },
+            phone_number: { type: 'string' },
+            role: { type: 'string' },
+            permissions: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  permission_id: { type: 'string' },
+                  code: { type: 'string' },
+                  name: { type: 'string' },
+                },
+              },
+            },
+            total: { type: 'integer' },
+          },
+        },
+      },
+    },
+    404: {
+      description: 'User not found',
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+      },
+    },
+  },
+};
+
+export const addUserPermissionOverrideSchema: FastifySchema = {
+  description: 'Add a permission override for a user',
+  tags: ['User Permissions'],
+  summary: 'Add Permission Override',
+  params: {
+    type: 'object',
+    required: ['userId'],
+    properties: {
+      userId: {
+        type: 'string',
+        format: 'uuid',
+        description: 'User ID',
+      },
+    },
+  },
+  body: {
+    type: 'object',
+    required: ['permission_code', 'permission_type'],
+    properties: {
+      permission_code: {
+        type: 'string',
+        description: 'Permission code',
+      },
+      permission_type: {
+        type: 'string',
+        enum: ['allow', 'deny'],
+        description: 'Type of permission override (allow to grant, deny to revoke)',
+      },
+    },
+  },
+  response: {
+    201: {
+      description: 'Permission override added successfully',
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: {
+            user_permission_id: { type: 'string' },
+            user_id: { type: 'string' },
+            permission_code: { type: 'string' },
+            permission_type: { type: 'string' },
+            created_at: { type: 'string', format: 'date-time' },
+          },
+        },
+      },
+    },
+  },
+};
+
+export const removeUserPermissionOverrideSchema: FastifySchema = {
+  description: 'Remove a permission override for a user',
+  tags: ['User Permissions'],
+  summary: 'Remove Permission Override',
+  params: {
+    type: 'object',
+    required: ['userId'],
+    properties: {
+      userId: {
+        type: 'string',
+        format: 'uuid',
+        description: 'User ID',
+      },
+    },
+  },
+  body: {
+    type: 'object',
+    required: ['permission_code'],
+    properties: {
+      permission_code: {
+        type: 'string',
+        description: 'Permission code to remove',
+      },
+    },
+  },
+  response: {
+    200: {
+      description: 'Permission override removed successfully',
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: {
+            user_id: { type: 'string' },
+            permission_code: { type: 'string' },
+          },
+        },
+      },
+    },
+  },
+};

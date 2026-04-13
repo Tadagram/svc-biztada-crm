@@ -1,18 +1,18 @@
 import { FastifySchema } from 'fastify';
 
-// Request body properties
 const phoneNumberProperty = {
   type: 'string',
   minLength: 10,
   maxLength: 15,
+  pattern: '^(\\+84|0)[0-9]{9,10}$',
   errorMessage: {
     type: 'Số điện thoại phải là một chuỗi (string).',
     minLength: 'Số điện thoại quá ngắn.',
     maxLength: 'Số điện thoại quá dài.',
+    pattern: 'Số điện thoại không hợp lệ.',
   },
 };
 
-// User object in response
 const userObject = {
   type: 'object',
   properties: {
@@ -22,7 +22,6 @@ const userObject = {
   },
 };
 
-// Success response (200)
 const successResponse = {
   type: 'object',
   properties: {
@@ -34,7 +33,6 @@ const successResponse = {
   },
 };
 
-// Not found response (404)
 const notFoundResponse = {
   type: 'object',
   properties: {
@@ -43,7 +41,6 @@ const notFoundResponse = {
   },
 };
 
-// Forbidden response (403)
 const forbiddenResponse = {
   type: 'object',
   properties: {
@@ -52,7 +49,6 @@ const forbiddenResponse = {
   },
 };
 
-// Server error response (500)
 const errorResponse = {
   type: 'object',
   properties: {

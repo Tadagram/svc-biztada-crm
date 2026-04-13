@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import verifyUserHandler from '@handlers/verifyUser';
+import { verifyUserHandler } from '@handlers/user';
 import refreshTokenHandler from '@handlers/refreshToken';
 import { verifyUserSchema } from '@schemas/verify.schema';
 import { refreshTokenSchema } from '@schemas/refresh.schema';

@@ -118,3 +118,199 @@ export const createUserSchema: FastifySchema = {
     },
   },
 };
+
+export const getUsersSchema: FastifySchema = {
+  tags: ['Users'],
+  description: 'Retrieve users with pagination, search, and filters',
+  summary: 'Get Users (Paginated)',
+  querystring: {
+    type: 'object',
+    properties: {
+      limit: {
+        type: 'integer',
+        minimum: 1,
+        maximum: 100,
+        default: 10,
+        description: 'Number of users per page',
+      },
+      offset: {
+        type: 'integer',
+        minimum: 0,
+        default: 0,
+        description: 'Number of users to skip',
+      },
+      search: {
+        type: 'string',
+        description: 'Search by phone number or agency name',
+      },
+      role: {
+        type: 'string',
+        enum: ['mod', 'agency', 'user', 'customer'],
+        description: 'Filter by role',
+      },
+      status: {
+        type: 'string',
+        enum: ['active', 'disabled'],
+        description: 'Filter by status',
+      },
+    },
+  },
+  response: {
+    200: {
+      description: 'Users retrieved successfully',
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'array',
+          items: userDataResponse,
+        },
+        pagination: {
+          type: 'object',
+          properties: {
+            total: { type: 'integer' },
+            limit: { type: 'integer' },
+            offset: { type: 'integer' },
+            totalPages: { type: 'integer' },
+            currentPage: { type: 'integer' },
+          },
+        },
+        message: { type: 'string' },
+      },
+    },
+    500: {
+      description: 'Internal server error',
+      ...errorResponse,
+    },
+  },
+};
+
+export const getUserByIdSchema: FastifySchema = {
+  tags: ['Users'],
+  description: 'Retrieve a user by ID',
+  summary: 'Get User by ID',
+  params: {
+    type: 'object',
+    required: ['userId'],
+    properties: {
+      userId: {
+        type: 'string',
+        format: 'uuid',
+      },
+    },
+  },
+  response: {
+    200: {
+      description: 'User retrieved successfully',
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: userDataResponse,
+        message: { type: 'string' },
+      },
+    },
+    404: {
+      description: 'User not found',
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+      },
+    },
+    500: {
+      description: 'Internal server error',
+      ...errorResponse,
+    },
+  },
+};
+
+export const updateUserSchema: FastifySchema = {
+  tags: ['Users'],
+  description: 'Update user information',
+  summary: 'Update User',
+  params: {
+    type: 'object',
+    required: ['userId'],
+    properties: {
+      userId: {
+        type: 'string',
+        format: 'uuid',
+      },
+    },
+  },
+  body: {
+    type: 'object',
+    properties: {
+      agency_name: agencyNameProperty,
+      role: roleProperty,
+      status: statusProperty,
+      parent_user_id: parentUserIdProperty,
+    },
+  },
+  response: {
+    200: {
+      description: 'User updated successfully',
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: userDataResponse,
+        message: { type: 'string' },
+      },
+    },
+    404: {
+      description: 'User not found',
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+      },
+    },
+    400: {
+      description: 'Invalid request body',
+      ...errorResponse,
+    },
+    500: {
+      description: 'Internal server error',
+      ...errorResponse,
+    },
+  },
+};
+
+export const deleteUserSchema: FastifySchema = {
+  tags: ['Users'],
+  description: 'Delete a user (soft delete)',
+  summary: 'Delete User',
+  params: {
+    type: 'object',
+    required: ['userId'],
+    properties: {
+      userId: {
+        type: 'string',
+        format: 'uuid',
+      },
+    },
+  },
+  response: {
+    200: {
+      description: 'User deleted successfully',
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: userDataResponse,
+        message: { type: 'string' },
+      },
+    },
+    404: {
+      description: 'User not found',
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+      },
+    },
+    500: {
+      description: 'Internal server error',
+      ...errorResponse,
+    },
+  },
+};
