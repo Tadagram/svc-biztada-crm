@@ -17,6 +17,7 @@ const fastify = Fastify({
   ajv: {
     customOptions: {
       allErrors: true,
+      coerceTypes: true,
     },
     plugins: [ajvErrors] as any,
   },

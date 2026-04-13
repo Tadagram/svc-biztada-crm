@@ -370,3 +370,125 @@ export const removeUserPermissionOverrideSchema: FastifySchema = {
     },
   },
 };
+
+export const getPermissionsSchema: FastifySchema = {
+  tags: ['Permissions'],
+  description: 'Retrieve permissions list with pagination and optional search',
+  summary: 'Get Permissions',
+  querystring: {
+    type: 'object',
+    properties: {
+      limit: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
+      offset: { type: 'integer', minimum: 0, default: 0 },
+      search: { type: 'string', description: 'Search by name or code' },
+    },
+  },
+  response: {
+    200: {
+      description: 'Permissions retrieved successfully',
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'array',
+          items: permissionDataResponse,
+        },
+        pagination: {
+          type: 'object',
+          properties: {
+            total: { type: 'integer' },
+            limit: { type: 'integer' },
+            offset: { type: 'integer' },
+            totalPages: { type: 'integer' },
+            currentPage: { type: 'integer' },
+            all: { type: 'boolean' },
+          },
+        },
+        message: { type: 'string' },
+      },
+    },
+    500: {
+      description: 'Internal server error',
+      ...errorResponse,
+    },
+  },
+};
+
+export const updatePermissionSchema: FastifySchema = {
+  tags: ['Permissions'],
+  description: 'Update an existing permission name or code',
+  summary: 'Update Permission',
+  params: {
+    type: 'object',
+    required: ['permissionId'],
+    properties: {
+      permissionId: { type: 'string', format: 'uuid' },
+    },
+  },
+  body: {
+    type: 'object',
+    properties: {
+      name: nameProperty,
+      code: codeProperty,
+    },
+  },
+  response: {
+    200: {
+      description: 'Permission updated successfully',
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: permissionDataResponse,
+        message: { type: 'string' },
+      },
+    },
+    404: {
+      description: 'Permission not found',
+      type: 'object',
+      properties: { success: { type: 'boolean' }, message: { type: 'string' } },
+    },
+    409: {
+      description: 'Permission code already exists',
+      ...conflictResponse,
+    },
+    500: { description: 'Internal server error', ...errorResponse },
+  },
+};
+
+export const deletePermissionSchema: FastifySchema = {
+  tags: ['Permissions'],
+  description: 'Soft delete a permission',
+  summary: 'Delete Permission',
+  params: {
+    type: 'object',
+    required: ['permissionId'],
+    properties: {
+      permissionId: { type: 'string', format: 'uuid' },
+    },
+  },
+  response: {
+    200: {
+      description: 'Permission deleted successfully',
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'object',
+          properties: {
+            permission_id: { type: 'string' },
+            name: { type: 'string' },
+            code: { type: 'string' },
+            deleted_at: { type: 'string' },
+          },
+        },
+        message: { type: 'string' },
+      },
+    },
+    404: {
+      description: 'Permission not found',
+      type: 'object',
+      properties: { success: { type: 'boolean' }, message: { type: 'string' } },
+    },
+    500: { description: 'Internal server error', ...errorResponse },
+  },
+};

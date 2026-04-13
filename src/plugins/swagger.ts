@@ -33,9 +33,14 @@ export default fastifyPlugin(async (fastify: FastifyInstance) => {
       ],
       tags: [
         { name: 'Health', description: 'API health check endpoints' },
-        { name: 'Users', description: 'User management operations' },
         { name: 'Authentication', description: 'Authentication and token endpoints' },
+        { name: 'Users', description: 'User management operations' },
+        { name: 'Workers', description: 'Worker management operations' },
+        { name: 'AgencyWorker', description: 'Agency-Worker assignment operations' },
+        { name: 'Usage Logs', description: 'Worker usage history and logs' },
         { name: 'Permissions', description: 'Permission management operations' },
+        { name: 'Permission Check', description: 'Check user permission endpoints' },
+        { name: 'User Permissions', description: 'Assign / revoke permissions per user' },
       ],
       components: {
         securitySchemes: {

@@ -1,15 +1,9 @@
 import { FastifyInstance } from 'fastify';
 import addPermissionHandler from '@handlers/permission';
 import {
-  addPermissionSchema,
-  checkPermissionSchema,
-  checkAllPermissionsSchema,
-  checkAnyPermissionSchema,
-  getUserPermissionsSchema,
-  addUserPermissionOverrideSchema,
-  removeUserPermissionOverrideSchema,
-} from '@schemas/permission.schema';
-import {
+  getPermissionsHandler,
+  updatePermissionHandler,
+  deletePermissionHandler,
   checkPermissionHandler,
   checkAllPermissionsHandler,
   checkAnyPermissionHandler,
@@ -17,64 +11,46 @@ import {
   addUserPermissionOverrideHandler,
   removeUserPermissionOverrideHandler,
 } from '@handlers/permission';
+import {
+  addPermissionSchema,
+  getPermissionsSchema,
+  updatePermissionSchema,
+  deletePermissionSchema,
+  checkPermissionSchema,
+  checkAllPermissionsSchema,
+  checkAnyPermissionSchema,
+  getUserPermissionsSchema,
+  addUserPermissionOverrideSchema,
+  removeUserPermissionOverrideSchema,
+} from '@schemas/permission.schema';
 
 async function permissionRoutes(fastify: FastifyInstance) {
-  // ==================== Create Permission ====================
-  fastify.post(
-    '/',
-    {
-      schema: addPermissionSchema,
-    },
-    addPermissionHandler,
-  );
+  // ==================== Permission CRUD ====================
+  fastify.post('/', { schema: addPermissionSchema }, addPermissionHandler);
+
+  fastify.get('/', { schema: getPermissionsSchema }, getPermissionsHandler);
+
+  fastify.put('/:permissionId', { schema: updatePermissionSchema }, updatePermissionHandler);
+
+  fastify.delete('/:permissionId', { schema: deletePermissionSchema }, deletePermissionHandler);
 
   // ==================== Check Permissions ====================
-  fastify.post(
-    '/check',
-    {
-      schema: checkPermissionSchema,
-    },
-    checkPermissionHandler,
-  );
+  fastify.post('/check', { schema: checkPermissionSchema }, checkPermissionHandler);
+  fastify.post('/check-all', { schema: checkAllPermissionsSchema }, checkAllPermissionsHandler);
+  fastify.post('/check-any', { schema: checkAnyPermissionSchema }, checkAnyPermissionHandler);
 
-  fastify.post(
-    '/check-all',
-    {
-      schema: checkAllPermissionsSchema,
-    },
-    checkAllPermissionsHandler,
-  );
-
-  fastify.post(
-    '/check-any',
-    {
-      schema: checkAnyPermissionSchema,
-    },
-    checkAnyPermissionHandler,
-  );
-
-  // ==================== User Permissions ====================
-  fastify.get(
-    '/user/:userId',
-    {
-      schema: getUserPermissionsSchema,
-    },
-    getUserPermissionsHandler,
-  );
+  // ==================== User Permission Overrides ====================
+  fastify.get('/user/:userId', { schema: getUserPermissionsSchema }, getUserPermissionsHandler);
 
   fastify.post(
     '/user/:userId/override',
-    {
-      schema: addUserPermissionOverrideSchema,
-    },
+    { schema: addUserPermissionOverrideSchema },
     addUserPermissionOverrideHandler,
   );
 
   fastify.delete(
     '/user/:userId/override',
-    {
-      schema: removeUserPermissionOverrideSchema,
-    },
+    { schema: removeUserPermissionOverrideSchema },
     removeUserPermissionOverrideHandler,
   );
 }

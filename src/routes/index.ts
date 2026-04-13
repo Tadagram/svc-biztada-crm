@@ -2,32 +2,67 @@ import { FastifyInstance, FastifyPluginOptions } from 'fastify';
 import userRoutes from './user.routes';
 import verifyRoutes from './verify.routes';
 import permissionRoutes from './permission.routes';
+import workerRoutes from './worker.routes';
+import agencyWorkerRoutes from './agencyWorker.routes';
+import usageLogsRoutes from './usageLogs.routes';
 
 async function routes(fastify: FastifyInstance, _options: FastifyPluginOptions) {
   fastify.register(userRoutes, { prefix: '/users' });
   fastify.register(verifyRoutes, { prefix: '/auth' });
   fastify.register(permissionRoutes, { prefix: '/permissions' });
+  fastify.register(workerRoutes, { prefix: '/workers' });
+  fastify.register(agencyWorkerRoutes, { prefix: '/agency-workers' });
+  fastify.register(usageLogsRoutes, { prefix: '/usage-logs' });
 
   fastify.get(
     '/health',
     {
       schema: {
         tags: ['Health'],
-        description: 'Check API health status',
+        description: 'Check API health status including database connectivity and uptime',
         summary: 'Health Check',
         response: {
           200: {
-            description: 'Server is running',
+            description: 'Server is healthy',
             type: 'object',
             properties: {
               status: { type: 'string' },
+              uptime: { type: 'number' },
+              timestamp: { type: 'string' },
+              db: { type: 'string' },
+              version: { type: 'string' },
+            },
+          },
+          503: {
+            description: 'Service unavailable',
+            type: 'object',
+            properties: {
+              status: { type: 'string' },
+              db: { type: 'string' },
+              error: { type: 'string' },
             },
           },
         },
       },
     },
-    async (_request, _reply) => {
-      return { status: 'ok' };
+    async (_request, reply) => {
+      try {
+        // DB ping
+        await fastify.prisma.$queryRaw`SELECT 1`;
+        return reply.send({
+          status: 'ok',
+          uptime: Math.floor(process.uptime()),
+          timestamp: new Date().toISOString(),
+          db: 'connected',
+          version: '1.0.0',
+        });
+      } catch (error) {
+        return reply.status(503).send({
+          status: 'error',
+          db: 'disconnected',
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
     },
   );
 }

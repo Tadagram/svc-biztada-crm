@@ -15,7 +15,7 @@ import {
 } from '@schemas/user.schema';
 
 async function userRoutes(fastify: FastifyInstance) {
-  // Create user
+  // Create user (mod only)
   fastify.post(
     '/',
     {
@@ -24,7 +24,7 @@ async function userRoutes(fastify: FastifyInstance) {
     createUserHandler,
   );
 
-  // Get all users
+  // Get all users – data isolation applied inside handler
   fastify.get(
     '/',
     {

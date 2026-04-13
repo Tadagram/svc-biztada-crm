@@ -1,4 +1,7 @@
 export { addPermissionHandler as default } from './addPermissionHandler';
+export { getPermissionsHandler } from './getPermissionsHandler';
+export { updatePermissionHandler } from './updatePermissionHandler';
+export { deletePermissionHandler } from './deletePermissionHandler';
 export { checkPermissionHandler } from './checkPermissionHandler';
 export { checkAllPermissionsHandler } from './checkAllPermissionsHandler';
 export { checkAnyPermissionHandler } from './checkAnyPermissionHandler';

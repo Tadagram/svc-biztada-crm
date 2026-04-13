@@ -53,7 +53,10 @@ const userDataResponse = {
     agency_name: { type: ['string', 'null'] },
     role: { type: 'string' },
     status: { type: 'string' },
+    parent_user_id: { type: ['string', 'null'] },
     created_at: { type: 'string' },
+    updated_at: { type: 'string' },
+    deleted_at: { type: ['string', 'null'] },
   },
 };
 
@@ -153,6 +156,14 @@ export const getUsersSchema: FastifySchema = {
         enum: ['active', 'disabled'],
         description: 'Filter by status',
       },
+      all: {
+        type: 'boolean',
+        description: 'Return all users without pagination',
+      },
+      parent_user_id: {
+        type: 'string',
+        description: 'Filter by parent user ID',
+      },
     },
   },
   response: {
@@ -173,6 +184,7 @@ export const getUsersSchema: FastifySchema = {
             offset: { type: 'integer' },
             totalPages: { type: 'integer' },
             currentPage: { type: 'integer' },
+            all: { type: 'boolean' },
           },
         },
         message: { type: 'string' },
