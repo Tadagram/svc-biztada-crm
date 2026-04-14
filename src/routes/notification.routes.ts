@@ -4,7 +4,6 @@ import {
   getUnreadCountHandler,
   markReadHandler,
   markAllReadHandler,
-  deleteNotificationHandler,
   createNotificationHandler,
 } from '@handlers/notification';
 import {
@@ -12,7 +11,6 @@ import {
   getUnreadCountSchema,
   markReadSchema,
   markAllReadSchema,
-  deleteNotificationSchema,
   createNotificationSchema,
 } from '@schemas/notification.schema';
 
@@ -55,16 +53,6 @@ async function notificationRoutes(fastify: FastifyInstance) {
       preHandler: [fastify.authenticate],
     },
     markReadHandler as RouteHandlerMethod,
-  );
-
-  // DELETE /notifications/:notificationId
-  fastify.delete(
-    '/:notificationId',
-    {
-      schema: deleteNotificationSchema,
-      preHandler: [fastify.authenticate],
-    },
-    deleteNotificationHandler as RouteHandlerMethod,
   );
 
   // POST /notifications — MOD only

@@ -37,14 +37,12 @@ const notificationDataResponse = {
   },
 };
 
-const paginationMeta = {
+const cursorMeta = {
   type: 'object',
   properties: {
-    total: { type: 'integer' },
+    nextCursor: { type: ['string', 'null'] },
+    hasMore: { type: 'boolean' },
     limit: { type: 'integer' },
-    offset: { type: 'integer' },
-    totalPages: { type: 'integer' },
-    currentPage: { type: 'integer' },
   },
 };
 
@@ -58,13 +56,17 @@ const errorResponse = {
 
 export const getNotificationsSchema: FastifySchema = {
   tags: ['Notifications'],
-  summary: 'Get my notifications',
-  description: 'Returns a paginated list of notifications for the authenticated user',
+  summary: 'Get my notifications (cursor-paginated)',
+  description:
+    'Returns a cursor-paginated list of notifications ordered by newest first. Pass `before` cursor to load older items.',
   querystring: {
     type: 'object',
     properties: {
-      limit: { type: 'integer', default: 20, minimum: 1, maximum: 100 },
-      offset: { type: 'integer', default: 0, minimum: 0 },
+      limit: { type: 'integer', default: 10, minimum: 1, maximum: 50 },
+      before: {
+        type: 'string',
+        description: 'ISO timestamp cursor — fetch notifications older than this',
+      },
       type: { type: 'string', enum: notificationTypes },
       is_read: { type: 'boolean' },
     },
@@ -78,7 +80,7 @@ export const getNotificationsSchema: FastifySchema = {
           type: 'array',
           items: notificationDataResponse,
         },
-        pagination: paginationMeta,
+        cursor: cursorMeta,
       },
     },
     401: errorResponse,
@@ -143,33 +145,6 @@ export const markAllReadSchema: FastifySchema = {
       },
     },
     401: errorResponse,
-  },
-};
-
-export const deleteNotificationSchema: FastifySchema = {
-  tags: ['Notifications'],
-  summary: 'Delete notification',
-  description: 'Delete a notification. Only the recipient can delete it.',
-  params: {
-    type: 'object',
-    required: ['notificationId'],
-    properties: {
-      notificationId: {
-        type: 'string',
-        format: 'uuid',
-      },
-    },
-  },
-  response: {
-    200: {
-      type: 'object',
-      properties: {
-        success: { type: 'boolean' },
-        message: { type: 'string' },
-      },
-    },
-    404: errorResponse,
-    403: errorResponse,
   },
 };
 
