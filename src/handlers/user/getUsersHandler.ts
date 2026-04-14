@@ -1,14 +1,36 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { UserRole, UserStatus } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 
 interface GetUsersQuerystring {
   limit?: number;
   offset?: number;
   search?: string;
   role?: UserRole;
-  status?: UserStatus;
+  not_role?: UserRole;
   all?: boolean;
+  status?: 'active' | 'disabled' | 'deleted';
   parent_user_id?: string;
+}
+
+function buildUserIsolation(caller: {
+  userId: string;
+  role: string;
+  parentUserId?: string | null;
+}): Record<string, string> | null {
+  if (caller.role === UserRole.mod) {
+    return {};
+  }
+
+  if (caller.role === UserRole.agency) {
+    return { parent_user_id: caller.userId };
+  }
+
+  if (caller.role === UserRole.user) {
+    return { parent_user_id: caller.parentUserId ?? '' };
+  }
+
+  // Customer không có quyền xem danh sách users
+  return null;
 }
 
 export const getUsersHandler = async (
@@ -21,32 +43,34 @@ export const getUsersHandler = async (
       offset: queryOffset = 0,
       search,
       role,
-      status,
+      not_role,
       all,
+      status,
       parent_user_id,
     } = request.query;
+
     const limit = Number(queryLimit);
     const offset = Number(queryOffset);
+    const caller = request.user;
+    const isolation = buildUserIsolation(caller);
 
-    let isolatedParentId: string | undefined = parent_user_id;
-
-    try {
-      await request.jwtVerify();
-      const caller = request.user;
-      const callerIsAgency = caller?.role === UserRole.agency;
-
-      if (callerIsAgency) {
-        isolatedParentId = caller.userId;
-      }
-    } catch (error) {
-      console.error(
-        'Failed to verify JWT for getUsersHandler. Proceeding without user context.',
-        error,
-      );
+    if (isolation === null) {
+      return reply.status(403).send({ success: false, message: 'Forbidden' });
     }
 
+    const isDeletedFilter = status === 'deleted';
+    const deletedAtFilter = !status
+      ? {}
+      : isDeletedFilter
+        ? { deleted_at: { not: null } }
+        : { deleted_at: null };
+
+    const parentFilter = caller.role === 'mod' && parent_user_id ? { parent_user_id } : {};
+
     const where = {
-      deleted_at: null,
+      ...deletedAtFilter,
+      ...isolation,
+      ...parentFilter,
       ...(search && {
         OR: [
           { phone_number: { contains: search } },
@@ -54,8 +78,8 @@ export const getUsersHandler = async (
         ],
       }),
       ...(role && { role }),
-      ...(status && { status }),
-      ...(isolatedParentId && { parent_user_id: isolatedParentId }),
+      ...(not_role && { NOT: { role: not_role } }),
+      ...(!isDeletedFilter && status && { status }),
     };
 
     const userSelect = {
@@ -65,8 +89,10 @@ export const getUsersHandler = async (
       role: true,
       status: true,
       parent_user_id: true,
+      last_active_at: true,
       created_at: true,
       updated_at: true,
+      deleted_at: true,
     };
 
     const isAll = all === true || String(all) === 'true';
@@ -86,14 +112,7 @@ export const getUsersHandler = async (
     return reply.send({
       success: true,
       data: users,
-      pagination: {
-        total,
-        limit,
-        offset,
-        totalPages,
-        currentPage,
-        all: isAll,
-      },
+      pagination: { total, limit, offset, totalPages, currentPage, all: isAll },
       message: 'Users retrieved successfully',
     });
   } catch (error) {

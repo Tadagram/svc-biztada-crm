@@ -29,11 +29,6 @@ enum AssignmentStatus {
   revoked
 }
 
-enum PermissionType {
-  allow
-  deny
-}
-
 model Users {
   user_id         String             @id @default(uuid()) @db.Uuid
   parent_user_id  String?            @db.Uuid
@@ -54,7 +49,6 @@ model Users {
   worker_usages   AgencyWorkers[]      @relation("WorkerUsager")
   usage_logs_agency WorkerUsageLogs[]  @relation("LogAgency")
   usage_logs_user   WorkerUsageLogs[]  @relation("LogUser")
-  user_permissions UserPermissions[]
   sessions         UserSessions[]
 
   @@map("users")
@@ -85,7 +79,6 @@ model Permissions {
 
   // Relations
   role_permissions RolePermissions[]
-  user_permissions UserPermissions[]
 
   @@map("permissions")
 }
@@ -153,18 +146,4 @@ model WorkerUsageLogs {
   user            Users              @relation("LogUser", fields: [user_id], references: [user_id])
 
   @@map("worker_usage_logs")
-}
-
-model UserPermissions {
-  user_permission_id String          @id @default(uuid()) @db.Uuid
-  user_id            String          @db.Uuid
-  permission_id      String          @db.Uuid
-  permission_type    PermissionType
-  created_at         DateTime        @default(now()) @db.Timestamptz
-
-  // Relations
-  user               Users           @relation(fields: [user_id], references: [user_id])
-  permission         Permissions     @relation(fields: [permission_id], references: [permission_id])
-
-  @@map("user_permissions")
 }

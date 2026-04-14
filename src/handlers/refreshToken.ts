@@ -52,6 +52,7 @@ function generateNewToken(request: FastifyRequest, session: SessionWithUser): st
       userId: session.user.user_id,
       role: session.user.role,
       agencyName: session.user.agency_name,
+      parentUserId: session.user.parent_user_id,
     },
     { expiresIn: '1h' },
   );

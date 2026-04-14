@@ -1,5 +1,4 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { PermissionType } from '@prisma/client';
 import { addUserPermissionOverride } from './permissionHelper';
 
 export async function addUserPermissionOverrideHandler(
@@ -9,7 +8,7 @@ export async function addUserPermissionOverrideHandler(
     };
     Body: {
       permission_code: string;
-      permission_type: PermissionType;
+      permission_type: 'allow' | 'deny';
     };
   }>,
   reply: FastifyReply,
@@ -41,11 +40,11 @@ export async function addUserPermissionOverrideHandler(
       success: true,
       message: 'User permission override added successfully',
       data: {
-        user_permission_id: userPermission.user_permission_id,
         user_id: userPermission.user_id,
         permission_code,
         permission_type: userPermission.permission_type,
-        created_at: userPermission.created_at,
+        allow_codes: userPermission.allow,
+        deny_codes: userPermission.deny,
       },
     });
   } catch (error) {

@@ -28,13 +28,14 @@ export async function deleteWorkerHandler(
         worker_id: workerId,
         status: 'active',
         deleted_at: null,
+        using_by: { not: null },
       },
     });
 
     if (activeAssignment) {
       return reply.status(409).send({
         success: false,
-        message: 'Cannot delete worker with active assignments. Revoke all assignments first.',
+        message: 'Không thể xóa worker đang được sử dụng. Vui lòng thu hồi trước.',
       });
     }
 

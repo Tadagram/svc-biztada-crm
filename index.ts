@@ -4,6 +4,7 @@ import ajvErrors from 'ajv-errors';
 
 import corsPlugin from '@plugins/cors';
 import jwtPlugin from '@plugins/jwt';
+import rbacPlugin from '@plugins/rbac';
 import prismaPlugin from '@plugins/prisma';
 import compressionPlugin from '@plugins/compression';
 import rateLimitPlugin from '@plugins/rateLimit';
@@ -26,6 +27,7 @@ const fastify = Fastify({
 fastify.register(corsPlugin);
 fastify.register(jwtPlugin);
 fastify.register(prismaPlugin);
+fastify.register(rbacPlugin);
 fastify.register(compressionPlugin);
 fastify.register(rateLimitPlugin);
 fastify.register(swagger);

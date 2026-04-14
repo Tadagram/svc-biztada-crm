@@ -1,4 +1,4 @@
-import { PrismaClient, PermissionType } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 
 export interface PermissionInfo {
   permission_id: string;
@@ -7,10 +7,63 @@ export interface PermissionInfo {
 }
 
 export interface UserPermissionOverride {
-  permission_id: string;
-  code: string;
-  name: string;
-  permission_type: 'allow' | 'deny';
+  allow: string[];
+  deny: string[];
+}
+
+interface UserCustomFields {
+  permission_overrides?: {
+    allow?: string[];
+    deny?: string[];
+  };
+  [key: string]: unknown;
+}
+
+function normalizeCodes(codes: string[]): string[] {
+  return Array.from(
+    new Set(codes.filter((code) => typeof code === 'string' && code.length > 0)),
+  ).sort();
+}
+
+function parseOverrides(customFields: unknown): UserPermissionOverride {
+  if (!customFields || typeof customFields !== 'object') {
+    return { allow: [], deny: [] };
+  }
+
+  const fields = customFields as UserCustomFields;
+  const overrides = fields.permission_overrides;
+
+  if (!overrides || typeof overrides !== 'object') {
+    return { allow: [], deny: [] };
+  }
+
+  const allow = Array.isArray(overrides.allow)
+    ? normalizeCodes(overrides.allow.filter((v): v is string => typeof v === 'string'))
+    : [];
+  const deny = Array.isArray(overrides.deny)
+    ? normalizeCodes(overrides.deny.filter((v): v is string => typeof v === 'string'))
+    : [];
+
+  return { allow, deny };
+}
+
+function mergeOverridesIntoCustomFields(customFields: unknown, overrides: UserPermissionOverride) {
+  const base: Record<string, unknown> =
+    customFields && typeof customFields === 'object'
+      ? { ...(customFields as Record<string, unknown>) }
+      : {};
+
+  if (overrides.allow.length === 0 && overrides.deny.length === 0) {
+    delete base.permission_overrides;
+    return base as Prisma.InputJsonObject;
+  }
+
+  base.permission_overrides = {
+    ...(overrides.allow.length > 0 ? { allow: overrides.allow } : {}),
+    ...(overrides.deny.length > 0 ? { deny: overrides.deny } : {}),
+  } as Prisma.InputJsonObject;
+
+  return base as Prisma.InputJsonObject;
 }
 
 export async function getRolePermissions(
@@ -40,34 +93,63 @@ export async function getRolePermissions(
   }));
 }
 
-/**
- * Lấy danh sách các quyền ngoại lệ (Overrides) của User
- */
 export async function getUserPermissionOverrides(
   prisma: PrismaClient,
   userId: string,
-): Promise<UserPermissionOverride[]> {
-  const userPermissions = await prisma.userPermissions.findMany({
-    where: {
-      user_id: userId,
-    },
-    include: {
-      permission: {
-        select: {
-          permission_id: true,
-          code: true,
-          name: true,
-        },
-      },
-    },
+): Promise<UserPermissionOverride> {
+  const user = await prisma.users.findUnique({
+    where: { user_id: userId },
+    select: { custom_fields: true },
   });
 
-  return userPermissions.map((up) => ({
-    permission_id: up.permission.permission_id,
-    code: up.permission.code,
-    name: up.permission.name,
-    permission_type: up.permission_type,
-  }));
+  return parseOverrides(user?.custom_fields);
+}
+
+export async function setUserPermissionOverrides(
+  prisma: PrismaClient,
+  userId: string,
+  input: UserPermissionOverride,
+): Promise<UserPermissionOverride> {
+  const allowInput = normalizeCodes(input.allow);
+  const denyInput = normalizeCodes(input.deny);
+
+  const denySet = new Set(denyInput);
+  const allow = allowInput.filter((code) => !denySet.has(code));
+  const deny = denyInput;
+
+  const requestedCodes = normalizeCodes([...allow, ...deny]);
+  if (requestedCodes.length > 0) {
+    const existing = await prisma.permissions.findMany({
+      where: { code: { in: requestedCodes } },
+      select: { code: true },
+    });
+    const existingSet = new Set(existing.map((p) => p.code));
+    const invalid = requestedCodes.filter((code) => !existingSet.has(code));
+    if (invalid.length > 0) {
+      throw new Error(`Invalid permission code(s): ${invalid.join(', ')}`);
+    }
+  }
+
+  const user = await prisma.users.findUnique({
+    where: { user_id: userId },
+    select: { custom_fields: true },
+  });
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  const mergedCustomFields = mergeOverridesIntoCustomFields(user.custom_fields, {
+    allow,
+    deny,
+  });
+
+  await prisma.users.update({
+    where: { user_id: userId },
+    data: { custom_fields: mergedCustomFields },
+  });
+
+  return { allow, deny };
 }
 
 export async function getUserEffectivePermissions(
@@ -76,22 +158,27 @@ export async function getUserEffectivePermissions(
   userRole: string,
 ): Promise<PermissionInfo[]> {
   const rolePermissions = await getRolePermissions(prisma, userRole);
-  const rolePermissionMap = new Map(rolePermissions.map((p) => [p.permission_id, p]));
+  const effectivePermissions = new Map(rolePermissions.map((p) => [p.code, p]));
 
   const userOverrides = await getUserPermissionOverrides(prisma, userId);
 
-  const effectivePermissions = new Map(Array.from(rolePermissionMap.entries()));
+  if (userOverrides.allow.length > 0) {
+    const allowPermissions = await prisma.permissions.findMany({
+      where: { code: { in: userOverrides.allow } },
+      select: {
+        permission_id: true,
+        code: true,
+        name: true,
+      },
+    });
 
-  for (const override of userOverrides) {
-    if (override.permission_type === PermissionType.allow) {
-      effectivePermissions.set(override.permission_id, {
-        permission_id: override.permission_id,
-        code: override.code,
-        name: override.name,
-      });
-    } else if (override.permission_type === PermissionType.deny) {
-      effectivePermissions.delete(override.permission_id);
+    for (const permission of allowPermissions) {
+      effectivePermissions.set(permission.code, permission);
     }
+  }
+
+  for (const code of userOverrides.deny) {
+    effectivePermissions.delete(code);
   }
 
   return Array.from(effectivePermissions.values());
@@ -139,41 +226,32 @@ export async function addUserPermissionOverride(
   prisma: PrismaClient,
   userId: string,
   permissionCode: string,
-  permissionType: PermissionType,
+  permissionType: 'allow' | 'deny',
 ) {
-  const permission = await prisma.permissions.findUnique({
-    where: { code: permissionCode },
-  });
+  const current = await getUserPermissionOverrides(prisma, userId);
+  const allowSet = new Set(current.allow);
+  const denySet = new Set(current.deny);
 
-  if (!permission) {
-    throw new Error(`Permission with code '${permissionCode}' not found`);
+  if (permissionType === 'allow') {
+    allowSet.add(permissionCode);
+    denySet.delete(permissionCode);
+  } else {
+    denySet.add(permissionCode);
+    allowSet.delete(permissionCode);
   }
 
-  const existingOverride = await prisma.userPermissions.findFirst({
-    where: {
-      user_id: userId,
-      permission_id: permission.permission_id,
-    },
+  const updated = await setUserPermissionOverrides(prisma, userId, {
+    allow: Array.from(allowSet),
+    deny: Array.from(denySet),
   });
 
-  if (existingOverride) {
-    return await prisma.userPermissions.update({
-      where: {
-        user_permission_id: existingOverride.user_permission_id,
-      },
-      data: {
-        permission_type: permissionType,
-      },
-    });
-  }
-
-  return await prisma.userPermissions.create({
-    data: {
-      user_id: userId,
-      permission_id: permission.permission_id,
-      permission_type: permissionType,
-    },
-  });
+  return {
+    user_id: userId,
+    permission_code: permissionCode,
+    permission_type: permissionType,
+    allow: updated.allow,
+    deny: updated.deny,
+  };
 }
 
 export async function removeUserPermissionOverride(
@@ -181,18 +259,12 @@ export async function removeUserPermissionOverride(
   userId: string,
   permissionCode: string,
 ): Promise<void> {
-  const permission = await prisma.permissions.findUnique({
-    where: { code: permissionCode },
-  });
+  const current = await getUserPermissionOverrides(prisma, userId);
+  const allow = current.allow.filter((code) => code !== permissionCode);
+  const deny = current.deny.filter((code) => code !== permissionCode);
 
-  if (!permission) {
-    throw new Error(`Permission with code '${permissionCode}' not found`);
-  }
-
-  await prisma.userPermissions.deleteMany({
-    where: {
-      user_id: userId,
-      permission_id: permission.permission_id,
-    },
+  await setUserPermissionOverrides(prisma, userId, {
+    allow,
+    deny,
   });
 }

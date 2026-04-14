@@ -76,6 +76,7 @@ export async function generateToken(jwt: JWT, user: Users): Promise<TokenRespons
       userId: user.user_id,
       role: user.role,
       agencyName: user.agency_name,
+      parentUserId: user.parent_user_id,
     },
     { expiresIn: '1h' },
   );

@@ -4,6 +4,16 @@ export const deleteUserHandler = async (request: FastifyRequest, reply: FastifyR
   try {
     const { userId } = request.params as { userId: string };
 
+    // 🔐 Role check: chỉ Mod & Agency được xóa user
+    const caller = request.user as { userId: string; role: string };
+    if (!['mod', 'agency'].includes(caller.role)) {
+      return reply.status(403).send({
+        statusCode: 403,
+        error: 'Forbidden',
+        message: 'Only mod and agency can delete users',
+      });
+    }
+
     const existingUser = await request.server.prisma.users.findUnique({
       where: { user_id: userId },
     });
@@ -14,6 +24,15 @@ export const deleteUserHandler = async (request: FastifyRequest, reply: FastifyR
         message: 'User not found',
       });
       return;
+    }
+
+    // 🔐 Agency isolation: agency chỉ được xóa users của nó
+    if (caller.role === 'agency' && existingUser.parent_user_id !== caller.userId) {
+      return reply.status(403).send({
+        statusCode: 403,
+        error: 'Forbidden',
+        message: 'You can only delete users in your agency',
+      });
     }
 
     const deletedUser = await request.server.prisma.users.update({

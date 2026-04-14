@@ -3,9 +3,23 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 interface GetWorkersQuerystring {
   limit?: number;
   offset?: number;
-  status?: 'ready' | 'busy' | 'offline';
+  status?: 'ready' | 'busy' | 'offline' | 'deleted';
   all?: boolean;
   search?: string;
+}
+
+function buildWorkerIsolation(caller: {
+  userId: string;
+  role: string;
+}): Record<string, unknown> | null {
+  if (caller.role === 'mod') return {};
+  if (caller.role === 'agency') {
+    return { agencyWorkers: { some: { agency_user_id: caller.userId, deleted_at: null } } };
+  }
+  if (caller.role === 'user') {
+    return { agencyWorkers: { some: { using_by: caller.userId, deleted_at: null } } };
+  }
+  return null; // customer → block
 }
 
 export async function getWorkersHandler(
@@ -18,12 +32,21 @@ export async function getWorkersHandler(
   const offset = Number(queryOffset);
 
   try {
+    const caller = request.user;
+    const isolation = buildWorkerIsolation(caller);
+
+    if (isolation === null) {
+      return reply.status(403).send({ success: false, message: 'Forbidden' });
+    }
+
+    const isDeletedFilter = status === 'deleted';
+    const deletedAtFilter = isDeletedFilter ? { deleted_at: { not: null } } : { deleted_at: null };
+
     const where = {
-      deleted_at: null,
-      ...(status && { status }),
-      ...(search && {
-        name: { contains: search, mode: 'insensitive' as const },
-      }),
+      ...deletedAtFilter,
+      ...isolation,
+      ...(!isDeletedFilter && status && { status }),
+      ...(search && { name: { contains: search, mode: 'insensitive' as const } }),
     };
 
     const workerSelect = {
@@ -32,6 +55,7 @@ export async function getWorkersHandler(
       status: true,
       created_at: true,
       updated_at: true,
+      deleted_at: true,
     };
 
     const isAll = all === true || String(all) === 'true';
@@ -51,14 +75,7 @@ export async function getWorkersHandler(
     return reply.send({
       success: true,
       data: workers,
-      pagination: {
-        total,
-        limit,
-        offset,
-        totalPages,
-        currentPage,
-        all: isAll,
-      },
+      pagination: { total, limit, offset, totalPages, currentPage, all: isAll },
       message: 'Workers retrieved successfully',
     });
   } catch (error) {

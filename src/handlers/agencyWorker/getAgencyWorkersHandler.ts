@@ -1,11 +1,21 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 
 interface GetAgencyWorkersQuerystring {
-  agency_user_id?: string;
   status?: 'active' | 'completed' | 'revoked';
   limit?: number;
   offset?: number;
   all?: boolean;
+  agency_user_id?: string;
+}
+
+function buildAgencyWorkerIsolation(caller: {
+  userId: string;
+  role: string;
+}): Record<string, string> | null {
+  if (caller.role === 'mod') return {};
+  if (caller.role === 'agency') return { agency_user_id: caller.userId };
+  if (caller.role === 'user') return { using_by: caller.userId };
+  return null;
 }
 
 export async function getAgencyWorkersHandler(
@@ -14,19 +24,29 @@ export async function getAgencyWorkersHandler(
 ) {
   const { prisma } = request;
   const {
-    agency_user_id,
     status,
     limit: queryLimit = 10,
     offset: queryOffset = 0,
     all,
+    agency_user_id,
   } = request.query;
   const limit = Number(queryLimit);
   const offset = Number(queryOffset);
 
   try {
+    const caller = request.user;
+    const isolation = buildAgencyWorkerIsolation(caller);
+
+    if (isolation === null) {
+      return reply.status(403).send({ success: false, message: 'Forbidden' });
+    }
+
+    const agencyFilter = caller.role === 'mod' && agency_user_id ? { agency_user_id } : {};
+
     const where = {
       deleted_at: null,
-      ...(agency_user_id && { agency_user_id }),
+      ...isolation,
+      ...agencyFilter,
       ...(status && { status }),
     };
 
@@ -38,13 +58,9 @@ export async function getAgencyWorkersHandler(
       using_by: true,
       created_at: true,
       updated_at: true,
-      agency: {
-        select: { user_id: true, agency_name: true, phone_number: true },
-      },
+      agency: { select: { user_id: true, agency_name: true, phone_number: true } },
       worker: { select: { worker_id: true, name: true, status: true } },
-      user: {
-        select: { user_id: true, phone_number: true, role: true },
-      },
+      user: { select: { user_id: true, phone_number: true, role: true, agency_name: true } },
     };
 
     const isAll = all === true || String(all) === 'true';
@@ -64,14 +80,7 @@ export async function getAgencyWorkersHandler(
     return reply.send({
       success: true,
       data: assignments,
-      pagination: {
-        total,
-        limit,
-        offset,
-        totalPages,
-        currentPage,
-        all: isAll,
-      },
+      pagination: { total, limit, offset, totalPages, currentPage, all: isAll },
       message: 'Agency workers retrieved successfully',
     });
   } catch (error) {

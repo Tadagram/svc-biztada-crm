@@ -153,8 +153,8 @@ export const getUsersSchema: FastifySchema = {
       },
       status: {
         type: 'string',
-        enum: ['active', 'disabled'],
-        description: 'Filter by status',
+        enum: ['active', 'disabled', 'deleted'],
+        description: 'Filter by status (use deleted to view soft-deleted users)',
       },
       all: {
         type: 'boolean',
@@ -257,6 +257,10 @@ export const updateUserSchema: FastifySchema = {
       role: roleProperty,
       status: statusProperty,
       parent_user_id: parentUserIdProperty,
+      restore: {
+        type: 'boolean',
+        description: 'Set to true to restore a soft-deleted user',
+      },
     },
   },
   response: {
@@ -284,6 +288,57 @@ export const updateUserSchema: FastifySchema = {
     500: {
       description: 'Internal server error',
       ...errorResponse,
+    },
+  },
+};
+
+export const getUserSummarySchema: FastifySchema = {
+  tags: ['Users'],
+  summary: 'Get User Summary',
+  description:
+    'Returns engagement summary for a user: assigned worker count, usage sessions, hours used, and last activity.',
+  params: {
+    type: 'object',
+    required: ['userId'],
+    properties: {
+      userId: { type: 'string', format: 'uuid' },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'object',
+          properties: {
+            worker_count: { type: 'integer' },
+            active_sessions: { type: 'integer' },
+            total_sessions: { type: 'integer' },
+            total_hours: { type: 'number' },
+            last_used_at: { type: ['string', 'null'] },
+            assigned_workers: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  worker_id: { type: 'string' },
+                  name: { type: 'string' },
+                  status: { type: 'string' },
+                  assignment_status: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    404: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+      },
     },
   },
 };
