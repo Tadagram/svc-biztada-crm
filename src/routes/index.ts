@@ -5,6 +5,7 @@ import permissionRoutes from './permission.routes';
 import workerRoutes from './worker.routes';
 import agencyWorkerRoutes from './agencyWorker.routes';
 import usageLogsRoutes from './usageLogs.routes';
+import notificationRoutes from './notification.routes';
 
 async function routes(fastify: FastifyInstance, _options: FastifyPluginOptions) {
   fastify.register(userRoutes, { prefix: '/users' });
@@ -13,6 +14,7 @@ async function routes(fastify: FastifyInstance, _options: FastifyPluginOptions) 
   fastify.register(workerRoutes, { prefix: '/workers' });
   fastify.register(agencyWorkerRoutes, { prefix: '/agency-workers' });
   fastify.register(usageLogsRoutes, { prefix: '/usage-logs' });
+  fastify.register(notificationRoutes, { prefix: '/notifications' });
 
   fastify.get(
     '/health',

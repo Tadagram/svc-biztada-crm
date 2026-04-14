@@ -347,6 +347,135 @@ async function main() {
   }
   console.log(`✅ WorkerUsageLogs seeded: ${logCount} entries`);
 
+  // ── 11. Notifications — sample for every type ──────────────────────────
+  await prisma.notifications.deleteMany({});
+
+  const agency1Id = agencyIds['0900000001'];
+  const user1Id = userIds['0911000001'];
+  const user2Id = userIds['0911000002'];
+
+  const notiSeed = [
+    // system_alert → mod broadcasts to agency
+    {
+      recipient_id: agency1Id,
+      sender_id: modUser.user_id,
+      type: 'system_alert' as const,
+      title: 'Hệ thống bảo trì',
+      body: 'Hệ thống sẽ bảo trì vào 02:00 ngày 15/04/2026. Vui lòng lưu công việc trước.',
+      image_url: null,
+      action_url: null,
+      custom_fields: { scheduled_at: '2026-04-15T02:00:00Z', duration_minutes: 30 },
+      is_read: false,
+      created_at: daysAgo(1),
+    },
+    // worker_assigned → notify user when a worker is assigned to them
+    {
+      recipient_id: user1Id,
+      sender_id: agency1Id,
+      type: 'worker_assigned' as const,
+      title: 'Worker được gán cho bạn',
+      body: 'Worker Alpha đã được gán cho bạn. Bắt đầu sử dụng ngay.',
+      image_url: null,
+      action_url: '/workers',
+      custom_fields: {
+        worker_id: workerIds[0],
+        worker_name: 'Worker Alpha',
+        agency_name: 'Biztada Agency',
+        assigned_by: 'Biztada Agency',
+      },
+      is_read: true,
+      read_at: daysAgo(2),
+      created_at: daysAgo(3),
+    },
+    // worker_released
+    {
+      recipient_id: user2Id,
+      sender_id: agency1Id,
+      type: 'worker_released' as const,
+      title: 'Worker đã bị thu hồi',
+      body: 'Worker Beta đã được thu hồi bởi Biztada Agency.',
+      image_url: null,
+      action_url: '/workers',
+      custom_fields: {
+        worker_id: workerIds[1],
+        worker_name: 'Worker Beta',
+        reason: 'Assignment ended',
+      },
+      is_read: false,
+      created_at: daysAgo(0),
+    },
+    // permission_changed
+    {
+      recipient_id: user1Id,
+      sender_id: modUser.user_id,
+      type: 'permission_changed' as const,
+      title: 'Quyền hạn của bạn đã thay đổi',
+      body: 'Moderator đã cập nhật quyền hạn tài khoản của bạn.',
+      image_url: null,
+      action_url: '/settings?tab=permissions',
+      custom_fields: {
+        changed_permissions: ['workers:create', 'workers:delete'],
+        action: 'granted',
+      },
+      is_read: false,
+      created_at: daysAgo(0),
+    },
+    // account_updated
+    {
+      recipient_id: agency1Id,
+      sender_id: modUser.user_id,
+      type: 'account_updated' as const,
+      title: 'Tài khoản được cập nhật',
+      body: 'Thông tin tài khoản của bạn đã được cập nhật bởi Moderator.',
+      image_url: null,
+      action_url: '/settings',
+      custom_fields: { updated_fields: ['status', 'agency_name'] },
+      is_read: true,
+      read_at: daysAgo(5),
+      created_at: daysAgo(7),
+    },
+    // user_action
+    {
+      recipient_id: modUser.user_id,
+      sender_id: user1Id,
+      type: 'user_action' as const,
+      title: 'Người dùng yêu cầu hỗ trợ',
+      body: 'Nguyễn Văn An đã gửi yêu cầu hỗ trợ kỹ thuật.',
+      image_url: null,
+      action_url: '/users',
+      custom_fields: {
+        request_type: 'technical_support',
+        priority: 'high',
+        user_phone: '0911000001',
+      },
+      is_read: false,
+      created_at: daysAgo(0),
+    },
+    // custom — with image
+    {
+      recipient_id: agency1Id,
+      sender_id: modUser.user_id,
+      type: 'custom' as const,
+      title: '🎉 Chào mừng lên gói Premium',
+      body: 'Tài khoản của bạn đã được nâng cấp lên gói Premium. Tận hưởng tất cả tính năng!',
+      image_url: 'https://placehold.co/600x200/7c3aed/white?text=Premium+Activated',
+      action_url: '/settings',
+      custom_fields: {
+        badge_color: '#7c3aed',
+        cta_label: 'Khám phá ngay',
+        plan: 'premium',
+        valid_until: '2027-04-14',
+      },
+      is_read: false,
+      created_at: daysAgo(0),
+    },
+  ];
+
+  for (const n of notiSeed) {
+    await prisma.notifications.create({ data: n });
+  }
+  console.log(`✅ Notifications seeded: ${notiSeed.length} entries`);
+
   // ── Summary ───────────────────────────────────────────────────────────────
   console.log('\n🏁 Seeding completed!');
   console.log(`   • Permissions   : ${PERMISSIONS.length} (codes mới chuẩn resource:action)`);

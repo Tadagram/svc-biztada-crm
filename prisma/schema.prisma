@@ -29,6 +29,16 @@ enum AssignmentStatus {
   revoked
 }
 
+enum NotificationType {
+  system_alert
+  user_action
+  worker_assigned
+  worker_released
+  permission_changed
+  account_updated
+  custom
+}
+
 model Users {
   user_id         String             @id @default(uuid()) @db.Uuid
   parent_user_id  String?            @db.Uuid
@@ -50,6 +60,8 @@ model Users {
   usage_logs_agency WorkerUsageLogs[]  @relation("LogAgency")
   usage_logs_user   WorkerUsageLogs[]  @relation("LogUser")
   sessions         UserSessions[]
+  sent_notifications     Notifications[]  @relation("NotificationSender")
+  received_notifications Notifications[]  @relation("NotificationRecipient")
 
   @@map("users")
 }
@@ -146,4 +158,28 @@ model WorkerUsageLogs {
   user            Users              @relation("LogUser", fields: [user_id], references: [user_id])
 
   @@map("worker_usage_logs")
+}
+
+model Notifications {
+  notification_id String            @id @default(uuid()) @db.Uuid
+  recipient_id    String            @db.Uuid
+  sender_id       String?           @db.Uuid
+  type            NotificationType  @default(custom)
+  title           String
+  body            String
+  image_url       String?
+  action_url      String?
+  custom_fields   Json?
+  is_read         Boolean           @default(false)
+  read_at         DateTime?         @db.Timestamptz
+  expires_at      DateTime?         @db.Timestamptz
+  created_at      DateTime          @default(now()) @db.Timestamptz
+
+  // Relations
+  recipient       Users             @relation("NotificationRecipient", fields: [recipient_id], references: [user_id])
+  sender          Users?            @relation("NotificationSender",    fields: [sender_id],    references: [user_id])
+
+  @@index([recipient_id, is_read])
+  @@index([recipient_id, created_at(sort: Desc)])
+  @@map("notifications")
 }
