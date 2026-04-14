@@ -38,7 +38,6 @@ export async function assignWorkerToUserHandler(
       });
     }
 
-    // Validate user belongs to agency (parent_user_id check)
     const user = await prisma.users.findFirst({
       where: {
         user_id,
@@ -55,7 +54,6 @@ export async function assignWorkerToUserHandler(
     }
 
     await prisma.$transaction(async (tx) => {
-      // Close previous usage log if worker was already assigned to someone
       if (assignment.using_by) {
         await tx.workerUsageLogs.updateMany({
           where: {
@@ -67,13 +65,11 @@ export async function assignWorkerToUserHandler(
         });
       }
 
-      // Assign worker to user
       await tx.agencyWorkers.update({
         where: { agency_worker_id: agencyWorkerId },
         data: { using_by: user_id },
       });
 
-      // Create new usage log
       await tx.workerUsageLogs.create({
         data: {
           worker_id: assignment.worker_id,

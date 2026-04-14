@@ -1,13 +1,13 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { UserRole, UserStatus } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 
 interface GetUsersQuerystring {
   limit?: number;
   offset?: number;
   search?: string;
   role?: UserRole;
-  status?: UserStatus;
   all?: boolean;
+  status?: 'active' | 'disabled' | 'deleted';
 }
 
 function buildUserIsolation(caller: {
@@ -15,20 +15,19 @@ function buildUserIsolation(caller: {
   role: string;
   parentUserId?: string | null;
 }): Record<string, string> | null {
-  // Mod: xem tất cả users
-  if (caller.role === 'mod') return {};
+  if (caller.role === UserRole.mod) {
+    return {};
+  }
 
-  // Agency: xem chỉ users của agency nó quản lý
-  //   - Chính nó (role=agency)
-  //   - Users/customers dưới quyền (parent_user_id = agency.userId)
-  if (caller.role === 'agency') return { parent_user_id: caller.userId };
+  if (caller.role === UserRole.agency) {
+    return { parent_user_id: caller.userId };
+  }
 
-  // User: xem chỉ users cùng agency
-  //   - Chính nó (parent_user_id = caller.parentUserId)
-  //   - Users khác cùng agency (parent_user_id = caller.parentUserId)
-  if (caller.role === 'user') return { parent_user_id: caller.parentUserId ?? '' };
+  if (caller.role === UserRole.user) {
+    return { parent_user_id: caller.parentUserId ?? '' };
+  }
 
-  // Customer: không được xem
+  // Customer không có quyền xem danh sách users
   return null;
 }
 
@@ -42,13 +41,12 @@ export const getUsersHandler = async (
       offset: queryOffset = 0,
       search,
       role,
-      status,
       all,
+      status,
     } = request.query;
+
     const limit = Number(queryLimit);
     const offset = Number(queryOffset);
-
-    // request.user đã có sẵn sau khi authenticate preHandler chạy
     const caller = request.user;
     const isolation = buildUserIsolation(caller);
 
@@ -56,8 +54,15 @@ export const getUsersHandler = async (
       return reply.status(403).send({ success: false, message: 'Forbidden' });
     }
 
+    const isDeletedFilter = status === 'deleted';
+    const deletedAtFilter = !status
+      ? {}
+      : isDeletedFilter
+        ? { deleted_at: { not: null } }
+        : { deleted_at: null };
+
     const where = {
-      deleted_at: null,
+      ...deletedAtFilter,
       ...isolation,
       ...(search && {
         OR: [
@@ -66,7 +71,7 @@ export const getUsersHandler = async (
         ],
       }),
       ...(role && { role }),
-      ...(status && { status }),
+      ...(!isDeletedFilter && status && { status }),
     };
 
     const userSelect = {
@@ -78,6 +83,7 @@ export const getUsersHandler = async (
       parent_user_id: true,
       created_at: true,
       updated_at: true,
+      deleted_at: true,
     };
 
     const isAll = all === true || String(all) === 'true';

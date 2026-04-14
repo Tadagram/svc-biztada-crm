@@ -3,11 +3,12 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 export const updateUserHandler = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
     const { userId } = request.params as { userId: string };
-    const { agency_name, role, status, parent_user_id } = request.body as {
+    const { agency_name, role, status, parent_user_id, restore } = request.body as {
       agency_name?: string;
       role?: 'mod' | 'agency' | 'user' | 'customer';
       status?: 'active' | 'disabled';
       parent_user_id?: string;
+      restore?: boolean;
     };
 
     // 🔐 Role check: chỉ Mod & Agency được cập nhật user
@@ -48,6 +49,7 @@ export const updateUserHandler = async (request: FastifyRequest, reply: FastifyR
         ...(role && { role }),
         ...(status && { status }),
         ...(parent_user_id !== undefined && { parent_user_id }),
+        ...(restore === true && { deleted_at: null, status: 'active' as const }),
         updated_at: new Date(),
       },
       select: {
@@ -59,6 +61,7 @@ export const updateUserHandler = async (request: FastifyRequest, reply: FastifyR
         parent_user_id: true,
         created_at: true,
         updated_at: true,
+        deleted_at: true,
       },
     });
 

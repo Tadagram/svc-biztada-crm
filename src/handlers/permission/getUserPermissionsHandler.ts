@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { getUserEffectivePermissions } from './permissionHelper';
+import { getUserEffectivePermissions, getUserPermissionOverrides } from './permissionHelper';
 
 export async function getUserPermissionsHandler(
   request: FastifyRequest<{
@@ -34,6 +34,7 @@ export async function getUserPermissionsHandler(
       userId,
       user.role,
     );
+    const overrides = await getUserPermissionOverrides(request.server.prisma, userId);
 
     return reply.status(200).send({
       success: true,
@@ -43,6 +44,7 @@ export async function getUserPermissionsHandler(
         phone_number: user.phone_number,
         role: user.role,
         permissions: effectivePermissions,
+        overrides,
         total: effectivePermissions.length,
       },
     });

@@ -153,8 +153,8 @@ export const getUsersSchema: FastifySchema = {
       },
       status: {
         type: 'string',
-        enum: ['active', 'disabled'],
-        description: 'Filter by status',
+        enum: ['active', 'disabled', 'deleted'],
+        description: 'Filter by status (use deleted to view soft-deleted users)',
       },
       all: {
         type: 'boolean',
@@ -257,6 +257,10 @@ export const updateUserSchema: FastifySchema = {
       role: roleProperty,
       status: statusProperty,
       parent_user_id: parentUserIdProperty,
+      restore: {
+        type: 'boolean',
+        description: 'Set to true to restore a soft-deleted user',
+      },
     },
   },
   response: {

@@ -50,8 +50,7 @@ const ROLE_DEFAULTS: Record<string, string[]> = {
 async function main() {
   console.log('🌱 Starting database seeding...');
 
-  // ── 1. Clean slate: xóa permissions cũ (cascade xuống rolePermissions, userPermissions) ──
-  await prisma.userPermissions.deleteMany({});
+  // ── 1. Clean slate: xóa permissions cũ (cascade xuống rolePermissions) ──
   await prisma.rolePermissions.deleteMany({});
   await prisma.permissions.deleteMany({});
   console.log('🗑️  Cleared old permissions data');

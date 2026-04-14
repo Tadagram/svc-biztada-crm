@@ -9,3 +9,4 @@ export { getUserPermissionsHandler } from './getUserPermissionsHandler';
 export { getCurrentUserPermissionsHandler } from './getCurrentUserPermissionsHandler';
 export { addUserPermissionOverrideHandler } from './addUserPermissionOverrideHandler';
 export { removeUserPermissionOverrideHandler } from './removeUserPermissionOverrideHandler';
+export { setUserPermissionOverridesHandler } from './setUserPermissionOverridesHandler';

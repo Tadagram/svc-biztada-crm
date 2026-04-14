@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { getUserEffectivePermissions } from './permissionHelper';
+import { getUserEffectivePermissions, getUserPermissionOverrides } from './permissionHelper';
 import { UserRole } from '@prisma/client';
 
 export async function getCurrentUserPermissionsHandler(
@@ -43,23 +43,14 @@ export async function getCurrentUserPermissionsHandler(
 
     const roleDefaultCodes = roleDefaults.map((rp) => rp.permission.code);
 
-    const overrides = await request.server.prisma.userPermissions.findMany({
-      where: { user_id: caller.userId },
-      select: {
-        permission: {
-          select: { code: true },
-        },
-      },
-    });
-
-    const overrideCodes = overrides.map((up) => up.permission.code);
+    const overrides = await getUserPermissionOverrides(request.server.prisma, caller.userId);
 
     return reply.status(200).send({
       success: true,
       data: {
         permissions: effectivePermissions.map((p) => p.code),
         roleDefaults: roleDefaultCodes,
-        overrides: overrideCodes,
+        overrides,
         isMod: false,
       },
     });

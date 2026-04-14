@@ -2,6 +2,8 @@ import { UserRole, UserStatus } from '@prisma/client';
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { createUserInDatabase, checkUserExists, CreateUserBody, UserPayload } from './userHelper';
 
+const CAN_CREATE: UserRole[] = ['mod', 'agency'];
+
 export async function createUserHandler(
   request: FastifyRequest<{
     Body: CreateUserBody;
@@ -18,8 +20,8 @@ export async function createUserHandler(
 
   try {
     // 🔐 Role check: chỉ Mod & Agency được tạo user
-    const caller = request.user as { userId: string; role: string };
-    if (!['mod', 'agency'].includes(caller.role)) {
+    const caller = request.user as { userId: string; role: UserRole };
+    if (!CAN_CREATE.includes(caller.role)) {
       return reply.status(403).send({
         statusCode: 403,
         error: 'Forbidden',

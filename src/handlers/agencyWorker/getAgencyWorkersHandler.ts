@@ -14,7 +14,7 @@ function buildAgencyWorkerIsolation(caller: {
   if (caller.role === 'mod') return {};
   if (caller.role === 'agency') return { agency_user_id: caller.userId };
   if (caller.role === 'user') return { using_by: caller.userId };
-  return null; // customer → block
+  return null;
 }
 
 export async function getAgencyWorkersHandler(

@@ -11,6 +11,7 @@ import {
   getCurrentUserPermissionsHandler,
   addUserPermissionOverrideHandler,
   removeUserPermissionOverrideHandler,
+  setUserPermissionOverridesHandler,
 } from '@handlers/permission';
 import {
   addPermissionSchema,
@@ -23,6 +24,7 @@ import {
   getUserPermissionsSchema,
   addUserPermissionOverrideSchema,
   removeUserPermissionOverrideSchema,
+  setUserPermissionOverridesSchema,
 } from '@schemas/permission.schema';
 
 async function permissionRoutes(fastify: FastifyInstance) {
@@ -101,6 +103,15 @@ async function permissionRoutes(fastify: FastifyInstance) {
       preHandler: [fastify.authenticate, fastify.requirePermission('permissions:manage_overrides')],
     },
     addUserPermissionOverrideHandler as RouteHandlerMethod,
+  );
+
+  fastify.patch(
+    '/user/:userId/overrides',
+    {
+      schema: setUserPermissionOverridesSchema,
+      preHandler: [fastify.authenticate, fastify.requirePermission('permissions:manage_overrides')],
+    },
+    setUserPermissionOverridesHandler as RouteHandlerMethod,
   );
 
   fastify.delete(

@@ -259,6 +259,13 @@ export const getUserPermissionsSchema: FastifySchema = {
                 },
               },
             },
+            overrides: {
+              type: 'object',
+              properties: {
+                allow: { type: 'array', items: { type: 'string' } },
+                deny: { type: 'array', items: { type: 'string' } },
+              },
+            },
             total: { type: 'integer' },
           },
         },
@@ -315,11 +322,11 @@ export const addUserPermissionOverrideSchema: FastifySchema = {
         data: {
           type: 'object',
           properties: {
-            user_permission_id: { type: 'string' },
             user_id: { type: 'string' },
             permission_code: { type: 'string' },
             permission_type: { type: 'string' },
-            created_at: { type: 'string', format: 'date-time' },
+            allow_codes: { type: 'array', items: { type: 'string' } },
+            deny_codes: { type: 'array', items: { type: 'string' } },
           },
         },
       },
@@ -486,6 +493,62 @@ export const deletePermissionSchema: FastifySchema = {
     },
     404: {
       description: 'Permission not found',
+      type: 'object',
+      properties: { success: { type: 'boolean' }, message: { type: 'string' } },
+    },
+    500: { description: 'Internal server error', ...errorResponse },
+  },
+};
+
+export const setUserPermissionOverridesSchema: FastifySchema = {
+  tags: ['Permissions'],
+  description: 'Set bulk permission overrides for a user',
+  summary: 'Set User Permission Overrides',
+  params: {
+    type: 'object',
+    required: ['userId'],
+    properties: {
+      userId: { type: 'string', format: 'uuid' },
+    },
+  },
+  body: {
+    type: 'object',
+    properties: {
+      allow_codes: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'List of permission codes to allow',
+      },
+      deny_codes: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'List of permission codes to deny',
+      },
+    },
+  },
+  response: {
+    200: {
+      description: 'Permissions updated successfully',
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: {
+            user_id: { type: 'string', format: 'uuid' },
+            allow_codes: { type: 'array', items: { type: 'string' } },
+            deny_codes: { type: 'array', items: { type: 'string' } },
+          },
+        },
+      },
+    },
+    400: {
+      description: 'Invalid input',
+      ...errorResponse,
+    },
+    404: {
+      description: 'User not found',
       type: 'object',
       properties: { success: { type: 'boolean' }, message: { type: 'string' } },
     },
