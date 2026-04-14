@@ -8,6 +8,7 @@ const workerDataResponse = {
     status: { type: 'string' },
     created_at: { type: 'string' },
     updated_at: { type: 'string' },
+    deleted_at: { type: ['string', 'null'] },
   },
 };
 
@@ -84,7 +85,7 @@ export const getWorkersSchema: FastifySchema = {
     properties: {
       limit: { type: 'integer', minimum: 1, maximum: 100, default: 10 },
       offset: { type: 'integer', minimum: 0, default: 0 },
-      status: { type: 'string', enum: ['ready', 'busy', 'offline'] },
+      status: { type: 'string', enum: ['ready', 'busy', 'offline', 'deleted'] },
       all: { type: 'boolean', description: 'Return all workers without pagination' },
       search: { type: 'string', description: 'Search by name' },
     },
@@ -225,6 +226,32 @@ export const deleteWorkerSchema: FastifySchema = {
       description: 'Worker has active assignments',
       ...notFoundResponse,
     },
+    500: { description: 'Internal server error', ...errorResponse },
+  },
+};
+
+export const reactivateWorkerSchema: FastifySchema = {
+  tags: ['Workers'],
+  summary: 'Reactivate Worker',
+  description: 'Restore a soft-deleted worker back to offline status',
+  params: {
+    type: 'object',
+    required: ['workerId'],
+    properties: {
+      workerId: { type: 'string', format: 'uuid' },
+    },
+  },
+  response: {
+    200: {
+      description: 'Worker reactivated successfully',
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: workerDataResponse,
+        message: { type: 'string' },
+      },
+    },
+    404: { description: 'Worker not found', ...notFoundResponse },
     500: { description: 'Internal server error', ...errorResponse },
   },
 };

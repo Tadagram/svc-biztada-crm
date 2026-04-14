@@ -3,7 +3,7 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 interface GetWorkersQuerystring {
   limit?: number;
   offset?: number;
-  status?: 'ready' | 'busy' | 'offline';
+  status?: 'ready' | 'busy' | 'offline' | 'deleted';
   all?: boolean;
   search?: string;
 }
@@ -39,10 +39,13 @@ export async function getWorkersHandler(
       return reply.status(403).send({ success: false, message: 'Forbidden' });
     }
 
+    const isDeletedFilter = status === 'deleted';
+    const deletedAtFilter = isDeletedFilter ? { deleted_at: { not: null } } : { deleted_at: null };
+
     const where = {
-      deleted_at: null,
+      ...deletedAtFilter,
       ...isolation,
-      ...(status && { status }),
+      ...(!isDeletedFilter && status && { status }),
       ...(search && { name: { contains: search, mode: 'insensitive' as const } }),
     };
 
@@ -52,6 +55,7 @@ export async function getWorkersHandler(
       status: true,
       created_at: true,
       updated_at: true,
+      deleted_at: true,
     };
 
     const isAll = all === true || String(all) === 'true';

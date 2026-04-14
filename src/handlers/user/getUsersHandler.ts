@@ -8,6 +8,7 @@ interface GetUsersQuerystring {
   role?: UserRole;
   all?: boolean;
   status?: 'active' | 'disabled' | 'deleted';
+  parent_user_id?: string;
 }
 
 function buildUserIsolation(caller: {
@@ -43,6 +44,7 @@ export const getUsersHandler = async (
       role,
       all,
       status,
+      parent_user_id,
     } = request.query;
 
     const limit = Number(queryLimit);
@@ -61,9 +63,12 @@ export const getUsersHandler = async (
         ? { deleted_at: { not: null } }
         : { deleted_at: null };
 
+    const parentFilter = caller.role === 'mod' && parent_user_id ? { parent_user_id } : {};
+
     const where = {
       ...deletedAtFilter,
       ...isolation,
+      ...parentFilter,
       ...(search && {
         OR: [
           { phone_number: { contains: search } },

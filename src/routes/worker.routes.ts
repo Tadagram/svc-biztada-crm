@@ -5,6 +5,7 @@ import {
   getWorkerByIdHandler,
   updateWorkerHandler,
   deleteWorkerHandler,
+  reactivateWorkerHandler,
   getActiveWorkersHandler,
 } from '@handlers/worker';
 import {
@@ -13,6 +14,7 @@ import {
   getWorkerByIdSchema,
   updateWorkerSchema,
   deleteWorkerSchema,
+  reactivateWorkerSchema,
   getActiveWorkersSchema,
 } from '@schemas/worker.schema';
 
@@ -64,6 +66,14 @@ async function workerRoutes(fastify: FastifyInstance) {
       preHandler: [fastify.authenticate, fastify.requirePermission('workers:delete')],
     },
     deleteWorkerHandler as RouteHandlerMethod,
+  );
+  fastify.patch(
+    '/:workerId/reactivate',
+    {
+      schema: reactivateWorkerSchema,
+      preHandler: [fastify.authenticate, fastify.requirePermission('workers:update')],
+    },
+    reactivateWorkerHandler as RouteHandlerMethod,
   );
 }
 

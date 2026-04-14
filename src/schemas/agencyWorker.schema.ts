@@ -147,6 +147,27 @@ export const assignWorkerToUserSchema: FastifySchema = {
   },
 };
 
+export const reactivateAgencyWorkerSchema: FastifySchema = {
+  tags: ['AgencyWorker'],
+  summary: 'Reactivate a revoked worker assignment',
+  params: {
+    type: 'object',
+    required: ['agencyWorkerId'],
+    properties: {
+      agencyWorkerId: { type: 'string', format: 'uuid' },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+      },
+    },
+  },
+};
+
 export const releaseWorkerSchema: FastifySchema = {
   tags: ['AgencyWorker'],
   summary: 'Release a worker from the user it is assigned to',
