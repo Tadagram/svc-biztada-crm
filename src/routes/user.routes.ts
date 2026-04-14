@@ -3,7 +3,9 @@ import {
   createUserHandler,
   getUsersHandler,
   getUserByIdHandler,
+  getCurrentUserHandler,
   updateUserHandler,
+  updateProfileHandler,
   deleteUserHandler,
   getUserSummaryHandler,
 } from '@handlers/user';
@@ -25,6 +27,24 @@ async function userRoutes(fastify: FastifyInstance) {
       preHandler: [fastify.authenticate, fastify.requirePermission('users:create')],
     },
     createUserHandler as RouteHandlerMethod,
+  );
+
+  // Get own profile
+  fastify.get(
+    '/me',
+    {
+      preHandler: [fastify.authenticate],
+    },
+    getCurrentUserHandler as RouteHandlerMethod,
+  );
+
+  // Update own profile (no permission required beyond authentication)
+  fastify.put(
+    '/me',
+    {
+      preHandler: [fastify.authenticate],
+    },
+    updateProfileHandler as RouteHandlerMethod,
   );
 
   // Get all users
