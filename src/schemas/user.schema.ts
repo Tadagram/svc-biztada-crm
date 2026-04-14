@@ -292,6 +292,57 @@ export const updateUserSchema: FastifySchema = {
   },
 };
 
+export const getUserSummarySchema: FastifySchema = {
+  tags: ['Users'],
+  summary: 'Get User Summary',
+  description:
+    'Returns engagement summary for a user: assigned worker count, usage sessions, hours used, and last activity.',
+  params: {
+    type: 'object',
+    required: ['userId'],
+    properties: {
+      userId: { type: 'string', format: 'uuid' },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'object',
+          properties: {
+            worker_count: { type: 'integer' },
+            active_sessions: { type: 'integer' },
+            total_sessions: { type: 'integer' },
+            total_hours: { type: 'number' },
+            last_used_at: { type: ['string', 'null'] },
+            assigned_workers: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  worker_id: { type: 'string' },
+                  name: { type: 'string' },
+                  status: { type: 'string' },
+                  assignment_status: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    404: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+      },
+    },
+  },
+};
+
 export const deleteUserSchema: FastifySchema = {
   tags: ['Users'],
   description: 'Delete a user (soft delete)',

@@ -50,8 +50,12 @@ const ROLE_DEFAULTS: Record<string, string[]> = {
 async function main() {
   console.log('🌱 Starting database seeding...');
 
-  // ── 1. Clean slate: xóa permissions cũ (cascade xuống rolePermissions) ──
+  // ── 1. Clean slate: xóa permissions cũ (cascade xuống rolePermissions & userPermissions) ──
   await prisma.rolePermissions.deleteMany({});
+  // Xóa user_permissions nếu bảng còn tồn tại (legacy — migration có thể chưa chạy)
+  await prisma.$executeRawUnsafe(`DELETE FROM user_permissions WHERE 1=1`).catch(() => {
+    /* bảng đã bị drop rồi */
+  });
   await prisma.permissions.deleteMany({});
   console.log('🗑️  Cleared old permissions data');
 
@@ -117,24 +121,59 @@ async function main() {
   console.log('✅ Agency users seeded:', agenciesData.length);
 
   // ── 6. Regular Users (2 per agency) ──────────────────────────────────────
+  const now = new Date();
+  const daysBack = (d: number) => new Date(now.getTime() - d * 86_400_000);
+
   const regularUsersData = [
-    { phone: '0911000001', parent: agencyIds['0900000001'] },
-    { phone: '0911000002', parent: agencyIds['0900000001'] },
-    { phone: '0911000003', parent: agencyIds['0900000002'] },
-    { phone: '0911000004', parent: agencyIds['0900000002'] },
-    { phone: '0911000005', parent: agencyIds['0900000003'] },
-    { phone: '0911000006', parent: agencyIds['0900000003'] },
+    {
+      phone: '0911000001',
+      name: 'Nguyễn Văn An',
+      parent: agencyIds['0900000001'],
+      lastActive: daysBack(2),
+    },
+    {
+      phone: '0911000002',
+      name: 'Trần Thị Bích',
+      parent: agencyIds['0900000001'],
+      lastActive: daysBack(20),
+    },
+    {
+      phone: '0911000003',
+      name: 'Lê Minh Cường',
+      parent: agencyIds['0900000002'],
+      lastActive: daysBack(5),
+    },
+    {
+      phone: '0911000004',
+      name: 'Phạm Thị Dung',
+      parent: agencyIds['0900000002'],
+      lastActive: daysBack(60),
+    },
+    {
+      phone: '0911000005',
+      name: 'Hoàng Quốc Hùng',
+      parent: agencyIds['0900000003'],
+      lastActive: daysBack(10),
+    },
+    { phone: '0911000006', name: 'Võ Thị Mai', parent: agencyIds['0900000003'], lastActive: null },
   ];
 
   const userIds: Record<string, string> = {};
   for (const u of regularUsersData) {
     const user = await prisma.users.upsert({
       where: { phone_number: u.phone },
-      update: { status: 'active', deleted_at: null },
+      update: {
+        status: 'active',
+        deleted_at: null,
+        agency_name: u.name,
+        last_active_at: u.lastActive,
+      },
       create: {
         phone_number: u.phone,
         role: 'user',
         status: 'active',
+        agency_name: u.name,
+        last_active_at: u.lastActive,
         parent_user_id: u.parent,
       },
     });
@@ -210,6 +249,103 @@ async function main() {
     }
     console.log('✅ Sample usage log created');
   }
+
+  // ── 10. WorkerUsageLogs — rich historical data ───────────────────────────
+  await prisma.workerUsageLogs.deleteMany({});
+
+  // helper: date relative to now (negative = past)
+  const daysAgo = (d: number, hOffset = 0) => {
+    const dt = new Date();
+    dt.setDate(dt.getDate() - d);
+    dt.setHours(dt.getHours() + hOffset, 0, 0, 0);
+    return dt;
+  };
+  const hoursLater = (base: Date, h: number) => new Date(base.getTime() + h * 3600_000);
+
+  // Scenario matrix: [workerIndex, agencyPhone, userPhone, daysBack, durationHours | null=active]
+  const logScenarios: [number, string, string, number, number | null][] = [
+    // Worker Alpha (idx 0) — Biztada Agency
+    [0, '0900000001', '0911000001', 28, 2],
+    [0, '0900000001', '0911000002', 25, 1.5],
+    [0, '0900000001', '0911000001', 21, 3],
+    [0, '0900000001', '0911000002', 18, 0.75],
+    [0, '0900000001', '0911000001', 14, 2.5],
+    [0, '0900000001', '0911000002', 10, 1],
+    [0, '0900000001', '0911000001', 5, 4],
+    [0, '0900000001', '0911000002', 1, null], // active
+    // Worker Beta (idx 1) — Biztada Agency
+    [1, '0900000001', '0911000001', 27, 1],
+    [1, '0900000001', '0911000002', 22, 2],
+    [1, '0900000001', '0911000001', 17, 1.5],
+    [1, '0900000001', '0911000002', 12, 3],
+    [1, '0900000001', '0911000001', 7, 0.5],
+    [1, '0900000001', '0911000002', 3, 2],
+    // Worker Gamma (idx 2) — Biztada Agency
+    [2, '0900000001', '0911000001', 30, 1],
+    [2, '0900000001', '0911000002', 24, 2.5],
+    [2, '0900000001', '0911000001', 16, 1],
+    [2, '0900000001', '0911000002', 9, 3],
+    [2, '0900000001', '0911000001', 2, null], // active
+    // Worker Delta (idx 3) — TechWork Solutions
+    [3, '0900000002', '0911000003', 29, 2],
+    [3, '0900000002', '0911000004', 23, 1],
+    [3, '0900000002', '0911000003', 19, 3.5],
+    [3, '0900000002', '0911000004', 13, 1.5],
+    [3, '0900000002', '0911000003', 8, 2],
+    [3, '0900000002', '0911000004', 4, null], // active
+    // Worker Epsilon (idx 4) — TechWork Solutions
+    [4, '0900000002', '0911000003', 26, 0.5],
+    [4, '0900000002', '0911000004', 20, 2],
+    [4, '0900000002', '0911000003', 15, 1.5],
+    [4, '0900000002', '0911000004', 11, 3],
+    [4, '0900000002', '0911000003', 6, 1],
+    [4, '0900000002', '0911000004', 2, 2.5],
+    // Worker Zeta (idx 5) — TechWork Solutions
+    [5, '0900000002', '0911000003', 28, 1.5],
+    [5, '0900000002', '0911000004', 21, 2],
+    [5, '0900000002', '0911000003', 14, 3],
+    [5, '0900000002', '0911000004', 7, 0.75],
+    [5, '0900000002', '0911000003', 3, 1],
+    // Worker Eta (idx 6) — Smart Labor Co (offline worker — old logs only)
+    [6, '0900000003', '0911000005', 60, 2],
+    [6, '0900000003', '0911000006', 55, 1],
+    [6, '0900000003', '0911000005', 45, 3],
+    // Worker Theta (idx 7) — Smart Labor Co
+    [7, '0900000003', '0911000005', 27, 2],
+    [7, '0900000003', '0911000006', 20, 1.5],
+    [7, '0900000003', '0911000005', 15, 3],
+    [7, '0900000003', '0911000006', 9, 1],
+    [7, '0900000003', '0911000005', 4, 2],
+    [7, '0900000003', '0911000006', 1, null], // active
+    // Worker Iota (idx 8) — Smart Labor Co
+    [8, '0900000003', '0911000005', 25, 1],
+    [8, '0900000003', '0911000006', 18, 2.5],
+    [8, '0900000003', '0911000005', 12, 1.5],
+    [8, '0900000003', '0911000006', 6, 3],
+    [8, '0900000003', '0911000005', 2, 2],
+  ];
+
+  let logCount = 0;
+  for (const [wIdx, agencyPhone, userPhone, days, durationH] of logScenarios) {
+    if (wIdx >= workerIds.length) continue;
+    const wId = workerIds[wIdx];
+    const aId = agencyIds[agencyPhone];
+    const uId = userIds[userPhone];
+    if (!wId || !aId || !uId) continue;
+    const startAt = daysAgo(days, -8 + (logCount % 10)); // vary hour offset
+    const endAt = durationH !== null ? hoursLater(startAt, durationH) : null;
+    await prisma.workerUsageLogs.create({
+      data: {
+        worker_id: wId,
+        agency_user_id: aId,
+        user_id: uId,
+        start_at: startAt,
+        end_at: endAt,
+      },
+    });
+    logCount++;
+  }
+  console.log(`✅ WorkerUsageLogs seeded: ${logCount} entries`);
 
   // ── Summary ───────────────────────────────────────────────────────────────
   console.log('\n🏁 Seeding completed!');

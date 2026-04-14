@@ -4,3 +4,4 @@ export { getUsersHandler } from './getUsersHandler';
 export { getUserByIdHandler } from './getUserByIdHandler';
 export { updateUserHandler } from './updateUserHandler';
 export { deleteUserHandler } from './deleteUserHandler';
+export { getUserSummaryHandler } from './getUserSummaryHandler';

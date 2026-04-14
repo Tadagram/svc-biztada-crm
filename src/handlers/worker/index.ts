@@ -6,3 +6,4 @@ export { deleteWorkerHandler } from './deleteWorkerHandler';
 export { reactivateWorkerHandler } from './reactivateWorkerHandler';
 export { getActiveWorkersHandler } from './getActiveWorkersHandler';
 export { getUsageLogsHandler } from './getUsageLogsHandler';
+export { getUsageLogsByWorkerHandler } from './getUsageLogsByWorkerHandler';

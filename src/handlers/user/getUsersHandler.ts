@@ -6,6 +6,7 @@ interface GetUsersQuerystring {
   offset?: number;
   search?: string;
   role?: UserRole;
+  not_role?: UserRole;
   all?: boolean;
   status?: 'active' | 'disabled' | 'deleted';
   parent_user_id?: string;
@@ -42,6 +43,7 @@ export const getUsersHandler = async (
       offset: queryOffset = 0,
       search,
       role,
+      not_role,
       all,
       status,
       parent_user_id,
@@ -76,6 +78,7 @@ export const getUsersHandler = async (
         ],
       }),
       ...(role && { role }),
+      ...(not_role && { NOT: { role: not_role } }),
       ...(!isDeletedFilter && status && { status }),
     };
 
@@ -86,6 +89,7 @@ export const getUsersHandler = async (
       role: true,
       status: true,
       parent_user_id: true,
+      last_active_at: true,
       created_at: true,
       updated_at: true,
       deleted_at: true,

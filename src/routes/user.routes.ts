@@ -5,6 +5,7 @@ import {
   getUserByIdHandler,
   updateUserHandler,
   deleteUserHandler,
+  getUserSummaryHandler,
 } from '@handlers/user';
 import {
   createUserSchema,
@@ -12,6 +13,7 @@ import {
   getUserByIdSchema,
   updateUserSchema,
   deleteUserSchema,
+  getUserSummarySchema,
 } from '@schemas/user.schema';
 
 async function userRoutes(fastify: FastifyInstance) {
@@ -63,6 +65,16 @@ async function userRoutes(fastify: FastifyInstance) {
       preHandler: [fastify.authenticate, fastify.requirePermission('users:delete')],
     },
     deleteUserHandler as RouteHandlerMethod,
+  );
+
+  // Get user engagement summary (must be after /:userId to avoid conflict — but it IS after)
+  fastify.get(
+    '/:userId/summary',
+    {
+      schema: getUserSummarySchema,
+      preHandler: [fastify.authenticate, fastify.requirePermission('users:read')],
+    },
+    getUserSummaryHandler as RouteHandlerMethod,
   );
 }
 
