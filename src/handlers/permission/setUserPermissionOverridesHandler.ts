@@ -1,13 +1,27 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { PrismaClient } from '@prisma/client';
 import { setUserPermissionOverrides } from './permissionHelper';
 
-export async function setUserPermissionOverridesHandler(
+interface SetUserPermissionOverridesParams {
+  userId: string;
+}
+
+interface SetUserPermissionOverridesBody {
+  allow_codes?: string[];
+  deny_codes?: string[];
+}
+
+async function getUser(prisma: PrismaClient, userId: string) {
+  return prisma.users.findUnique({
+    where: { user_id: userId },
+    select: { user_id: true },
+  });
+}
+
+export async function handler(
   request: FastifyRequest<{
-    Params: { userId: string };
-    Body: {
-      allow_codes?: string[];
-      deny_codes?: string[];
-    };
+    Params: SetUserPermissionOverridesParams;
+    Body: SetUserPermissionOverridesBody;
   }>,
   reply: FastifyReply,
 ) {
@@ -15,10 +29,7 @@ export async function setUserPermissionOverridesHandler(
   const { allow_codes = [], deny_codes = [] } = request.body;
 
   try {
-    const user = await request.server.prisma.users.findUnique({
-      where: { user_id: userId },
-      select: { user_id: true },
-    });
+    const user = await getUser(request.server.prisma, userId);
 
     if (!user) {
       return reply.status(404).send({

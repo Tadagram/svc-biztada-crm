@@ -9,7 +9,19 @@ import {
   VerifyUserBody,
 } from './userHelper';
 
-export async function verifyUserHandler(
+function validateUserStatus(user: any): { valid: boolean; error?: string } {
+  if (user.role === UserRole.customer) {
+    return { valid: false, error: 'Customer không được phép đăng nhập.' };
+  }
+
+  if (user.status !== UserStatus.active) {
+    return { valid: false, error: 'Tài khoản đang bị khóa.' };
+  }
+
+  return { valid: true };
+}
+
+export async function handler(
   request: FastifyRequest<{
     Body: VerifyUserBody;
   }>,
@@ -30,17 +42,11 @@ export async function verifyUserHandler(
       });
     }
 
-    if (user.role === UserRole.customer) {
+    const statusValidation = validateUserStatus(user);
+    if (!statusValidation.valid) {
       return reply.status(403).send({
         success: false,
-        message: 'Customer không được phép đăng nhập.',
-      });
-    }
-
-    if (user.status !== UserStatus.active) {
-      return reply.status(403).send({
-        success: false,
-        message: 'Tài khoản đang bị khóa.',
+        message: statusValidation.error,
       });
     }
 
@@ -75,5 +81,3 @@ export async function verifyUserHandler(
     });
   }
 }
-
-export default verifyUserHandler;

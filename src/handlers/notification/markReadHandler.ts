@@ -1,10 +1,29 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { PrismaClient } from '@prisma/client';
 
 interface MarkReadParams {
   notificationId: string;
 }
 
-export async function markReadHandler(
+async function getNotification(prisma: PrismaClient, notificationId: string) {
+  return prisma.notifications.findUnique({
+    where: { notification_id: notificationId },
+  });
+}
+
+async function markNotificationAsRead(prisma: PrismaClient, notificationId: string) {
+  return prisma.notifications.update({
+    where: { notification_id: notificationId },
+    data: { is_read: true, read_at: new Date() },
+    include: {
+      sender: {
+        select: { user_id: true, agency_name: true, phone_number: true },
+      },
+    },
+  });
+}
+
+export async function handler(
   request: FastifyRequest<{ Params: MarkReadParams }>,
   reply: FastifyReply,
 ) {
@@ -12,9 +31,7 @@ export async function markReadHandler(
   const caller = request.user;
   const { notificationId } = request.params;
 
-  const existing = await prisma.notifications.findUnique({
-    where: { notification_id: notificationId },
-  });
+  const existing = await getNotification(prisma, notificationId);
 
   if (!existing) {
     return reply.status(404).send({ success: false, message: 'Notification not found' });
@@ -32,15 +49,7 @@ export async function markReadHandler(
     });
   }
 
-  const updated = await prisma.notifications.update({
-    where: { notification_id: notificationId },
-    data: { is_read: true, read_at: new Date() },
-    include: {
-      sender: {
-        select: { user_id: true, agency_name: true, phone_number: true },
-      },
-    },
-  });
+  const updated = await markNotificationAsRead(prisma, notificationId);
 
   return reply.status(200).send({
     success: true,

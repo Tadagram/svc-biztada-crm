@@ -11,7 +11,7 @@ interface UpdatePermissionBody {
   code?: string;
 }
 
-export async function updatePermissionHandler(
+export async function handler(
   request: FastifyRequest<{
     Params: UpdatePermissionParams;
     Body: UpdatePermissionBody;
@@ -87,5 +87,3 @@ export async function updatePermissionHandler(
     });
   }
 }
-
-export default updatePermissionHandler;

@@ -1,25 +1,32 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { PrismaClient } from '@prisma/client';
 import { getUserEffectivePermissions, getUserPermissionOverrides } from './permissionHelper';
 
-export async function getUserPermissionsHandler(
+interface GetUserPermissionsParams {
+  userId: string;
+}
+
+async function getUser(prisma: PrismaClient, userId: string) {
+  return prisma.users.findUnique({
+    where: { user_id: userId },
+    select: {
+      user_id: true,
+      role: true,
+      phone_number: true,
+    },
+  });
+}
+
+export async function handler(
   request: FastifyRequest<{
-    Params: {
-      userId: string;
-    };
+    Params: GetUserPermissionsParams;
   }>,
   reply: FastifyReply,
 ) {
   const { userId } = request.params;
 
   try {
-    const user = await request.server.prisma.users.findUnique({
-      where: { user_id: userId },
-      select: {
-        user_id: true,
-        role: true,
-        phone_number: true,
-      },
-    });
+    const user = await getUser(request.server.prisma, userId);
 
     if (!user) {
       return reply.status(404).send({
@@ -52,7 +59,7 @@ export async function getUserPermissionsHandler(
     request.log.error(error);
     return reply.status(500).send({
       success: false,
-      message: 'Internal server error',
+      message: 'Failed to retrieve user permissions',
       error: error instanceof Error ? error.message : 'Unknown error',
     });
   }

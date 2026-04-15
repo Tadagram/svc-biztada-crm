@@ -1,2 +1,2 @@
-export { getQRCodeHandler } from './getQRCodeHandler';
-export { uploadQRCodeHandler } from './uploadQRCodeHandler';
+export { handler as getQRCodeHandler } from './getQRCodeHandler';
+export { handler as uploadQRCodeHandler } from './uploadQRCodeHandler';

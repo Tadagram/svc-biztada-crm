@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { UserRole } from '@prisma/client';
+import { UserRole, PrismaClient } from '@prisma/client';
 import { USER_ROLES } from '@/utils/constants';
 
 interface GetUsersQuerystring {
@@ -37,10 +37,64 @@ function buildUserIsolation(caller: {
   return null;
 }
 
-export const getUsersHandler = async (
+function buildWhereClause(
+  isolation: any,
+  search?: string,
+  role?: UserRole,
+  not_role?: UserRole,
+  status?: string,
+  parentUserId?: string,
+  isModCaller?: boolean,
+) {
+  const isDeletedFilter = status === 'deleted';
+  const deletedAtFilter = !status
+    ? {}
+    : isDeletedFilter
+      ? { deleted_at: { not: null } }
+      : { deleted_at: null };
+
+  const parentFilter = isModCaller && parentUserId ? { parent_user_id: parentUserId } : {};
+
+  return {
+    ...deletedAtFilter,
+    ...isolation,
+    ...parentFilter,
+    ...(search && {
+      OR: [
+        { phone_number: { contains: search } },
+        { agency_name: { contains: search, mode: 'insensitive' as const } },
+      ],
+    }),
+    ...(role && { role }),
+    ...(not_role && { NOT: { role: not_role } }),
+    ...(!isDeletedFilter && status && { status }),
+  };
+}
+
+async function fetchUsers(
+  prisma: PrismaClient,
+  where: any,
+  select: any,
+  limit: number,
+  offset: number,
+) {
+  const [users, total] = await Promise.all([
+    prisma.users.findMany({
+      where,
+      select,
+      take: limit,
+      skip: offset,
+      orderBy: { created_at: 'desc' },
+    }),
+    prisma.users.count({ where }),
+  ]);
+  return { users, total };
+}
+
+export async function handler(
   request: FastifyRequest<{ Querystring: GetUsersQuerystring }>,
   reply: FastifyReply,
-) => {
+) {
   try {
     const {
       limit: queryLimit = 10,
@@ -48,7 +102,6 @@ export const getUsersHandler = async (
       search,
       role,
       not_role,
-      all,
       status,
       parent_user_id,
     } = request.query;
@@ -61,30 +114,6 @@ export const getUsersHandler = async (
     if (isolation === null) {
       return reply.status(403).send({ success: false, message: 'Forbidden' });
     }
-
-    const isDeletedFilter = status === 'deleted';
-    const deletedAtFilter = !status
-      ? {}
-      : isDeletedFilter
-        ? { deleted_at: { not: null } }
-        : { deleted_at: null };
-
-    const parentFilter = caller.role === USER_ROLES.MOD && parent_user_id ? { parent_user_id } : {};
-
-    const where = {
-      ...deletedAtFilter,
-      ...isolation,
-      ...parentFilter,
-      ...(search && {
-        OR: [
-          { phone_number: { contains: search } },
-          { agency_name: { contains: search, mode: 'insensitive' as const } },
-        ],
-      }),
-      ...(role && { role }),
-      ...(not_role && { NOT: { role: not_role } }),
-      ...(!isDeletedFilter && status && { status }),
-    };
 
     const userSelect = {
       user_id: true,
@@ -99,32 +128,40 @@ export const getUsersHandler = async (
       deleted_at: true,
     };
 
-    const isAll = all === true || String(all) === 'true';
-    const [users, total] = await Promise.all([
-      request.server.prisma.users.findMany({
-        where,
-        select: userSelect,
-        orderBy: { created_at: 'desc' },
-        ...(isAll ? {} : { skip: offset, take: limit }),
-      }),
-      request.server.prisma.users.count({ where }),
-    ]);
+    const where = buildWhereClause(
+      isolation,
+      search,
+      role,
+      not_role,
+      status,
+      parent_user_id,
+      caller.role === USER_ROLES.MOD,
+    );
 
-    const totalPages = Math.ceil(total / limit);
-    const currentPage = Math.floor(offset / limit) + 1;
+    const { users, total } = await fetchUsers(
+      request.server.prisma,
+      where,
+      userSelect,
+      limit,
+      offset,
+    );
 
     return reply.send({
       success: true,
       data: users,
-      pagination: { total, limit, offset, totalPages, currentPage, all: isAll },
-      message: 'Users retrieved successfully',
+      pagination: {
+        limit,
+        offset,
+        total,
+        pages: Math.ceil(total / limit),
+      },
     });
   } catch (error) {
     request.log.error(error);
-    reply.status(500).send({
+    return reply.status(500).send({
       success: false,
-      message: 'Failed to retrieve users',
+      message: 'Failed to fetch users',
       error: error instanceof Error ? error.message : 'Unknown error',
     });
   }
-};
+}

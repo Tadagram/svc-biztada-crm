@@ -1,16 +1,11 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { UserRole } from '@prisma/client';
+import { UserRole, PrismaClient } from '@prisma/client';
 import { USER_ROLES, ASSIGNMENT_STATUSES } from '@/utils/constants';
 
 interface GetActiveWorkersQuerystring {
   agencyId?: string;
 }
 
-/**
- * GET /workers/active?agencyId=<uuid>
- * Returns workers that are currently assigned (active) to the given agency.
- * Each result includes the AgencyWorker assignment and nested Worker details.
- */
 function buildActiveWorkerIsolation(caller: {
   userId: string;
   role: UserRole;
@@ -21,7 +16,34 @@ function buildActiveWorkerIsolation(caller: {
   return null;
 }
 
-export async function getActiveWorkersHandler(
+const assignmentSelect = {
+  agency_worker_id: true,
+  agency_user_id: true,
+  worker_id: true,
+  using_by: true,
+  status: true,
+  created_at: true,
+  updated_at: true,
+  agency: {
+    select: { user_id: true, agency_name: true, phone_number: true },
+  },
+  worker: {
+    select: { worker_id: true, name: true, status: true },
+  },
+  user: {
+    select: { user_id: true, phone_number: true, role: true },
+  },
+};
+
+async function fetchActiveAssignments(prisma: PrismaClient, where: any) {
+  return prisma.agencyWorkers.findMany({
+    where,
+    select: assignmentSelect,
+    orderBy: { created_at: 'desc' },
+  });
+}
+
+export async function handler(
   request: FastifyRequest<{ Querystring: GetActiveWorkersQuerystring }>,
   reply: FastifyReply,
 ) {
@@ -43,28 +65,7 @@ export async function getActiveWorkersHandler(
       ...(caller.role === USER_ROLES.MOD && agencyId && { agency_user_id: agencyId }),
     };
 
-    const assignments = await prisma.agencyWorkers.findMany({
-      where,
-      select: {
-        agency_worker_id: true,
-        agency_user_id: true,
-        worker_id: true,
-        using_by: true,
-        status: true,
-        created_at: true,
-        updated_at: true,
-        agency: {
-          select: { user_id: true, agency_name: true, phone_number: true },
-        },
-        worker: {
-          select: { worker_id: true, name: true, status: true },
-        },
-        user: {
-          select: { user_id: true, phone_number: true, role: true },
-        },
-      },
-      orderBy: { created_at: 'desc' },
-    });
+    const assignments = await fetchActiveAssignments(prisma, where);
 
     return reply.send({
       success: true,

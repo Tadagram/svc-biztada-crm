@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { NotificationType, Prisma } from '@prisma/client';
+import { PrismaClient, NotificationType, Prisma } from '@prisma/client';
 
 interface CreateNotificationBody {
   recipient_id: string;
@@ -12,28 +12,29 @@ interface CreateNotificationBody {
   expires_at?: string;
 }
 
-export async function createNotificationHandler(
-  request: FastifyRequest<{ Body: CreateNotificationBody }>,
-  reply: FastifyReply,
-) {
-  const { prisma } = request;
-  const caller = request.user;
-  const { recipient_id, type, title, body, image_url, action_url, custom_fields, expires_at } =
-    request.body;
-
-  const recipient = await prisma.users.findUnique({
+async function validateRecipient(prisma: PrismaClient, recipient_id: string) {
+  return prisma.users.findUnique({
     where: { user_id: recipient_id, deleted_at: null },
     select: { user_id: true },
   });
+}
 
-  if (!recipient) {
-    return reply.status(404).send({ success: false, message: 'Recipient user not found' });
-  }
-
-  const notification = await prisma.notifications.create({
+async function createNotification(
+  prisma: PrismaClient,
+  sender_id: string,
+  recipient_id: string,
+  type: NotificationType,
+  title: string,
+  body: string,
+  image_url?: string,
+  action_url?: string,
+  custom_fields?: Record<string, unknown>,
+  expires_at?: string,
+) {
+  return prisma.notifications.create({
     data: {
       recipient_id,
-      sender_id: caller.userId,
+      sender_id,
       type,
       title,
       body,
@@ -49,6 +50,35 @@ export async function createNotificationHandler(
       },
     },
   });
+}
+
+export async function handler(
+  request: FastifyRequest<{ Body: CreateNotificationBody }>,
+  reply: FastifyReply,
+) {
+  const { prisma } = request;
+  const caller = request.user;
+  const { recipient_id, type, title, body, image_url, action_url, custom_fields, expires_at } =
+    request.body;
+
+  const recipient = await validateRecipient(prisma, recipient_id);
+
+  if (!recipient) {
+    return reply.status(404).send({ success: false, message: 'Recipient user not found' });
+  }
+
+  const notification = await createNotification(
+    prisma,
+    caller.userId,
+    recipient_id,
+    type,
+    title,
+    body,
+    image_url,
+    action_url,
+    custom_fields,
+    expires_at,
+  );
 
   return reply.status(201).send({
     success: true,

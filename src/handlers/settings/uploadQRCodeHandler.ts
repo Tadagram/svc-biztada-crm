@@ -1,39 +1,55 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { PrismaClient } from '@prisma/client';
 
 const QR_KEY = 'topup_qr_code';
+const MAX_IMAGE_SIZE = 3_500_000; // 3.5 MB
 
 interface UploadQRCodeBody {
   imageDataUrl: string;
 }
 
-export async function uploadQRCodeHandler(
+function validateImageDataUrl(imageDataUrl: string): { valid: boolean; error?: string } {
+  if (!imageDataUrl.startsWith('data:image/')) {
+    return {
+      valid: false,
+      error: 'imageDataUrl phải là data URL hợp lệ (data:image/...)',
+    };
+  }
+
+  if (imageDataUrl.length > MAX_IMAGE_SIZE) {
+    return {
+      valid: false,
+      error: 'Ảnh quá lớn. Vui lòng chọn ảnh nhỏ hơn 2.5 MB.',
+    };
+  }
+
+  return { valid: true };
+}
+
+async function upsertQRCodeSetting(prisma: PrismaClient, imageDataUrl: string) {
+  return prisma.systemSettings.upsert({
+    where: { key: QR_KEY },
+    create: { key: QR_KEY, value: imageDataUrl },
+    update: { value: imageDataUrl },
+  });
+}
+
+export async function handler(
   request: FastifyRequest<{ Body: UploadQRCodeBody }>,
   reply: FastifyReply,
 ) {
   const { prisma } = request;
   const { imageDataUrl } = request.body;
 
-  // Must be a valid image data URL
-  if (!imageDataUrl.startsWith('data:image/')) {
+  const validation = validateImageDataUrl(imageDataUrl);
+  if (!validation.valid) {
     return reply.status(400).send({
       success: false,
-      message: 'imageDataUrl phải là data URL hợp lệ (data:image/...)',
+      message: validation.error,
     });
   }
 
-  // 3.5 MB ceiling (Fastify schema already validates but double-check)
-  if (imageDataUrl.length > 3_500_000) {
-    return reply.status(413).send({
-      success: false,
-      message: 'Ảnh quá lớn. Vui lòng chọn ảnh nhỏ hơn 2.5 MB.',
-    });
-  }
-
-  const record = await prisma.systemSettings.upsert({
-    where: { key: QR_KEY },
-    create: { key: QR_KEY, value: imageDataUrl },
-    update: { value: imageDataUrl },
-  });
+  const record = await upsertQRCodeSetting(prisma, imageDataUrl);
 
   return reply.send({
     success: true,

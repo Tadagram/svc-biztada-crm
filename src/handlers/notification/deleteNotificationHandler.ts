@@ -1,10 +1,17 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { PrismaClient } from '@prisma/client';
 
 interface DeleteNotificationParams {
   notificationId: string;
 }
 
-export async function deleteNotificationHandler(
+async function getNotification(prisma: PrismaClient, notificationId: string) {
+  return prisma.notifications.findUnique({
+    where: { notification_id: notificationId },
+  });
+}
+
+export async function handler(
   request: FastifyRequest<{ Params: DeleteNotificationParams }>,
   reply: FastifyReply,
 ) {
@@ -12,9 +19,7 @@ export async function deleteNotificationHandler(
   const caller = request.user;
   const { notificationId } = request.params;
 
-  const existing = await prisma.notifications.findUnique({
-    where: { notification_id: notificationId },
-  });
+  const existing = await getNotification(prisma, notificationId);
 
   if (!existing) {
     return reply.status(404).send({ success: false, message: 'Notification not found' });

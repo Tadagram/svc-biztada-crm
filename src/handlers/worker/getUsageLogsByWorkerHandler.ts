@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { UserRole } from '@prisma/client';
+import { UserRole, PrismaClient } from '@prisma/client';
 import { USER_ROLES } from '@/utils/constants';
 
 interface GetUsageLogsByWorkerQuerystring {
@@ -21,7 +21,79 @@ function buildUsageLogIsolation(caller: {
   return null;
 }
 
-export async function getUsageLogsByWorkerHandler(
+async function resolveWorkerIds(prisma: PrismaClient, workerName: string) {
+  const matchingWorkers = await prisma.workers.findMany({
+    where: { name: { contains: workerName, mode: 'insensitive' } },
+    select: { worker_id: true },
+  });
+  return matchingWorkers.map((w) => w.worker_id);
+}
+
+function buildWhereClause(
+  isolation: any,
+  workerIdFilter?: any,
+  agencyId?: string,
+  from?: string,
+  to?: string,
+  isModCaller?: boolean,
+) {
+  return {
+    ...isolation,
+    ...(workerIdFilter && { worker_id: workerIdFilter }),
+    ...(isModCaller && agencyId && { agency_user_id: agencyId }),
+    ...((from || to) && {
+      start_at: {
+        ...(from && { gte: new Date(from) }),
+        ...(to && { lte: new Date(to) }),
+      },
+    }),
+  };
+}
+
+async function fetchGroupedLogs(prisma: PrismaClient, where: any, limit: number, offset: number) {
+  const allGroups = await prisma.workerUsageLogs.groupBy({
+    by: ['worker_id'],
+    where,
+    _count: { usage_log_id: true },
+    _max: { start_at: true },
+    orderBy: { _max: { start_at: 'desc' } },
+  });
+
+  const totalGroups = allGroups.length;
+  const paginatedGroups = allGroups.slice(offset, offset + limit);
+  const pageWorkerIds = paginatedGroups.map((g) => g.worker_id);
+
+  const [workers, activeSessions] = await Promise.all([
+    prisma.workers.findMany({
+      where: { worker_id: { in: pageWorkerIds } },
+      select: { worker_id: true, name: true, status: true },
+    }),
+    prisma.workerUsageLogs.groupBy({
+      by: ['worker_id'],
+      where: { ...where, worker_id: { in: pageWorkerIds }, end_at: null },
+      _count: { usage_log_id: true },
+    }),
+  ]);
+
+  const workerMap = new Map(workers.map((w) => [w.worker_id, w]));
+  const activeMap = new Map(activeSessions.map((a) => [a.worker_id, a._count.usage_log_id]));
+
+  const groupedData = paginatedGroups.map((g) => ({
+    worker_id: g.worker_id,
+    worker: workerMap.get(g.worker_id) ?? {
+      worker_id: g.worker_id,
+      name: '—',
+      status: 'unknown',
+    },
+    total_sessions: g._count.usage_log_id,
+    active_sessions: activeMap.get(g.worker_id) ?? 0,
+    last_used_at: g._max.start_at,
+  }));
+
+  return { groupedData, totalGroups };
+}
+
+export async function handler(
   request: FastifyRequest<{ Querystring: GetUsageLogsByWorkerQuerystring }>,
   reply: FastifyReply,
 ) {
@@ -45,104 +117,46 @@ export async function getUsageLogsByWorkerHandler(
     if (isolation === null) {
       return reply.status(403).send({ success: false, message: 'Forbidden' });
     }
+
     let workerIdFilter: { in: string[] } | undefined;
     if (workerName) {
-      const matchingWorkers = await prisma.workers.findMany({
-        where: { name: { contains: workerName, mode: 'insensitive' } },
-        select: { worker_id: true },
-      });
-      const ids = matchingWorkers.map((w) => w.worker_id);
+      const ids = await resolveWorkerIds(prisma, workerName);
       if (ids.length === 0) {
         return reply.send({
           success: true,
           data: [],
-          pagination: { total: 0, limit, offset, totalPages: 0, currentPage: 1 },
+          pagination: { total: 0, limit, offset, pages: 0 },
         });
       }
       workerIdFilter = { in: ids };
     }
 
-    const logWhere = {
-      ...isolation,
-      ...(workerIdFilter && { worker_id: workerIdFilter }),
-      ...(caller.role === USER_ROLES.MOD && agencyId && { agency_user_id: agencyId }),
-      ...((from || to) && {
-        start_at: {
-          ...(from && { gte: new Date(from) }),
-          ...(to && { lte: new Date(to) }),
-        },
-      }),
-    };
+    const logWhere = buildWhereClause(
+      isolation,
+      workerIdFilter,
+      agencyId,
+      from,
+      to,
+      caller.role === USER_ROLES.MOD,
+    );
 
-    const allGroups = await prisma.workerUsageLogs.groupBy({
-      by: ['worker_id'],
-      where: logWhere,
-    });
-    const total = allGroups.length;
-
-    if (total === 0) {
-      return reply.send({
-        success: true,
-        data: [],
-        pagination: { total: 0, limit, offset, totalPages: 0, currentPage: 1 },
-      });
-    }
-
-    const grouped = await prisma.workerUsageLogs.groupBy({
-      by: ['worker_id'],
-      where: logWhere,
-      _count: { usage_log_id: true },
-      _max: { start_at: true },
-      orderBy: { _max: { start_at: 'desc' } },
-      skip: offset,
-      take: limit,
-    });
-
-    const pageWorkerIds = grouped.map((g) => g.worker_id);
-
-    const [workers, activeSessions] = await Promise.all([
-      prisma.workers.findMany({
-        where: { worker_id: { in: pageWorkerIds } },
-        select: { worker_id: true, name: true, status: true },
-      }),
-      prisma.workerUsageLogs.groupBy({
-        by: ['worker_id'],
-        where: { ...logWhere, worker_id: { in: pageWorkerIds }, end_at: null },
-        _count: { usage_log_id: true },
-      }),
-    ]);
-
-    const workerMap = new Map(workers.map((w) => [w.worker_id, w]));
-    const activeMap = new Map(activeSessions.map((a) => [a.worker_id, a._count.usage_log_id]));
-
-    const data = grouped.map((g) => ({
-      worker_id: g.worker_id,
-      worker: workerMap.get(g.worker_id) ?? {
-        worker_id: g.worker_id,
-        name: '—',
-        status: 'unknown',
-      },
-      total_sessions: g._count.usage_log_id,
-      active_sessions: activeMap.get(g.worker_id) ?? 0,
-      last_used_at: g._max.start_at,
-    }));
+    const { groupedData, totalGroups } = await fetchGroupedLogs(prisma, logWhere, limit, offset);
 
     return reply.send({
       success: true,
-      data,
+      data: groupedData,
       pagination: {
-        total,
+        total: totalGroups,
         limit,
         offset,
-        totalPages: Math.ceil(total / limit),
-        currentPage: Math.floor(offset / limit) + 1,
+        pages: Math.ceil(totalGroups / limit),
       },
     });
   } catch (error) {
     request.log.error(error);
     return reply.status(500).send({
       success: false,
-      message: 'Failed to retrieve usage logs by worker',
+      message: 'Failed to fetch grouped usage logs',
       error: error instanceof Error ? error.message : 'Unknown error',
     });
   }

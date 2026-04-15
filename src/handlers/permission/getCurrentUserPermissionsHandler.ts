@@ -2,10 +2,7 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { getUserEffectivePermissions, getUserPermissionOverrides } from './permissionHelper';
 import { UserRole } from '@prisma/client';
 
-export async function getCurrentUserPermissionsHandler(
-  request: FastifyRequest,
-  reply: FastifyReply,
-) {
+export async function handler(request: FastifyRequest, reply: FastifyReply) {
   try {
     const caller = request.user as { userId: string; role: string };
 

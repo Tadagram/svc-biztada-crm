@@ -1,9 +1,9 @@
-export { createUserHandler, createUserHandler as default } from './createUserHandler';
-export { verifyUserHandler } from './verifyUserHandler';
-export { getUsersHandler } from './getUsersHandler';
-export { getUserByIdHandler } from './getUserByIdHandler';
-export { getCurrentUserHandler } from './getCurrentUserHandler';
-export { updateUserHandler } from './updateUserHandler';
-export { updateProfileHandler } from './updateProfileHandler';
-export { deleteUserHandler } from './deleteUserHandler';
-export { getUserSummaryHandler } from './getUserSummaryHandler';
+export { handler as createUserHandler } from './createUserHandler';
+export { handler as verifyUserHandler } from './verifyUserHandler';
+export { handler as getUsersHandler } from './getUsersHandler';
+export { handler as getUserByIdHandler } from './getUserByIdHandler';
+export { handler as getCurrentUserHandler } from './getCurrentUserHandler';
+export { handler as updateUserHandler } from './updateUserHandler';
+export { handler as updateProfileHandler } from './updateProfileHandler';
+export { handler as deleteUserHandler } from './deleteUserHandler';
+export { handler as getUserSummaryHandler } from './getUserSummaryHandler';

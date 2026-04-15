@@ -1,11 +1,44 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { PrismaClient } from '@prisma/client';
 import { ASSIGNMENT_STATUSES } from '@/utils/constants';
 
 interface DeleteWorkerParams {
   workerId: string;
 }
 
-export async function deleteWorkerHandler(
+const workerSelect = {
+  worker_id: true,
+  name: true,
+  status: true,
+  deleted_at: true,
+};
+
+async function getWorker(prisma: PrismaClient, workerId: string) {
+  return prisma.workers.findFirst({
+    where: { worker_id: workerId, deleted_at: null },
+  });
+}
+
+async function checkActiveAssignment(prisma: PrismaClient, workerId: string) {
+  return prisma.agencyWorkers.findFirst({
+    where: {
+      worker_id: workerId,
+      status: ASSIGNMENT_STATUSES.ACTIVE,
+      deleted_at: null,
+      using_by: { not: null },
+    },
+  });
+}
+
+async function softDeleteWorker(prisma: PrismaClient, workerId: string) {
+  return prisma.workers.update({
+    where: { worker_id: workerId },
+    data: { deleted_at: new Date() },
+    select: workerSelect,
+  });
+}
+
+export async function handler(
   request: FastifyRequest<{ Params: DeleteWorkerParams }>,
   reply: FastifyReply,
 ) {
@@ -13,9 +46,7 @@ export async function deleteWorkerHandler(
   const { workerId } = request.params;
 
   try {
-    const existing = await prisma.workers.findFirst({
-      where: { worker_id: workerId, deleted_at: null },
-    });
+    const existing = await getWorker(prisma, workerId);
 
     if (!existing) {
       return reply.status(404).send({
@@ -24,15 +55,7 @@ export async function deleteWorkerHandler(
       });
     }
 
-    const activeAssignment = await prisma.agencyWorkers.findFirst({
-      where: {
-        worker_id: workerId,
-        status: ASSIGNMENT_STATUSES.ACTIVE,
-        deleted_at: null,
-        using_by: { not: null },
-      },
-    });
-
+    const activeAssignment = await checkActiveAssignment(prisma, workerId);
     if (activeAssignment) {
       return reply.status(409).send({
         success: false,
@@ -40,16 +63,7 @@ export async function deleteWorkerHandler(
       });
     }
 
-    const deleted = await prisma.workers.update({
-      where: { worker_id: workerId },
-      data: { deleted_at: new Date() },
-      select: {
-        worker_id: true,
-        name: true,
-        status: true,
-        deleted_at: true,
-      },
-    });
+    const deleted = await softDeleteWorker(prisma, workerId);
 
     return reply.send({
       success: true,

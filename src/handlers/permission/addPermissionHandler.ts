@@ -1,11 +1,33 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { PrismaClient } from '@prisma/client';
 
 interface AddPermissionBody {
   name: string;
   code: string;
 }
 
-export async function addPermissionHandler(
+async function checkPermissionExists(prisma: PrismaClient, code: string) {
+  return prisma.permissions.findUnique({
+    where: { code },
+  });
+}
+
+async function createPermission(prisma: PrismaClient, name: string, code: string) {
+  return prisma.permissions.create({
+    data: {
+      name,
+      code,
+    },
+    select: {
+      permission_id: true,
+      name: true,
+      code: true,
+      created_at: true,
+    },
+  });
+}
+
+export async function handler(
   request: FastifyRequest<{
     Body: AddPermissionBody;
   }>,
@@ -15,9 +37,7 @@ export async function addPermissionHandler(
   const { name, code } = request.body;
 
   try {
-    const hasPermissionResult = await prisma.permissions.findUnique({
-      where: { code },
-    });
+    const hasPermissionResult = await checkPermissionExists(prisma, code);
 
     if (hasPermissionResult) {
       return reply.status(409).send({
@@ -27,18 +47,7 @@ export async function addPermissionHandler(
       });
     }
 
-    const newPermission = await prisma.permissions.create({
-      data: {
-        name,
-        code,
-      },
-      select: {
-        permission_id: true,
-        name: true,
-        code: true,
-        created_at: true,
-      },
-    });
+    const newPermission = await createPermission(prisma, name, code);
 
     return reply.status(201).send({
       statusCode: 201,
@@ -55,4 +64,4 @@ export async function addPermissionHandler(
   }
 }
 
-export default addPermissionHandler;
+export default handler;

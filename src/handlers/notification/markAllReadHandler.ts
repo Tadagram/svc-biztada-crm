@@ -1,13 +1,18 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { PrismaClient } from '@prisma/client';
 
-export async function markAllReadHandler(request: FastifyRequest, reply: FastifyReply) {
+async function markAllAsRead(prisma: PrismaClient, userId: string) {
+  return prisma.notifications.updateMany({
+    where: { recipient_id: userId, is_read: false },
+    data: { is_read: true, read_at: new Date() },
+  });
+}
+
+export async function handler(request: FastifyRequest, reply: FastifyReply) {
   const { prisma } = request;
   const caller = request.user;
 
-  const result = await prisma.notifications.updateMany({
-    where: { recipient_id: caller.userId, is_read: false },
-    data: { is_read: true, read_at: new Date() },
-  });
+  const result = await markAllAsRead(prisma, caller.userId);
 
   return reply.status(200).send({
     success: true,

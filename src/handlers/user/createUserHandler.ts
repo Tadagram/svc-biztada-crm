@@ -3,7 +3,54 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { createUserInDatabase, checkUserExists, CreateUserBody, UserPayload } from './userHelper';
 import { CAN_CREATE_USER, USER_ROLES } from '@/utils/constants';
 
-export async function createUserHandler(
+function validateCallerRole(callerRole: UserRole): { valid: boolean; error?: string } {
+  if (!CAN_CREATE_USER.includes(callerRole)) {
+    return { valid: false, error: 'Only mod and agency can create users' };
+  }
+  return { valid: true };
+}
+
+function validateUserRoleCreation(
+  callerRole: UserRole,
+  targetRole: UserRole,
+): { valid: boolean; error?: string } {
+  if (callerRole === USER_ROLES.MOD && targetRole !== USER_ROLES.AGENCY) {
+    return { valid: false, error: 'Mod can only create agency' };
+  }
+
+  if (callerRole === USER_ROLES.AGENCY && targetRole === USER_ROLES.AGENCY) {
+    return { valid: false, error: 'Agency cannot create agency' };
+  }
+
+  return { valid: true };
+}
+
+function buildUserPayload(
+  phoneNumber: string,
+  role: UserRole,
+  status: UserStatus,
+  callerRole: UserRole,
+  callerId: string,
+  agencyName?: string,
+): UserPayload {
+  const payload: UserPayload = {
+    phone_number: phoneNumber,
+    role,
+    status,
+  };
+
+  if (agencyName) payload.agency_name = agencyName;
+
+  if (callerRole === USER_ROLES.MOD && role === USER_ROLES.AGENCY) {
+    payload.parent_user_id = callerId;
+  } else if (callerRole === USER_ROLES.AGENCY) {
+    payload.parent_user_id = callerId;
+  }
+
+  return payload;
+}
+
+export async function handler(
   request: FastifyRequest<{
     Body: CreateUserBody;
   }>,
@@ -16,20 +63,19 @@ export async function createUserHandler(
     role = UserRole.user,
     status = UserStatus.active,
   } = request.body;
+  const caller = request.user as { userId: string; role: UserRole };
 
   try {
-    // 🔐 Role check: chỉ Mod & Agency được tạo user
-    const caller = request.user as { userId: string; role: UserRole };
-    if (!CAN_CREATE_USER.includes(caller.role)) {
+    const roleValidation = validateCallerRole(caller.role);
+    if (!roleValidation.valid) {
       return reply.status(403).send({
         statusCode: 403,
         error: 'Forbidden',
-        message: 'Only mod and agency can create users',
+        message: roleValidation.error,
       });
     }
 
     const existingUser = await checkUserExists(prisma, phone_number);
-
     if (existingUser) {
       return reply.status(409).send({
         statusCode: 409,
@@ -38,38 +84,23 @@ export async function createUserHandler(
       });
     }
 
-    // 🔐 Mod tạo agency, Agency tạo user/customer
-    if (caller.role === USER_ROLES.MOD && role !== USER_ROLES.AGENCY) {
+    const roleValidationResult = validateUserRoleCreation(caller.role, role);
+    if (!roleValidationResult.valid) {
       return reply.status(400).send({
         statusCode: 400,
         error: 'Bad Request',
-        message: 'Mod can only create agency',
+        message: roleValidationResult.error,
       });
     }
 
-    if (caller.role === USER_ROLES.AGENCY && role === USER_ROLES.AGENCY) {
-      return reply.status(400).send({
-        statusCode: 400,
-        error: 'Bad Request',
-        message: 'Agency cannot create agency',
-      });
-    }
-
-    const userPayload: UserPayload = {
+    const userPayload = buildUserPayload(
       phone_number,
       role,
       status,
-    };
-
-    if (agency_name) userPayload.agency_name = agency_name;
-
-    // 🔐 Set parent_user_id
-    if (caller.role === USER_ROLES.MOD && role === USER_ROLES.AGENCY) {
-      userPayload.parent_user_id = caller.userId; // Mod tạo agency → parent = mod
-    } else if (caller.role === USER_ROLES.AGENCY) {
-      userPayload.parent_user_id = caller.userId; // Agency tạo user/customer → parent = agency
-    }
-
+      caller.role,
+      caller.userId,
+      agency_name,
+    );
     const newUser = await createUserInDatabase(prisma, userPayload);
 
     return reply.status(201).send({
@@ -86,5 +117,3 @@ export async function createUserHandler(
     });
   }
 }
-
-export default createUserHandler;

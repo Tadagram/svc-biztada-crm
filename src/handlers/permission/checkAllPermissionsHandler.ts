@@ -1,7 +1,18 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { PrismaClient } from '@prisma/client';
 import { hasAllPermissions } from './permissionHelper';
 
-export async function checkAllPermissionsHandler(
+async function getUser(prisma: PrismaClient, user_id: string) {
+  return prisma.users.findUnique({
+    where: { user_id },
+    select: {
+      user_id: true,
+      role: true,
+    },
+  });
+}
+
+export async function handler(
   request: FastifyRequest<{
     Body: {
       user_id: string;
@@ -13,13 +24,7 @@ export async function checkAllPermissionsHandler(
   const { user_id, permission_codes } = request.body;
 
   try {
-    const user = await request.server.prisma.users.findUnique({
-      where: { user_id },
-      select: {
-        user_id: true,
-        role: true,
-      },
-    });
+    const user = await getUser(request.server.prisma, user_id);
 
     if (!user) {
       return reply.status(404).send({

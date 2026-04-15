@@ -1,4 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { PrismaClient } from '@prisma/client';
 
 interface GetPermissionsQuerystring {
   limit?: number;
@@ -7,7 +8,56 @@ interface GetPermissionsQuerystring {
   all?: boolean;
 }
 
-export async function getPermissionsHandler(
+function buildPermissionsWhere(search?: string) {
+  return {
+    deleted_at: null,
+    ...(search && {
+      OR: [
+        { name: { contains: search, mode: 'insensitive' as const } },
+        { code: { contains: search, mode: 'insensitive' as const } },
+      ],
+    }),
+  };
+}
+
+async function fetchPermissions(
+  prisma: PrismaClient,
+  where: any,
+  limit: number,
+  offset: number,
+  isAll: boolean,
+) {
+  const [permissions, total] = await Promise.all([
+    prisma.permissions.findMany({
+      where,
+      select: {
+        permission_id: true,
+        name: true,
+        code: true,
+        created_at: true,
+        updated_at: true,
+      },
+      orderBy: { created_at: 'desc' },
+      ...(isAll ? {} : { skip: offset, take: limit }),
+    }),
+    prisma.permissions.count({ where }),
+  ]);
+
+  return { permissions, total };
+}
+
+function calculatePagination(total: number, limit: number, offset: number, isAll: boolean) {
+  return {
+    total,
+    limit,
+    offset,
+    totalPages: Math.ceil(total / limit),
+    currentPage: Math.floor(offset / limit) + 1,
+    all: isAll,
+  };
+}
+
+export async function handler(
   request: FastifyRequest<{ Querystring: GetPermissionsQuerystring }>,
   reply: FastifyReply,
 ) {
@@ -17,47 +67,15 @@ export async function getPermissionsHandler(
   const offset = Number(queryOffset);
 
   try {
-    const where = {
-      deleted_at: null,
-      ...(search && {
-        OR: [
-          { name: { contains: search, mode: 'insensitive' as const } },
-          { code: { contains: search, mode: 'insensitive' as const } },
-        ],
-      }),
-    };
-
+    const where = buildPermissionsWhere(search);
     const isAll = all === true || String(all) === 'true';
-    const [permissions, total] = await Promise.all([
-      prisma.permissions.findMany({
-        where,
-        select: {
-          permission_id: true,
-          name: true,
-          code: true,
-          created_at: true,
-          updated_at: true,
-        },
-        orderBy: { created_at: 'desc' },
-        ...(isAll ? {} : { skip: offset, take: limit }),
-      }),
-      prisma.permissions.count({ where }),
-    ]);
-
-    const totalPages = Math.ceil(total / limit);
-    const currentPage = Math.floor(offset / limit) + 1;
+    const { permissions, total } = await fetchPermissions(prisma, where, limit, offset, isAll);
+    const pagination = calculatePagination(total, limit, offset, isAll);
 
     return reply.send({
       success: true,
       data: permissions,
-      pagination: {
-        total,
-        limit,
-        offset,
-        totalPages,
-        currentPage,
-        all: isAll,
-      },
+      pagination,
       message: 'Permissions retrieved successfully',
     });
   } catch (error) {

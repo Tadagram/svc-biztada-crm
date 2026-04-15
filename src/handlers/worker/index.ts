@@ -1,9 +1,9 @@
-export { createWorkerHandler } from './createWorkerHandler';
-export { getWorkersHandler } from './getWorkersHandler';
-export { getWorkerByIdHandler } from './getWorkerByIdHandler';
-export { updateWorkerHandler } from './updateWorkerHandler';
-export { deleteWorkerHandler } from './deleteWorkerHandler';
-export { reactivateWorkerHandler } from './reactivateWorkerHandler';
-export { getActiveWorkersHandler } from './getActiveWorkersHandler';
-export { getUsageLogsHandler } from './getUsageLogsHandler';
-export { getUsageLogsByWorkerHandler } from './getUsageLogsByWorkerHandler';
+export { handler as createWorkerHandler } from './createWorkerHandler';
+export { handler as getWorkersHandler } from './getWorkersHandler';
+export { handler as getWorkerByIdHandler } from './getWorkerByIdHandler';
+export { handler as updateWorkerHandler } from './updateWorkerHandler';
+export { handler as deleteWorkerHandler } from './deleteWorkerHandler';
+export { handler as reactivateWorkerHandler } from './reactivateWorkerHandler';
+export { handler as getActiveWorkersHandler } from './getActiveWorkersHandler';
+export { handler as getUsageLogsHandler } from './getUsageLogsHandler';
+export { handler as getUsageLogsByWorkerHandler } from './getUsageLogsByWorkerHandler';

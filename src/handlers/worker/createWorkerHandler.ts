@@ -1,4 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { PrismaClient } from '@prisma/client';
 import { WORKER_STATUSES, type WorkerStatus } from '@/utils/constants';
 
 interface CreateWorkerBody {
@@ -6,7 +7,22 @@ interface CreateWorkerBody {
   status?: WorkerStatus;
 }
 
-export async function createWorkerHandler(
+const workerSelect = {
+  worker_id: true,
+  name: true,
+  status: true,
+  created_at: true,
+  updated_at: true,
+};
+
+async function createNewWorker(prisma: PrismaClient, name: string, status: WorkerStatus) {
+  return prisma.workers.create({
+    data: { name, status },
+    select: workerSelect,
+  });
+}
+
+export async function handler(
   request: FastifyRequest<{ Body: CreateWorkerBody }>,
   reply: FastifyReply,
 ) {
@@ -14,16 +30,7 @@ export async function createWorkerHandler(
   const { name, status = WORKER_STATUSES.READY } = request.body;
 
   try {
-    const worker = await prisma.workers.create({
-      data: { name, status },
-      select: {
-        worker_id: true,
-        name: true,
-        status: true,
-        created_at: true,
-        updated_at: true,
-      },
-    });
+    const worker = await createNewWorker(prisma, name, status);
 
     return reply.status(201).send({
       success: true,
