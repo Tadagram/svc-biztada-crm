@@ -28,7 +28,9 @@ function buildUserIsolation(caller: {
   }
 
   if (caller.role === UserRole.user) {
-    return { user_id: caller.userId };
+    return {
+      OR: [{ user_id: caller.userId }, { user_id: caller.parentUserId }],
+    };
   }
 
   return null;

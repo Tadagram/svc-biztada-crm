@@ -68,7 +68,7 @@ async function userRoutes(fastify: FastifyInstance) {
   );
 
   // Update user
-  fastify.put(
+  fastify.patch(
     '/:userId',
     {
       schema: updateUserSchema,

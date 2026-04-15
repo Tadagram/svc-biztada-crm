@@ -43,6 +43,19 @@ export const updateUserHandler = async (request: FastifyRequest, reply: FastifyR
       });
     }
 
+    if (phone_number !== undefined && phone_number !== existingUser.phone_number) {
+      const existingPhone = await request.server.prisma.users.findUnique({
+        where: { phone_number },
+      });
+
+      if (existingPhone) {
+        return reply.status(400).send({
+          success: false,
+          message: 'Phone number already in use',
+        });
+      }
+    }
+
     const updatedUser = await request.server.prisma.users.update({
       where: { user_id: userId },
       data: {

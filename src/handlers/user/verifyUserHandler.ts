@@ -1,4 +1,4 @@
-import { UserStatus } from '@prisma/client';
+import { UserStatus, UserRole } from '@prisma/client';
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { mappingPrefixPhoneNumber } from '@/utils';
 import {
@@ -27,6 +27,13 @@ export async function verifyUserHandler(
       return reply.status(404).send({
         success: false,
         message: 'Người dùng không tồn tại.',
+      });
+    }
+
+    if (user.role === UserRole.customer) {
+      return reply.status(403).send({
+        success: false,
+        message: 'Customer không được phép đăng nhập.',
       });
     }
 

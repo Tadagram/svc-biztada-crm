@@ -45,6 +45,7 @@ const ROLE_DEFAULTS: Record<string, string[]> = {
     'agency_workers:read',
     'agency_workers:assign_user',
     'agency_workers:release',
+    'permissions:read',
     'topup:submit',
   ],
   user: ['users:read', 'workers:read', 'agency_workers:read', 'topup:submit'],
