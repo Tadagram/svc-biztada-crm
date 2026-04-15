@@ -28,7 +28,6 @@ const successResponse = {
     success: { type: 'boolean' },
     message: { type: 'string' },
     token: { type: 'string' },
-    refreshToken: { type: 'string' },
     user: userObject,
   },
 };

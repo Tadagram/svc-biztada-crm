@@ -11,6 +11,7 @@ declare module '@fastify/jwt' {
       role: string;
       agencyName?: string | null;
       parentUserId?: string | null;
+      sessionId: string;
     };
   }
 }

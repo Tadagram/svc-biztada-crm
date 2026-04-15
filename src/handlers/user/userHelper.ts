@@ -33,9 +33,8 @@ export interface VerifyUserBody {
   phoneNumber: string;
 }
 
-export interface TokenResponse {
-  accessToken: string;
-  refreshToken: string;
+export interface RefreshTokenResult {
+  token: string;
   expiresAt: Date;
 }
 
@@ -70,24 +69,25 @@ export async function checkUserInSystem(
   });
 }
 
-export async function generateToken(jwt: JWT, user: Users): Promise<TokenResponse> {
-  const token = jwt.sign(
+export function generateAccessToken(jwt: JWT, user: Users, sessionId: string): string {
+  return jwt.sign(
     {
       userId: user.user_id,
       role: user.role,
       agencyName: user.agency_name,
       parentUserId: user.parent_user_id,
+      sessionId,
     },
     { expiresIn: '1h' },
   );
+}
 
-  const refreshToken = crypto.randomBytes(32).toString('hex');
+export function generateRefreshToken(): RefreshTokenResult {
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + TIME_REFRESH_TOKEN);
 
   return {
-    accessToken: token,
-    refreshToken,
+    token: crypto.randomBytes(32).toString('hex'),
     expiresAt,
   };
 }

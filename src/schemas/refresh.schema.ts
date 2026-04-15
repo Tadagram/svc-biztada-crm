@@ -1,13 +1,5 @@
 import { FastifySchema } from 'fastify';
 
-// Request body properties
-const refreshTokenProperty = {
-  type: 'string',
-  errorMessage: {
-    type: 'Refresh Token phải là một chuỗi (string).',
-  },
-};
-
 // Success response (200)
 const successResponse = {
   type: 'object',
@@ -15,7 +7,6 @@ const successResponse = {
     success: { type: 'boolean' },
     message: { type: 'string' },
     token: { type: 'string' },
-    refreshToken: { type: 'string' },
   },
 };
 
@@ -39,22 +30,16 @@ const errorResponse = {
 
 export const refreshTokenSchema: FastifySchema = {
   tags: ['Authentication'],
-  description: 'Refresh expired JWT token using valid refresh token',
+  description:
+    'Refresh expired JWT token. Send expired access token in Authorization header. Backend validates session in DB.',
   summary: 'Refresh JWT Token',
-  body: {
-    type: 'object',
-    required: ['refreshToken'],
-    properties: {
-      refreshToken: refreshTokenProperty,
-    },
-  },
   response: {
     200: {
       description: 'Token refreshed successfully - returns new JWT token',
       ...successResponse,
     },
     401: {
-      description: 'Invalid or expired refresh token',
+      description: 'Invalid or expired session',
       ...unauthorizedResponse,
     },
     500: {

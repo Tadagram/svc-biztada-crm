@@ -1,7 +1,13 @@
 import { UserStatus } from '@prisma/client';
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { mappingPrefixPhoneNumber } from '@/utils';
-import { checkUserInSystem, generateToken, saveUserSession, VerifyUserBody } from './userHelper';
+import {
+  checkUserInSystem,
+  generateAccessToken,
+  generateRefreshToken,
+  saveUserSession,
+  VerifyUserBody,
+} from './userHelper';
 
 export async function verifyUserHandler(
   request: FastifyRequest<{
@@ -31,9 +37,9 @@ export async function verifyUserHandler(
       });
     }
 
-    const { accessToken: token, refreshToken, expiresAt } = await generateToken(jwt, user);
+    const { token: refreshToken, expiresAt } = generateRefreshToken();
 
-    await saveUserSession(
+    const session = await saveUserSession(
       prisma,
       user.user_id,
       refreshToken,
@@ -42,11 +48,12 @@ export async function verifyUserHandler(
       request.headers['user-agent'] as string,
     );
 
+    const token = generateAccessToken(jwt, user, session.session_id);
+
     return reply.send({
       success: true,
       message: 'Xác thực thành công!',
       token,
-      refreshToken,
       user: {
         userId: user.user_id,
         role: user.role,
