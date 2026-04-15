@@ -31,6 +31,8 @@ const PERMISSIONS = [
   { code: 'permissions:update', name: 'Cập nhật Permission' },
   { code: 'permissions:delete', name: 'Xóa Permission' },
   { code: 'permissions:manage_overrides', name: 'Quản lý Override User' },
+  { code: 'topup:submit', name: 'Gửi yêu cầu nạp tiền' },
+  { code: 'topup:review', name: 'Duyệt yêu cầu nạp tiền' },
 ];
 
 // Role defaults — mod bypasses all checks at runtime (không cần seed)
@@ -43,8 +45,9 @@ const ROLE_DEFAULTS: Record<string, string[]> = {
     'agency_workers:read',
     'agency_workers:assign_user',
     'agency_workers:release',
+    'topup:submit',
   ],
-  user: ['users:read', 'workers:read', 'agency_workers:read'],
+  user: ['users:read', 'workers:read', 'agency_workers:read', 'topup:submit'],
 };
 
 async function main() {
@@ -803,7 +806,60 @@ async function main() {
   }
   console.log(`✅ Notifications seeded: ${notiSeed.length} entries (25 for mod, spread 0–30 days)`);
 
-  // ── Summary ───────────────────────────────────────────────────────────────
+  // ── TopUp Requests (test data) ────────────────────────────────────────────
+  await prisma.topUpRequests.deleteMany({});
+
+  const modId = modUser.user_id;
+
+  if (user1Id && user2Id) {
+    await prisma.topUpRequests.createMany({
+      data: [
+        // PENDING — chờ duyệt
+        {
+          user_id: user1Id,
+          amount: 500000,
+          proof_note: 'CK từ VCB 9999 - 14/04/2026 10:30 - Nap tien user1',
+          status: 'PENDING',
+          submitted_at: daysAgo(0),
+        },
+        {
+          user_id: user2Id,
+          amount: 200000,
+          proof_note: 'Techcombank 8888 - 13/04/2026 15:00 - nap tai khoan',
+          status: 'PENDING',
+          submitted_at: daysAgo(1),
+        },
+        // APPROVED — đã duyệt (balance đã cộng)
+        {
+          user_id: user1Id,
+          amount: 1000000,
+          proof_note: 'ACB 7777 - 10/04/2026 09:00 - nap 1 trieu',
+          status: 'APPROVED',
+          submitted_at: daysAgo(4),
+          reviewed_by: modId,
+          reviewed_at: daysAgo(3),
+          review_note: 'Đã xác nhận bank',
+        },
+        // REJECTED — bị từ chối
+        {
+          user_id: user2Id,
+          amount: 999999,
+          proof_note: 'So tien sai - 08/04/2026',
+          status: 'REJECTED',
+          submitted_at: daysAgo(6),
+          reviewed_by: modId,
+          reviewed_at: daysAgo(6),
+          review_note: 'Không tìm thấy giao dịch tương ứng, vui lòng kiểm tra lại',
+        },
+      ],
+    });
+    // Cộng balance cho approved requests
+    await prisma.users.update({
+      where: { user_id: user1Id },
+      data: { balance: { increment: 1000000 } },
+    });
+    console.log('✅ TopUpRequests seeded: 4 entries (2 PENDING, 1 APPROVED, 1 REJECTED)');
+  }
   console.log('\n🏁 Seeding completed!');
   console.log(`   • Permissions   : ${PERMISSIONS.length} (codes mới chuẩn resource:action)`);
   console.log(
