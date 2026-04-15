@@ -1,4 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { ASSIGNMENT_STATUSES } from '@/utils/constants';
 
 interface ReactivateAgencyWorkerParams {
   agencyWorkerId: string;
@@ -34,7 +35,7 @@ export async function reactivateAgencyWorkerHandler(
     const conflicting = await prisma.agencyWorkers.findFirst({
       where: {
         worker_id: assignment.worker_id,
-        status: 'active',
+        status: ASSIGNMENT_STATUSES.ACTIVE,
         deleted_at: null,
         NOT: { agency_worker_id: agencyWorkerId },
       },
@@ -43,13 +44,13 @@ export async function reactivateAgencyWorkerHandler(
     if (conflicting) {
       await prisma.agencyWorkers.update({
         where: { agency_worker_id: conflicting.agency_worker_id },
-        data: { status: 'revoked', using_by: null },
+        data: { status: ASSIGNMENT_STATUSES.REVOKED, using_by: null },
       });
     }
 
     await prisma.agencyWorkers.update({
       where: { agency_worker_id: agencyWorkerId },
-      data: { status: 'active', using_by: null },
+      data: { status: ASSIGNMENT_STATUSES.ACTIVE, using_by: null },
     });
 
     return reply.send({

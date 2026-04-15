@@ -1,4 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { UserRole } from '@prisma/client';
+import { USER_ROLES, ASSIGNMENT_STATUSES } from '@/utils/constants';
 
 interface GetActiveWorkersQuerystring {
   agencyId?: string;
@@ -11,11 +13,11 @@ interface GetActiveWorkersQuerystring {
  */
 function buildActiveWorkerIsolation(caller: {
   userId: string;
-  role: string;
+  role: UserRole;
 }): Record<string, string> | null {
-  if (caller.role === 'mod') return {};
-  if (caller.role === 'agency') return { agency_user_id: caller.userId };
-  if (caller.role === 'user') return { using_by: caller.userId };
+  if (caller.role === USER_ROLES.MOD) return {};
+  if (caller.role === USER_ROLES.AGENCY) return { agency_user_id: caller.userId };
+  if (caller.role === USER_ROLES.USER) return { using_by: caller.userId };
   return null;
 }
 
@@ -27,7 +29,7 @@ export async function getActiveWorkersHandler(
   const { agencyId } = request.query;
 
   try {
-    const caller = request.user;
+    const caller = request.user as { userId: string; role: UserRole };
     const isolation = buildActiveWorkerIsolation(caller);
 
     if (isolation === null) {
@@ -35,10 +37,10 @@ export async function getActiveWorkersHandler(
     }
 
     const where = {
-      status: 'active' as const,
+      status: ASSIGNMENT_STATUSES.ACTIVE,
       deleted_at: null,
       ...isolation,
-      ...(caller.role === 'mod' && agencyId && { agency_user_id: agencyId }),
+      ...(caller.role === USER_ROLES.MOD && agencyId && { agency_user_id: agencyId }),
     };
 
     const assignments = await prisma.agencyWorkers.findMany({

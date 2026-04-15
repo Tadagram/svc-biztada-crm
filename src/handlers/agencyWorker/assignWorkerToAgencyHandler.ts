@@ -1,4 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { ASSIGNMENT_STATUSES, USER_ROLES, WORKER_STATUSES } from '@/utils/constants';
 
 interface AssignWorkerToAgencyBody {
   agency_user_id: string;
@@ -14,7 +15,7 @@ export async function assignWorkerToAgencyHandler(
 
   try {
     const agency = await prisma.users.findFirst({
-      where: { user_id: agency_user_id, role: 'agency', deleted_at: null },
+      where: { user_id: agency_user_id, role: USER_ROLES.AGENCY, deleted_at: null },
     });
     if (!agency) {
       return reply.status(404).send({
@@ -31,7 +32,7 @@ export async function assignWorkerToAgencyHandler(
     }
 
     const existingAssignment = await prisma.agencyWorkers.findFirst({
-      where: { worker_id, status: 'active', deleted_at: null },
+      where: { worker_id, status: ASSIGNMENT_STATUSES.ACTIVE, deleted_at: null },
     });
     if (existingAssignment) {
       return reply.status(409).send({
@@ -41,7 +42,7 @@ export async function assignWorkerToAgencyHandler(
     }
 
     const assignment = await prisma.agencyWorkers.create({
-      data: { agency_user_id, worker_id, status: 'active' },
+      data: { agency_user_id, worker_id, status: ASSIGNMENT_STATUSES.ACTIVE },
       select: {
         agency_worker_id: true,
         agency_user_id: true,
@@ -58,7 +59,7 @@ export async function assignWorkerToAgencyHandler(
 
     await prisma.workers.update({
       where: { worker_id },
-      data: { status: 'busy' },
+      data: { status: WORKER_STATUSES.BUSY },
     });
 
     return reply.status(201).send({

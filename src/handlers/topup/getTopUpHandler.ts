@@ -1,4 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { USER_ROLES } from '@/utils/constants';
 
 interface GetTopUpParams {
   topupId: string;
@@ -25,7 +26,7 @@ export async function getTopUpHandler(
   }
 
   // User can only see their own; reviewer (mod) can see all
-  const isMod = caller.role === 'mod';
+  const isMod = caller.role === USER_ROLES.MOD;
   if (!isMod && topup.user_id !== caller.userId) {
     return reply.status(403).send({ success: false, message: 'Không có quyền xem yêu cầu này' });
   }

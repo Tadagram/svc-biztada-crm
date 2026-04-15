@@ -1,4 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { ASSIGNMENT_STATUSES } from '@/utils/constants';
 
 interface DeleteWorkerParams {
   workerId: string;
@@ -26,7 +27,7 @@ export async function deleteWorkerHandler(
     const activeAssignment = await prisma.agencyWorkers.findFirst({
       where: {
         worker_id: workerId,
-        status: 'active',
+        status: ASSIGNMENT_STATUSES.ACTIVE,
         deleted_at: null,
         using_by: { not: null },
       },

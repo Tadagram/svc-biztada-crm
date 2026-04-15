@@ -1,4 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { WORKER_STATUSES } from '@/utils/constants';
 
 interface ReactivateWorkerParams {
   workerId: string;
@@ -27,7 +28,7 @@ export async function reactivateWorkerHandler(
       where: { worker_id: workerId },
       data: {
         deleted_at: null,
-        status: 'offline',
+        status: WORKER_STATUSES.OFFLINE,
         updated_at: new Date(),
       },
       select: {

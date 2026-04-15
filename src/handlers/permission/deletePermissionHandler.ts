@@ -1,20 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-
-// ── Role default permissions (matches seed) ──────────────────
-const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
-  agency: [
-    'users:read',
-    'users:create',
-    'users:update',
-    'workers:read',
-    'agency_workers:read',
-    'agency_workers:assign_user',
-    'agency_workers:release',
-    'permissions:read',
-    'topup:submit',
-  ],
-  user: ['users:read', 'workers:read', 'agency_workers:read', 'topup:submit'],
-};
+import { UserRole } from '@prisma/client';
+import { ROLE_DEFAULT_PERMISSIONS } from '@/utils/constants';
 
 interface DeletePermissionParams {
   permissionId: string;
@@ -41,8 +27,8 @@ export async function deletePermissionHandler(
 
     // ── Protect default permissions for agency/user roles ──────────────────
     // Only mod can delete default permissions
-    if (user.role !== 'mod') {
-      const userRoleDefaults = ROLE_DEFAULT_PERMISSIONS[user.role] ?? [];
+    if (user.role !== UserRole.mod) {
+      const userRoleDefaults = ROLE_DEFAULT_PERMISSIONS[user.role as UserRole] ?? [];
       if (userRoleDefaults.includes(existing.code)) {
         return reply.status(403).send({
           success: false,

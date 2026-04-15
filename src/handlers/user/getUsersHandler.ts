@@ -1,5 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { UserRole } from '@prisma/client';
+import { USER_ROLES } from '@/utils/constants';
 
 interface GetUsersQuerystring {
   limit?: number;
@@ -68,7 +69,7 @@ export const getUsersHandler = async (
         ? { deleted_at: { not: null } }
         : { deleted_at: null };
 
-    const parentFilter = caller.role === 'mod' && parent_user_id ? { parent_user_id } : {};
+    const parentFilter = caller.role === USER_ROLES.MOD && parent_user_id ? { parent_user_id } : {};
 
     const where = {
       ...deletedAtFilter,

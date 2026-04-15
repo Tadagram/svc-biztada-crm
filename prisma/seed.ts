@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, UserRole, UserStatus } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
 
@@ -35,9 +35,8 @@ const PERMISSIONS = [
   { code: 'topup:review', name: 'Duyệt yêu cầu nạp tiền' },
 ];
 
-// Role defaults — mod bypasses all checks at runtime (không cần seed)
-const ROLE_DEFAULTS: Record<string, string[]> = {
-  agency: [
+const ROLE_DEFAULTS: Record<UserRole, string[]> = {
+  [UserRole.agency]: [
     'users:read',
     'users:create',
     'users:update',
@@ -48,7 +47,9 @@ const ROLE_DEFAULTS: Record<string, string[]> = {
     'permissions:read',
     'topup:submit',
   ],
-  user: ['users:read', 'workers:read', 'agency_workers:read', 'topup:submit'],
+  [UserRole.user]: ['users:read', 'workers:read', 'agency_workers:read', 'topup:submit'],
+  [UserRole.mod]: [], // mod has no defaults, bypasses all checks
+  [UserRole.customer]: [], // customer has no defaults
 };
 
 async function main() {
@@ -90,11 +91,11 @@ async function main() {
   // ── 4. Mod User ──────────────────────────────────────────────────────────
   const modUser = await prisma.users.upsert({
     where: { phone_number: '0347503886' },
-    update: { status: 'active', deleted_at: null },
+    update: { status: UserStatus.active, deleted_at: null },
     create: {
       phone_number: '0347503886',
-      role: 'mod',
-      status: 'active',
+      role: UserRole.mod,
+      status: UserStatus.active,
       agency_name: 'System Admin',
     },
   });
@@ -111,11 +112,11 @@ async function main() {
   for (const a of agenciesData) {
     const agency = await prisma.users.upsert({
       where: { phone_number: a.phone },
-      update: { status: 'active', deleted_at: null },
+      update: { status: UserStatus.active, deleted_at: null },
       create: {
         phone_number: a.phone,
-        role: 'agency',
-        status: 'active',
+        role: UserRole.agency,
+        status: UserStatus.active,
         agency_name: a.name,
         parent_user_id: modUser.user_id,
       },
@@ -167,15 +168,15 @@ async function main() {
     const user = await prisma.users.upsert({
       where: { phone_number: u.phone },
       update: {
-        status: 'active',
+        status: UserStatus.active,
         deleted_at: null,
         agency_name: u.name,
         last_active_at: u.lastActive,
       },
       create: {
         phone_number: u.phone,
-        role: 'user',
-        status: 'active',
+        role: UserRole.user,
+        status: UserStatus.active,
         agency_name: u.name,
         last_active_at: u.lastActive,
         parent_user_id: u.parent,

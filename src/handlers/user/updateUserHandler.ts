@@ -1,4 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { UserRole, UserStatus } from '@prisma/client';
+import { CAN_UPDATE_USER, USER_ROLES } from '@/utils/constants';
 
 export const updateUserHandler = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
@@ -6,15 +8,15 @@ export const updateUserHandler = async (request: FastifyRequest, reply: FastifyR
     const { phone_number, agency_name, role, status, parent_user_id, restore } = request.body as {
       phone_number?: string;
       agency_name?: string;
-      role?: 'mod' | 'agency' | 'user' | 'customer';
-      status?: 'active' | 'disabled';
+      role?: UserRole;
+      status?: UserStatus;
       parent_user_id?: string;
       restore?: boolean;
     };
 
     // 🔐 Role check: chỉ Mod & Agency được cập nhật user
-    const caller = request.user as { userId: string; role: string };
-    if (!['mod', 'agency'].includes(caller.role)) {
+    const caller = request.user as { userId: string; role: UserRole };
+    if (!CAN_UPDATE_USER.includes(caller.role)) {
       return reply.status(403).send({
         statusCode: 403,
         error: 'Forbidden',
@@ -35,7 +37,7 @@ export const updateUserHandler = async (request: FastifyRequest, reply: FastifyR
     }
 
     // 🔐 Agency isolation: agency chỉ được sửa users của nó
-    if (caller.role === 'agency' && existingUser.parent_user_id !== caller.userId) {
+    if (caller.role === USER_ROLES.AGENCY && existingUser.parent_user_id !== caller.userId) {
       return reply.status(403).send({
         statusCode: 403,
         error: 'Forbidden',
@@ -64,7 +66,7 @@ export const updateUserHandler = async (request: FastifyRequest, reply: FastifyR
         ...(role && { role }),
         ...(status && { status }),
         ...(parent_user_id !== undefined && { parent_user_id }),
-        ...(restore === true && { deleted_at: null, status: 'active' as const }),
+        ...(restore === true && { deleted_at: null, status: UserStatus.active }),
         updated_at: new Date(),
       },
       select: {

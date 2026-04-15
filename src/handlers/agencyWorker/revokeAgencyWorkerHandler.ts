@@ -1,4 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { ASSIGNMENT_STATUSES, WORKER_STATUSES } from '@/utils/constants';
 
 interface RevokeAgencyWorkerParams {
   agencyWorkerId: string;
@@ -23,7 +24,7 @@ export async function revokeAgencyWorkerHandler(
       });
     }
 
-    if (assignment.status !== 'active') {
+    if (assignment.status !== ASSIGNMENT_STATUSES.ACTIVE) {
       return reply.status(400).send({
         success: false,
         message: `Cannot revoke an assignment that is already "${assignment.status}"`,
@@ -42,12 +43,12 @@ export async function revokeAgencyWorkerHandler(
 
       await tx.agencyWorkers.update({
         where: { agency_worker_id: agencyWorkerId },
-        data: { status: 'revoked', using_by: null },
+        data: { status: ASSIGNMENT_STATUSES.REVOKED, using_by: null },
       });
 
       await tx.workers.update({
         where: { worker_id: assignment.worker_id },
-        data: { status: 'ready' },
+        data: { status: WORKER_STATUSES.READY },
       });
     });
 

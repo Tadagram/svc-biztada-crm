@@ -1,4 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { UserRole } from '@prisma/client';
+import { USER_ROLES } from '@/utils/constants';
 
 interface GetUsageLogsQuerystring {
   workerId?: string;
@@ -19,11 +21,11 @@ interface GetUsageLogsQuerystring {
 
 function buildUsageLogIsolation(caller: {
   userId: string;
-  role: string;
+  role: UserRole;
 }): Record<string, string> | null {
-  if (caller.role === 'mod') return {};
-  if (caller.role === 'agency') return { agency_user_id: caller.userId };
-  if (caller.role === 'user') return { user_id: caller.userId };
+  if (caller.role === USER_ROLES.MOD) return {};
+  if (caller.role === USER_ROLES.AGENCY) return { agency_user_id: caller.userId };
+  if (caller.role === USER_ROLES.USER) return { user_id: caller.userId };
   return null;
 }
 
@@ -56,7 +58,7 @@ export async function getUsageLogsHandler(
   const isAll = all === true || String(all) === 'true';
 
   try {
-    const caller = request.user;
+    const caller = request.user as { userId: string; role: UserRole };
     const isolation = buildUsageLogIsolation(caller);
 
     if (isolation === null) {
@@ -85,8 +87,8 @@ export async function getUsageLogsHandler(
       ...isolation,
       ...(workerId && { worker_id: workerId }),
       ...(resolvedWorkerIds && { worker_id: { in: resolvedWorkerIds } }),
-      ...(caller.role === 'mod' && agencyId && { agency_user_id: agencyId }),
-      ...(caller.role === 'mod' && userId && { user_id: userId }),
+      ...(caller.role === USER_ROLES.MOD && agencyId && { agency_user_id: agencyId }),
+      ...(caller.role === USER_ROLES.MOD && userId && { user_id: userId }),
       ...(isOpen && { end_at: null }),
       ...((from || to) && {
         start_at: {

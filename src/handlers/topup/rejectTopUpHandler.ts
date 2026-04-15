@@ -1,4 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { TOPUP_STATUSES } from '@/utils/constants';
 import topupEmitter from '@plugins/topupEmitter';
 
 interface RejectTopUpParams {
@@ -24,7 +25,7 @@ export async function rejectTopUpHandler(
   if (!existing) {
     return reply.status(404).send({ success: false, message: 'Yêu cầu nạp tiền không tồn tại' });
   }
-  if (existing.status !== 'PENDING') {
+  if (existing.status !== TOPUP_STATUSES.PENDING) {
     return reply.status(400).send({
       success: false,
       message: `Yêu cầu đã ở trạng thái ${existing.status}, không thể cập nhật`,
@@ -36,7 +37,7 @@ export async function rejectTopUpHandler(
   const updated = await prisma.topUpRequests.update({
     where: { topup_id: topupId },
     data: {
-      status: 'REJECTED',
+      status: TOPUP_STATUSES.REJECTED,
       reviewed_by: caller.userId,
       reviewed_at: now,
       review_note: review_note ?? null,
@@ -53,7 +54,7 @@ export async function rejectTopUpHandler(
     topup_id: updated.topup_id,
     user_id: updated.user_id,
     amount: updated.amount.toString(),
-    status: 'REJECTED',
+    status: TOPUP_STATUSES.REJECTED,
     submitted_at: updated.submitted_at.toISOString(),
     reviewed_by: caller.userId,
     reviewed_at: now.toISOString(),

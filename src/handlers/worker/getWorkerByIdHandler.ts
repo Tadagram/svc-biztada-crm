@@ -1,4 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { UserRole } from '@prisma/client';
+import { USER_ROLES } from '@/utils/constants';
 
 interface GetWorkerByIdParams {
   workerId: string;
@@ -10,14 +12,14 @@ export async function getWorkerByIdHandler(
 ) {
   const { prisma } = request;
   const { workerId } = request.params;
-  const caller = request.user;
+  const caller = request.user as { userId: string; role: UserRole };
 
   try {
     // Build isolation filter so non-mod users can only see workers related to them
     const isolationFilter =
-      caller.role === 'agency'
+      caller.role === USER_ROLES.AGENCY
         ? { agencyWorkers: { some: { agency_user_id: caller.userId, deleted_at: null } } }
-        : caller.role === 'user'
+        : caller.role === USER_ROLES.USER
           ? { agencyWorkers: { some: { using_by: caller.userId, deleted_at: null } } }
           : {};
 

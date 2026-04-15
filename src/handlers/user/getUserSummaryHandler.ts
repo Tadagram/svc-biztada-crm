@@ -1,4 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { UserRole } from '@prisma/client';
+import { USER_ROLES } from '@/utils/constants';
 
 /**
  * GET /users/:userId/summary
@@ -10,13 +12,13 @@ export const getUserSummaryHandler = async (
 ) => {
   const { userId } = request.params;
   const prisma = request.server.prisma;
-  const caller = request.user;
+  const caller = request.user as { userId: string; role: UserRole; parentUserId?: string };
 
   const user = await prisma.users.findFirst({
     where: {
       user_id: userId,
-      ...(caller.role === 'agency' && { parent_user_id: caller.userId }),
-      ...(caller.role === 'user' && {
+      ...(caller.role === USER_ROLES.AGENCY && { parent_user_id: caller.userId }),
+      ...(caller.role === USER_ROLES.USER && {
         OR: [{ user_id: caller.userId }, { parent_user_id: caller.parentUserId ?? '' }],
       }),
     },

@@ -1,8 +1,9 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { WORKER_STATUSES, type WorkerStatus } from '@/utils/constants';
 
 interface CreateWorkerBody {
   name: string;
-  status?: 'ready' | 'busy' | 'offline';
+  status?: WorkerStatus;
 }
 
 export async function createWorkerHandler(
@@ -10,7 +11,7 @@ export async function createWorkerHandler(
   reply: FastifyReply,
 ) {
   const { prisma } = request;
-  const { name, status = 'ready' } = request.body;
+  const { name, status = WORKER_STATUSES.READY } = request.body;
 
   try {
     const worker = await prisma.workers.create({

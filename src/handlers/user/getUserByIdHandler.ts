@@ -1,15 +1,17 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { UserRole } from '@prisma/client';
+import { USER_ROLES } from '@/utils/constants';
 
 export const getUserByIdHandler = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
     const { userId } = request.params as { userId: string };
-    const caller = request.user;
+    const caller = request.user as { userId: string; parentUserId?: string | null; role: UserRole };
 
     const user = await request.server.prisma.users.findFirst({
       where: {
         user_id: userId,
-        ...(caller.role === 'agency' && { parent_user_id: caller.userId }),
-        ...(caller.role === 'user' && { parent_user_id: caller.parentUserId ?? '' }),
+        ...(caller.role === USER_ROLES.AGENCY && { parent_user_id: caller.userId }),
+        ...(caller.role === USER_ROLES.USER && { parent_user_id: caller.parentUserId ?? '' }),
       },
       select: {
         user_id: true,

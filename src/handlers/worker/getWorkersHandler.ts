@@ -1,22 +1,24 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { UserRole } from '@prisma/client';
+import { USER_ROLES, type WorkerStatus } from '@/utils/constants';
 
 interface GetWorkersQuerystring {
   limit?: number;
   offset?: number;
-  status?: 'ready' | 'busy' | 'offline' | 'deleted';
+  status?: WorkerStatus | 'deleted';
   all?: boolean;
   search?: string;
 }
 
 function buildWorkerIsolation(caller: {
   userId: string;
-  role: string;
+  role: UserRole;
 }): Record<string, unknown> | null {
-  if (caller.role === 'mod') return {};
-  if (caller.role === 'agency') {
+  if (caller.role === USER_ROLES.MOD) return {};
+  if (caller.role === USER_ROLES.AGENCY) {
     return { agency_workers: { some: { agency_user_id: caller.userId, deleted_at: null } } };
   }
-  if (caller.role === 'user') {
+  if (caller.role === USER_ROLES.USER) {
     return { agency_workers: { some: { using_by: caller.userId, deleted_at: null } } };
   }
   return null; // customer → block
@@ -32,7 +34,7 @@ export async function getWorkersHandler(
   const offset = Number(queryOffset);
 
   try {
-    const caller = request.user;
+    const caller = request.user as { userId: string; role: UserRole };
     const isolation = buildWorkerIsolation(caller);
 
     if (isolation === null) {

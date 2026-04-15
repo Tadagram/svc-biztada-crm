@@ -1,12 +1,13 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { UserRole } from '@prisma/client';
+import { CAN_DELETE_USER, USER_ROLES } from '@/utils/constants';
 
 export const deleteUserHandler = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
     const { userId } = request.params as { userId: string };
+    const caller = request.user as { userId: string; role: UserRole };
 
-    // 🔐 Role check: chỉ Mod & Agency được xóa user
-    const caller = request.user as { userId: string; role: string };
-    if (!['mod', 'agency'].includes(caller.role)) {
+    if (!CAN_DELETE_USER.includes(caller.role)) {
       return reply.status(403).send({
         statusCode: 403,
         error: 'Forbidden',
@@ -26,8 +27,7 @@ export const deleteUserHandler = async (request: FastifyRequest, reply: FastifyR
       return;
     }
 
-    // 🔐 Agency isolation: agency chỉ được xóa users của nó
-    if (caller.role === 'agency' && existingUser.parent_user_id !== caller.userId) {
+    if (caller.role === USER_ROLES.AGENCY && existingUser.parent_user_id !== caller.userId) {
       return reply.status(403).send({
         statusCode: 403,
         error: 'Forbidden',

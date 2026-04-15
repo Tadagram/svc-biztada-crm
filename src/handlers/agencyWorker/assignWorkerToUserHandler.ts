@@ -1,4 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { UserRole } from '@prisma/client';
+import { USER_ROLES, ASSIGNMENT_STATUSES } from '@/utils/constants';
 
 interface AssignWorkerToUserParams {
   agencyWorkerId: string;
@@ -20,13 +22,13 @@ export async function assignWorkerToUserHandler(
   const { user_id } = request.body;
 
   try {
-    const caller = request.user;
+    const caller = request.user as { userId: string; role: UserRole };
 
     const assignment = await prisma.agencyWorkers.findFirst({
       where: {
         agency_worker_id: agencyWorkerId,
         deleted_at: null,
-        ...(caller.role === 'agency' && { agency_user_id: caller.userId }),
+        ...(caller.role === USER_ROLES.AGENCY && { agency_user_id: caller.userId }),
       },
     });
 
@@ -37,7 +39,7 @@ export async function assignWorkerToUserHandler(
       });
     }
 
-    if (assignment.status !== 'active') {
+    if (assignment.status !== ASSIGNMENT_STATUSES.ACTIVE) {
       return reply.status(400).send({
         success: false,
         message: 'Worker assignment is not active',

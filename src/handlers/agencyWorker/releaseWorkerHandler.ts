@@ -1,4 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { UserRole } from '@prisma/client';
+import { USER_ROLES } from '@/utils/constants';
 
 interface ReleaseWorkerParams {
   agencyWorkerId: string;
@@ -12,13 +14,13 @@ export async function releaseWorkerHandler(
   const { agencyWorkerId } = request.params;
 
   try {
-    const caller = request.user;
+    const caller = request.user as { userId: string; role: UserRole };
 
     const assignment = await prisma.agencyWorkers.findFirst({
       where: {
         agency_worker_id: agencyWorkerId,
         deleted_at: null,
-        ...(caller.role === 'agency' && { agency_user_id: caller.userId }),
+        ...(caller.role === USER_ROLES.AGENCY && { agency_user_id: caller.userId }),
       },
     });
 

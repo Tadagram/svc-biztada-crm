@@ -1,4 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { type WorkerStatus } from '@/utils/constants';
 
 interface UpdateWorkerParams {
   workerId: string;
@@ -6,7 +7,7 @@ interface UpdateWorkerParams {
 
 interface UpdateWorkerBody {
   name?: string;
-  status?: 'ready' | 'busy' | 'offline';
+  status?: WorkerStatus;
 }
 
 export async function updateWorkerHandler(

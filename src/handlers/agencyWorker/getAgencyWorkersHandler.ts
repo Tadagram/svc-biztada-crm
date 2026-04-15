@@ -1,7 +1,9 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { UserRole, AssignmentStatus } from '@prisma/client';
+import { USER_ROLES } from '@/utils/constants';
 
 interface GetAgencyWorkersQuerystring {
-  status?: 'active' | 'completed' | 'revoked';
+  status?: AssignmentStatus;
   limit?: number;
   offset?: number;
   all?: boolean;
@@ -10,11 +12,11 @@ interface GetAgencyWorkersQuerystring {
 
 function buildAgencyWorkerIsolation(caller: {
   userId: string;
-  role: string;
+  role: UserRole;
 }): Record<string, string> | null {
-  if (caller.role === 'mod') return {};
-  if (caller.role === 'agency') return { agency_user_id: caller.userId };
-  if (caller.role === 'user') return { using_by: caller.userId };
+  if (caller.role === USER_ROLES.MOD) return {};
+  if (caller.role === USER_ROLES.AGENCY) return { agency_user_id: caller.userId };
+  if (caller.role === USER_ROLES.USER) return { using_by: caller.userId };
   return null;
 }
 
@@ -34,14 +36,14 @@ export async function getAgencyWorkersHandler(
   const offset = Number(queryOffset);
 
   try {
-    const caller = request.user;
+    const caller = request.user as { userId: string; role: UserRole };
     const isolation = buildAgencyWorkerIsolation(caller);
 
     if (isolation === null) {
       return reply.status(403).send({ success: false, message: 'Forbidden' });
     }
 
-    const agencyFilter = caller.role === 'mod' && agency_user_id ? { agency_user_id } : {};
+    const agencyFilter = caller.role === USER_ROLES.MOD && agency_user_id ? { agency_user_id } : {};
 
     const where = {
       deleted_at: null,

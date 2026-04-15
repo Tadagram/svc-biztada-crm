@@ -1,8 +1,7 @@
 import { UserRole, UserStatus } from '@prisma/client';
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { createUserInDatabase, checkUserExists, CreateUserBody, UserPayload } from './userHelper';
-
-const CAN_CREATE: UserRole[] = ['mod', 'agency'];
+import { CAN_CREATE_USER, USER_ROLES } from '@/utils/constants';
 
 export async function createUserHandler(
   request: FastifyRequest<{
@@ -21,7 +20,7 @@ export async function createUserHandler(
   try {
     // 🔐 Role check: chỉ Mod & Agency được tạo user
     const caller = request.user as { userId: string; role: UserRole };
-    if (!CAN_CREATE.includes(caller.role)) {
+    if (!CAN_CREATE_USER.includes(caller.role)) {
       return reply.status(403).send({
         statusCode: 403,
         error: 'Forbidden',
@@ -40,7 +39,7 @@ export async function createUserHandler(
     }
 
     // 🔐 Mod tạo agency, Agency tạo user/customer
-    if (caller.role === 'mod' && role !== 'agency') {
+    if (caller.role === USER_ROLES.MOD && role !== USER_ROLES.AGENCY) {
       return reply.status(400).send({
         statusCode: 400,
         error: 'Bad Request',
@@ -48,7 +47,7 @@ export async function createUserHandler(
       });
     }
 
-    if (caller.role === 'agency' && role === 'agency') {
+    if (caller.role === USER_ROLES.AGENCY && role === USER_ROLES.AGENCY) {
       return reply.status(400).send({
         statusCode: 400,
         error: 'Bad Request',
@@ -65,9 +64,9 @@ export async function createUserHandler(
     if (agency_name) userPayload.agency_name = agency_name;
 
     // 🔐 Set parent_user_id
-    if (caller.role === 'mod' && role === 'agency') {
+    if (caller.role === USER_ROLES.MOD && role === USER_ROLES.AGENCY) {
       userPayload.parent_user_id = caller.userId; // Mod tạo agency → parent = mod
-    } else if (caller.role === 'agency') {
+    } else if (caller.role === USER_ROLES.AGENCY) {
       userPayload.parent_user_id = caller.userId; // Agency tạo user/customer → parent = agency
     }
 

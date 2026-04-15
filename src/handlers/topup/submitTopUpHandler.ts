@@ -1,4 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { USER_ROLES, USER_STATUSES, TOPUP_STATUSES } from '@/utils/constants';
 import topupEmitter from '@plugins/topupEmitter';
 
 interface SubmitTopUpBody {
@@ -19,7 +20,7 @@ export async function submitTopUpHandler(
       user_id: caller.userId,
       amount,
       proof_note: proof_note ?? null,
-      status: 'PENDING',
+      status: TOPUP_STATUSES.PENDING,
     },
     include: {
       user: { select: { user_id: true, phone_number: true, agency_name: true, balance: true } },
@@ -31,7 +32,7 @@ export async function submitTopUpHandler(
 
   // Notify all MODs
   const mods = await prisma.users.findMany({
-    where: { role: 'mod', status: 'active' },
+    where: { role: USER_ROLES.MOD, status: USER_STATUSES.ACTIVE },
     select: { user_id: true },
   });
 
@@ -53,7 +54,7 @@ export async function submitTopUpHandler(
     topup_id: topup.topup_id,
     user_id: topup.user_id,
     amount: topup.amount.toString(),
-    status: 'PENDING',
+    status: TOPUP_STATUSES.PENDING,
     submitted_at: topup.submitted_at.toISOString(),
   });
 
