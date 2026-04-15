@@ -1,5 +1,20 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 
+const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
+  agency: [
+    'users:read',
+    'users:create',
+    'users:update',
+    'workers:read',
+    'agency_workers:read',
+    'agency_workers:assign_user',
+    'agency_workers:release',
+    'permissions:read',
+    'topup:submit',
+  ],
+  user: ['users:read', 'workers:read', 'agency_workers:read', 'topup:submit'],
+};
+
 interface UpdatePermissionParams {
   permissionId: string;
 }
@@ -16,7 +31,7 @@ export async function updatePermissionHandler(
   }>,
   reply: FastifyReply,
 ) {
-  const { prisma } = request;
+  const { prisma, user } = request;
   const { permissionId } = request.params;
   const { name, code } = request.body;
 
@@ -30,6 +45,18 @@ export async function updatePermissionHandler(
         success: false,
         message: 'Permission not found',
       });
+    }
+
+    // ── Protect default permissions for agency/user roles ──────────────────
+    // Only mod can edit default permissions
+    if (user.role !== 'mod') {
+      const userRoleDefaults = ROLE_DEFAULT_PERMISSIONS[user.role] ?? [];
+      if (userRoleDefaults.includes(existing.code)) {
+        return reply.status(403).send({
+          success: false,
+          message: `Không thể cập nhật quyền mặc định "${existing.code}". Quyền này được gán sẵn cho role ${user.role} và chỉ admin mới có thể chỉnh sửa.`,
+        });
+      }
     }
 
     // Check code conflict with another permission
