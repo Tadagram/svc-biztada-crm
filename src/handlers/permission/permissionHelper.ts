@@ -68,8 +68,9 @@ function mergeOverridesIntoCustomFields(customFields: unknown, overrides: UserPe
 
 export async function getRolePermissions(
   prisma: PrismaClient,
-  role: string,
+  role: string | null,
 ): Promise<PermissionInfo[]> {
+  if (role === null) return []; // admin has no role-based restrictions
   const rolePermissions = await prisma.rolePermissions.findMany({
     where: {
       role,
@@ -155,7 +156,7 @@ export async function setUserPermissionOverrides(
 export async function getUserEffectivePermissions(
   prisma: PrismaClient,
   userId: string,
-  userRole: string,
+  userRole: string | null,
 ): Promise<PermissionInfo[]> {
   const rolePermissions = await getRolePermissions(prisma, userRole);
   const effectivePermissions = new Map(rolePermissions.map((p) => [p.code, p]));
@@ -190,9 +191,10 @@ export async function getUserEffectivePermissions(
 export async function hasPermission(
   prisma: PrismaClient,
   userId: string,
-  userRole: string,
+  userRole: string | null,
   permissionCode: string,
 ): Promise<boolean> {
+  if (userRole === null) return true; // admin: full access
   const effectivePermissions = await getUserEffectivePermissions(prisma, userId, userRole);
 
   return effectivePermissions.some((p) => p.code === permissionCode);
@@ -201,9 +203,10 @@ export async function hasPermission(
 export async function hasAllPermissions(
   prisma: PrismaClient,
   userId: string,
-  userRole: string,
+  userRole: string | null,
   permissionCodes: string[],
 ): Promise<boolean> {
+  if (userRole === null) return true; // admin: full access
   const effectivePermissions = await getUserEffectivePermissions(prisma, userId, userRole);
   const effectivePermissionCodes = new Set(effectivePermissions.map((p) => p.code));
 
@@ -213,9 +216,10 @@ export async function hasAllPermissions(
 export async function hasAnyPermission(
   prisma: PrismaClient,
   userId: string,
-  userRole: string,
+  userRole: string | null,
   permissionCodes: string[],
 ): Promise<boolean> {
+  if (userRole === null) return true; // admin: full access
   const effectivePermissions = await getUserEffectivePermissions(prisma, userId, userRole);
   const effectivePermissionCodes = new Set(effectivePermissions.map((p) => p.code));
 

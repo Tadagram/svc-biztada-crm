@@ -30,9 +30,12 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Only install production dependencies
+# Install OpenSSL for Prisma library engine
+RUN apk add --no-cache openssl
+
+# Only install production dependencies (--ignore-scripts skips husky/prepare)
 COPY package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 
 # Copy compiled output and Prisma artifacts
 COPY --from=builder /app/dist ./dist

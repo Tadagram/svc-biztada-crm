@@ -2,13 +2,13 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider   = "prisma-client-js"
-  engineType = "client"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "postgresql"
-  // Ghi chú: DATABASE_URL được quản lý tại file prisma.config.ts (Prisma 7+)
+  provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
 enum UserRole {
@@ -46,18 +46,18 @@ enum TopUpStatus {
 }
 
 model Users {
-  user_id         String             @id @default(uuid()) @db.Uuid
-  parent_user_id  String?            @db.Uuid
+  user_id         String             @id @default(uuid()) @db.Char(36)
+  parent_user_id  String?            @db.Char(36)
   agency_name     String?
   phone_number    String             @unique
-  role            UserRole           @default(user)
+  role            UserRole?          // null = full admin access (biztada-crm admin login); explicit roles for sub-users
   status          UserStatus         @default(active)
   custom_fields   Json?
   balance         Decimal            @default(0) @db.Decimal(15, 2)
-  last_active_at  DateTime?          @db.Timestamptz
-  created_at      DateTime           @default(now()) @db.Timestamptz
-  updated_at      DateTime           @default(now()) @updatedAt @db.Timestamptz
-  deleted_at      DateTime?          @db.Timestamptz
+  last_active_at  DateTime?          @db.DateTime(0)
+  created_at      DateTime           @default(now()) @db.DateTime(0)
+  updated_at      DateTime           @default(now()) @updatedAt @db.DateTime(0)
+  deleted_at      DateTime?          @db.DateTime(0)
 
   // Relations
   parent          Users?               @relation("UserToUser", fields: [parent_user_id], references: [user_id])
@@ -76,13 +76,13 @@ model Users {
 }
 
 model UserSessions {
-  session_id     String    @id @default(uuid()) @db.Uuid
-  user_id        String    @db.Uuid
+  session_id     String    @id @default(uuid()) @db.Char(36)
+  user_id        String    @db.Char(36)
   refresh_token  String    @unique
-  expires_at     DateTime  @db.Timestamptz
+  expires_at     DateTime  @db.DateTime(0)
   ip_address     String?
   user_agent     String?
-  created_at     DateTime  @default(now()) @db.Timestamptz
+  created_at     DateTime  @default(now()) @db.DateTime(0)
 
   // Relations
   user           Users     @relation(fields: [user_id], references: [user_id])
@@ -91,12 +91,12 @@ model UserSessions {
 }
 
 model Permissions {
-  permission_id   String             @id @default(uuid()) @db.Uuid
+  permission_id   String             @id @default(uuid()) @db.Char(36)
   name            String
   code            String             @unique
-  created_at      DateTime           @default(now()) @db.Timestamptz
-  updated_at      DateTime           @default(now()) @updatedAt @db.Timestamptz
-  deleted_at      DateTime?          @db.Timestamptz
+  created_at      DateTime           @default(now()) @db.DateTime(0)
+  updated_at      DateTime           @default(now()) @updatedAt @db.DateTime(0)
+  deleted_at      DateTime?          @db.DateTime(0)
 
   // Relations
   role_permissions RolePermissions[]
@@ -105,12 +105,12 @@ model Permissions {
 }
 
 model RolePermissions {
-  role_permission_id String          @id @default(uuid()) @db.Uuid
+  role_permission_id String          @id @default(uuid()) @db.Char(36)
   role              String
-  permission_id      String          @db.Uuid
-  created_at         DateTime        @default(now()) @db.Timestamptz
-  updated_at         DateTime        @default(now()) @updatedAt @db.Timestamptz
-  deleted_at         DateTime?       @db.Timestamptz
+  permission_id      String          @db.Char(36)
+  created_at         DateTime        @default(now()) @db.DateTime(0)
+  updated_at         DateTime        @default(now()) @updatedAt @db.DateTime(0)
+  deleted_at         DateTime?       @db.DateTime(0)
 
   // Relations
   permission         Permissions     @relation(fields: [permission_id], references: [permission_id])
@@ -119,12 +119,12 @@ model RolePermissions {
 }
 
 model Workers {
-  worker_id       String             @id @default(uuid()) @db.Uuid
+  worker_id       String             @id @default(uuid()) @db.Char(36)
   name            String
   status          String             @default("ready") // ready, busy, offline
-  created_at      DateTime           @default(now()) @db.Timestamptz
-  updated_at      DateTime           @default(now()) @updatedAt @db.Timestamptz
-  deleted_at      DateTime?          @db.Timestamptz
+  created_at      DateTime           @default(now()) @db.DateTime(0)
+  updated_at      DateTime           @default(now()) @updatedAt @db.DateTime(0)
+  deleted_at      DateTime?          @db.DateTime(0)
 
   // Relations
   agency_workers  AgencyWorkers[]
@@ -134,14 +134,14 @@ model Workers {
 }
 
 model AgencyWorkers {
-  agency_worker_id String            @id @default(uuid()) @db.Uuid
-  agency_user_id   String            @db.Uuid
-  worker_id        String            @db.Uuid
-  using_by         String?           @db.Uuid
+  agency_worker_id String            @id @default(uuid()) @db.Char(36)
+  agency_user_id   String            @db.Char(36)
+  worker_id        String            @db.Char(36)
+  using_by         String?           @db.Char(36)
   status           AssignmentStatus  @default(active)
-  created_at       DateTime          @default(now()) @db.Timestamptz
-  updated_at       DateTime          @default(now()) @updatedAt @db.Timestamptz
-  deleted_at       DateTime?         @db.Timestamptz
+  created_at       DateTime          @default(now()) @db.DateTime(0)
+  updated_at       DateTime          @default(now()) @updatedAt @db.DateTime(0)
+  deleted_at       DateTime?         @db.DateTime(0)
 
   // Relations
   agency           Users             @relation("AgencyUser", fields: [agency_user_id], references: [user_id])
@@ -152,14 +152,14 @@ model AgencyWorkers {
 }
 
 model WorkerUsageLogs {
-  usage_log_id    String             @id @default(uuid()) @db.Uuid
-  worker_id       String             @db.Uuid
-  agency_user_id  String             @db.Uuid
-  user_id         String             @db.Uuid
-  start_at        DateTime           @default(now()) @db.Timestamptz
-  end_at          DateTime?          @db.Timestamptz
+  usage_log_id    String             @id @default(uuid()) @db.Char(36)
+  worker_id       String             @db.Char(36)
+  agency_user_id  String             @db.Char(36)
+  user_id         String             @db.Char(36)
+  start_at        DateTime           @default(now()) @db.DateTime(0)
+  end_at          DateTime?          @db.DateTime(0)
   metadata        Json?
-  created_at      DateTime           @default(now()) @db.Timestamptz
+  created_at      DateTime           @default(now()) @db.DateTime(0)
 
   // Relations
   worker          Workers            @relation(fields: [worker_id], references: [worker_id])
@@ -170,9 +170,9 @@ model WorkerUsageLogs {
 }
 
 model Notifications {
-  notification_id String            @id @default(uuid()) @db.Uuid
-  recipient_id    String            @db.Uuid
-  sender_id       String?           @db.Uuid
+  notification_id String            @id @default(uuid()) @db.Char(36)
+  recipient_id    String            @db.Char(36)
+  sender_id       String?           @db.Char(36)
   type            NotificationType  @default(custom)
   title           String
   body            String
@@ -180,9 +180,9 @@ model Notifications {
   action_url      String?
   custom_fields   Json?
   is_read         Boolean           @default(false)
-  read_at         DateTime?         @db.Timestamptz
-  expires_at      DateTime?         @db.Timestamptz
-  created_at      DateTime          @default(now()) @db.Timestamptz
+  read_at         DateTime?         @db.DateTime(0)
+  expires_at      DateTime?         @db.DateTime(0)
+  created_at      DateTime          @default(now()) @db.DateTime(0)
 
   // Relations
   recipient       Users             @relation("NotificationRecipient", fields: [recipient_id], references: [user_id])
@@ -196,24 +196,24 @@ model Notifications {
 // key-value store for system-wide settings (survives deploys — stored in DB)
 model SystemSettings {
   key        String   @id
-  value      String   // TEXT — no size limit in Postgres; stores base64 data URLs etc.
-  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz
+  value      String   @db.Text // stores base64 data URLs etc.
+  updated_at DateTime @default(now()) @updatedAt @db.DateTime(0)
 
   @@map("system_settings")
 }
 
 model TopUpRequests {
-  topup_id      String       @id @default(uuid()) @db.Uuid
-  user_id       String       @db.Uuid
+  topup_id      String       @id @default(uuid()) @db.Char(36)
+  user_id       String       @db.Char(36)
   amount        Decimal      @db.Decimal(15, 2)
   proof_note    String?      // nội dung CK, ngân hàng, thời gian khách khai
   status        TopUpStatus  @default(PENDING)
-  submitted_at  DateTime     @default(now()) @db.Timestamptz
-  reviewed_by   String?      @db.Uuid     // trace: ai duyệt
-  reviewed_at   DateTime?    @db.Timestamptz
+  submitted_at  DateTime     @default(now()) @db.DateTime(0)
+  reviewed_by   String?      @db.Char(36)  // trace: ai duyệt
+  reviewed_at   DateTime?    @db.DateTime(0)
   review_note   String?      // ghi chú duyệt hoặc lý do reject
-  created_at    DateTime     @default(now()) @db.Timestamptz
-  updated_at    DateTime     @default(now()) @updatedAt @db.Timestamptz
+  created_at    DateTime     @default(now()) @db.DateTime(0)
+  updated_at    DateTime     @default(now()) @updatedAt @db.DateTime(0)
 
   // Relations
   user          Users        @relation("TopUpSubmitter", fields: [user_id],     references: [user_id])

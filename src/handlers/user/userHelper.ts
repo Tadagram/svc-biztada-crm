@@ -24,7 +24,7 @@ export interface UserResponse {
   user_id: string;
   phone_number: string;
   agency_name: string | null;
-  role: UserRole;
+  role: UserRole | null;
   status: UserStatus;
   created_at: Date;
 }

@@ -8,7 +8,7 @@ declare module '@fastify/jwt' {
   interface FastifyJWT {
     payload: {
       userId: string;
-      role: string;
+      role: string | null;
       agencyName?: string | null;
       parentUserId?: string | null;
       sessionId: string;

@@ -1,8 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import fp from 'fastify-plugin';
-import { PrismaClient } from '.prisma/client';
-import { Pool } from 'pg';
-import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '@prisma/client';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -21,23 +19,19 @@ async function prismaPlugin(fastify: FastifyInstance) {
   }
 
   try {
-    const pool = new Pool({ connectionString });
-    const adapter = new PrismaPg(pool);
     const prisma = new PrismaClient({
-      adapter,
       log: ['error', 'warn'],
     });
 
-    fastify.log.info('🐘 Prisma Plugin: Initializing with Driver Adapter (pg)...');
+    fastify.log.info('🗄️ Prisma Plugin: Initializing MySQL connection...');
     fastify.decorate('prisma', prisma);
     fastify.decorateRequest('prisma', {
       getter: () => fastify.prisma,
     });
 
     fastify.addHook('onClose', async (server) => {
-      fastify.log.info('🐘 Prisma Plugin: Disconnecting and closing Pool...');
+      fastify.log.info('🗄️ Prisma Plugin: Disconnecting...');
       await server.prisma.$disconnect();
-      await pool.end();
     });
   } catch (error) {
     fastify.log.error('❌ Prisma Plugin Error: Could not initialize Prisma with Adapter.');
@@ -46,3 +40,4 @@ async function prismaPlugin(fastify: FastifyInstance) {
 }
 
 export default fp(prismaPlugin);
+
