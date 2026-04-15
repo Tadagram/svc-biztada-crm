@@ -14,10 +14,10 @@ function buildWorkerIsolation(caller: {
 }): Record<string, unknown> | null {
   if (caller.role === 'mod') return {};
   if (caller.role === 'agency') {
-    return { agencyWorkers: { some: { agency_user_id: caller.userId, deleted_at: null } } };
+    return { agency_workers: { some: { agency_user_id: caller.userId, deleted_at: null } } };
   }
   if (caller.role === 'user') {
-    return { agencyWorkers: { some: { using_by: caller.userId, deleted_at: null } } };
+    return { agency_workers: { some: { using_by: caller.userId, deleted_at: null } } };
   }
   return null; // customer → block
 }

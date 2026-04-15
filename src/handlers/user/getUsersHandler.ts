@@ -16,20 +16,21 @@ function buildUserIsolation(caller: {
   userId: string;
   role: string;
   parentUserId?: string | null;
-}): Record<string, string> | null {
+}): Record<string, any> | null {
   if (caller.role === UserRole.mod) {
     return {};
   }
 
   if (caller.role === UserRole.agency) {
-    return { parent_user_id: caller.userId };
+    return {
+      OR: [{ user_id: caller.userId }, { parent_user_id: caller.userId }],
+    };
   }
 
   if (caller.role === UserRole.user) {
-    return { parent_user_id: caller.parentUserId ?? '' };
+    return { user_id: caller.userId };
   }
 
-  // Customer không có quyền xem danh sách users
   return null;
 }
 

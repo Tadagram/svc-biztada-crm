@@ -3,7 +3,8 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 export const updateUserHandler = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
     const { userId } = request.params as { userId: string };
-    const { agency_name, role, status, parent_user_id, restore } = request.body as {
+    const { phone_number, agency_name, role, status, parent_user_id, restore } = request.body as {
+      phone_number?: string;
       agency_name?: string;
       role?: 'mod' | 'agency' | 'user' | 'customer';
       status?: 'active' | 'disabled';
@@ -45,6 +46,7 @@ export const updateUserHandler = async (request: FastifyRequest, reply: FastifyR
     const updatedUser = await request.server.prisma.users.update({
       where: { user_id: userId },
       data: {
+        ...(phone_number !== undefined && { phone_number }),
         ...(agency_name !== undefined && { agency_name }),
         ...(role && { role }),
         ...(status && { status }),
