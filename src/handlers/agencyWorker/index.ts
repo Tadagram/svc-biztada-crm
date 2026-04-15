@@ -1,6 +1,6 @@
-export { assignWorkerToAgencyHandler } from './assignWorkerToAgencyHandler';
-export { getAgencyWorkersHandler } from './getAgencyWorkersHandler';
-export { revokeAgencyWorkerHandler } from './revokeAgencyWorkerHandler';
-export { reactivateAgencyWorkerHandler } from './reactivateAgencyWorkerHandler';
-export { assignWorkerToUserHandler } from './assignWorkerToUserHandler';
-export { releaseWorkerHandler } from './releaseWorkerHandler';
+export { handler as assignWorkerToAgencyHandler } from './assignWorkerToAgencyHandler';
+export { handler as getAgencyWorkersHandler } from './getAgencyWorkersHandler';
+export { handler as revokeAgencyWorkerHandler } from './revokeAgencyWorkerHandler';
+export { handler as reactivateAgencyWorkerHandler } from './reactivateAgencyWorkerHandler';
+export { handler as assignWorkerToUserHandler } from './assignWorkerToUserHandler';
+export { handler as releaseWorkerHandler } from './releaseWorkerHandler';

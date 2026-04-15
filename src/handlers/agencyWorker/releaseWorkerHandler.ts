@@ -1,12 +1,49 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { UserRole } from '@prisma/client';
+import { PrismaClient, UserRole } from '@prisma/client';
 import { USER_ROLES } from '@/utils/constants';
 
 interface ReleaseWorkerParams {
   agencyWorkerId: string;
 }
 
-export async function releaseWorkerHandler(
+async function getAssignment(
+  prisma: PrismaClient,
+  agencyWorkerId: string,
+  callerId: string,
+  callerRole: UserRole,
+) {
+  return prisma.agencyWorkers.findFirst({
+    where: {
+      agency_worker_id: agencyWorkerId,
+      deleted_at: null,
+      ...(callerRole === USER_ROLES.AGENCY && { agency_user_id: callerId }),
+    },
+  });
+}
+
+async function releaseWorkerTransaction(
+  prisma: PrismaClient,
+  agencyWorkerId: string,
+  assignment: any,
+) {
+  return prisma.$transaction(async (tx) => {
+    await tx.workerUsageLogs.updateMany({
+      where: {
+        worker_id: assignment.worker_id,
+        agency_user_id: assignment.agency_user_id,
+        end_at: null,
+      },
+      data: { end_at: new Date() },
+    });
+
+    await tx.agencyWorkers.update({
+      where: { agency_worker_id: agencyWorkerId },
+      data: { using_by: null },
+    });
+  });
+}
+
+export async function handler(
   request: FastifyRequest<{ Params: ReleaseWorkerParams }>,
   reply: FastifyReply,
 ) {
@@ -16,13 +53,7 @@ export async function releaseWorkerHandler(
   try {
     const caller = request.user as { userId: string; role: UserRole };
 
-    const assignment = await prisma.agencyWorkers.findFirst({
-      where: {
-        agency_worker_id: agencyWorkerId,
-        deleted_at: null,
-        ...(caller.role === USER_ROLES.AGENCY && { agency_user_id: caller.userId }),
-      },
-    });
+    const assignment = await getAssignment(prisma, agencyWorkerId, caller.userId, caller.role);
 
     if (!assignment) {
       return reply.status(404).send({
@@ -38,23 +69,7 @@ export async function releaseWorkerHandler(
       });
     }
 
-    await prisma.$transaction(async (tx) => {
-      // Close usage log
-      await tx.workerUsageLogs.updateMany({
-        where: {
-          worker_id: assignment.worker_id,
-          agency_user_id: assignment.agency_user_id,
-          end_at: null,
-        },
-        data: { end_at: new Date() },
-      });
-
-      // Clear using_by
-      await tx.agencyWorkers.update({
-        where: { agency_worker_id: agencyWorkerId },
-        data: { using_by: null },
-      });
-    });
+    await releaseWorkerTransaction(prisma, agencyWorkerId, assignment);
 
     return reply.send({
       success: true,

@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { UserRole } from '@prisma/client';
+import { PrismaClient, UserRole } from '@prisma/client';
 import { USER_ROLES, ASSIGNMENT_STATUSES } from '@/utils/constants';
 
 interface AssignWorkerToUserParams {
@@ -10,7 +10,72 @@ interface AssignWorkerToUserBody {
   user_id: string;
 }
 
-export async function assignWorkerToUserHandler(
+async function getAgencyWorkerAssignment(
+  prisma: PrismaClient,
+  agencyWorkerId: string,
+  callerId: string,
+  callerRole: UserRole,
+) {
+  const assignment = await prisma.agencyWorkers.findFirst({
+    where: {
+      agency_worker_id: agencyWorkerId,
+      deleted_at: null,
+      ...(callerRole === USER_ROLES.AGENCY && { agency_user_id: callerId }),
+    },
+  });
+  return assignment;
+}
+
+async function validateUserBelongsToAgency(
+  prisma: PrismaClient,
+  user_id: string,
+  agency_user_id: string,
+) {
+  const user = await prisma.users.findFirst({
+    where: {
+      user_id,
+      parent_user_id: agency_user_id,
+      deleted_at: null,
+    },
+  });
+  return user;
+}
+
+async function assignWorkerToUserTransaction(
+  prisma: PrismaClient,
+  agencyWorkerId: string,
+  assignment: any,
+  user_id: string,
+) {
+  return prisma.$transaction(async (tx) => {
+    if (assignment.using_by) {
+      await tx.workerUsageLogs.updateMany({
+        where: {
+          worker_id: assignment.worker_id,
+          agency_user_id: assignment.agency_user_id,
+          end_at: null,
+        },
+        data: { end_at: new Date() },
+      });
+    }
+
+    await tx.agencyWorkers.update({
+      where: { agency_worker_id: agencyWorkerId },
+      data: { using_by: user_id },
+    });
+
+    await tx.workerUsageLogs.create({
+      data: {
+        worker_id: assignment.worker_id,
+        agency_user_id: assignment.agency_user_id,
+        user_id,
+        start_at: new Date(),
+      },
+    });
+  });
+}
+
+export async function handler(
   request: FastifyRequest<{
     Params: AssignWorkerToUserParams;
     Body: AssignWorkerToUserBody;
@@ -24,13 +89,12 @@ export async function assignWorkerToUserHandler(
   try {
     const caller = request.user as { userId: string; role: UserRole };
 
-    const assignment = await prisma.agencyWorkers.findFirst({
-      where: {
-        agency_worker_id: agencyWorkerId,
-        deleted_at: null,
-        ...(caller.role === USER_ROLES.AGENCY && { agency_user_id: caller.userId }),
-      },
-    });
+    const assignment = await getAgencyWorkerAssignment(
+      prisma,
+      agencyWorkerId,
+      caller.userId,
+      caller.role,
+    );
 
     if (!assignment) {
       return reply.status(404).send({
@@ -46,13 +110,7 @@ export async function assignWorkerToUserHandler(
       });
     }
 
-    const user = await prisma.users.findFirst({
-      where: {
-        user_id,
-        parent_user_id: assignment.agency_user_id,
-        deleted_at: null,
-      },
-    });
+    const user = await validateUserBelongsToAgency(prisma, user_id, assignment.agency_user_id);
 
     if (!user) {
       return reply.status(403).send({
@@ -61,32 +119,7 @@ export async function assignWorkerToUserHandler(
       });
     }
 
-    await prisma.$transaction(async (tx) => {
-      if (assignment.using_by) {
-        await tx.workerUsageLogs.updateMany({
-          where: {
-            worker_id: assignment.worker_id,
-            agency_user_id: assignment.agency_user_id,
-            end_at: null,
-          },
-          data: { end_at: new Date() },
-        });
-      }
-
-      await tx.agencyWorkers.update({
-        where: { agency_worker_id: agencyWorkerId },
-        data: { using_by: user_id },
-      });
-
-      await tx.workerUsageLogs.create({
-        data: {
-          worker_id: assignment.worker_id,
-          agency_user_id: assignment.agency_user_id,
-          user_id,
-          start_at: new Date(),
-        },
-      });
-    });
+    await assignWorkerToUserTransaction(prisma, agencyWorkerId, assignment, user_id);
 
     return reply.send({
       success: true,

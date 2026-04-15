@@ -20,7 +20,71 @@ function buildAgencyWorkerIsolation(caller: {
   return null;
 }
 
-export async function getAgencyWorkersHandler(
+function buildWhereClause(
+  isolation: Record<string, string>,
+  caller: { userId: string; role: UserRole },
+  status?: AssignmentStatus,
+  agency_user_id?: string,
+) {
+  const agencyFilter = caller.role === USER_ROLES.MOD && agency_user_id ? { agency_user_id } : {};
+
+  return {
+    deleted_at: null,
+    ...isolation,
+    ...agencyFilter,
+    ...(status && { status }),
+  };
+}
+
+function buildAssignmentSelect() {
+  return {
+    agency_worker_id: true,
+    agency_user_id: true,
+    worker_id: true,
+    status: true,
+    using_by: true,
+    created_at: true,
+    updated_at: true,
+    agency: { select: { user_id: true, agency_name: true, phone_number: true } },
+    worker: { select: { worker_id: true, name: true, status: true } },
+    user: { select: { user_id: true, phone_number: true, role: true, agency_name: true } },
+  };
+}
+
+function calculatePagination(total: number, limit: number, offset: number, isAll: boolean) {
+  return {
+    total,
+    limit,
+    offset,
+    totalPages: Math.ceil(total / limit),
+    currentPage: Math.floor(offset / limit) + 1,
+    all: isAll,
+  };
+}
+
+async function fetchAssignments(
+  prisma: any,
+  where: any,
+  isAll: boolean,
+  limit: number,
+  offset: number,
+) {
+  const assignmentSelect = buildAssignmentSelect();
+
+  const [assignments, total] = await Promise.all([
+    prisma.agencyWorkers.findMany({
+      where,
+      select: assignmentSelect,
+      orderBy: { created_at: 'desc' },
+      ...(isAll ? {} : { skip: offset, take: limit }),
+    }),
+    prisma.agencyWorkers.count({ where }),
+  ]);
+
+  return { assignments, total };
+}
+
+export async function handler(
   request: FastifyRequest<{ Querystring: GetAgencyWorkersQuerystring }>,
   reply: FastifyReply,
 ) {
@@ -43,46 +107,15 @@ export async function getAgencyWorkersHandler(
       return reply.status(403).send({ success: false, message: 'Forbidden' });
     }
 
-    const agencyFilter = caller.role === USER_ROLES.MOD && agency_user_id ? { agency_user_id } : {};
-
-    const where = {
-      deleted_at: null,
-      ...isolation,
-      ...agencyFilter,
-      ...(status && { status }),
-    };
-
-    const assignmentSelect = {
-      agency_worker_id: true,
-      agency_user_id: true,
-      worker_id: true,
-      status: true,
-      using_by: true,
-      created_at: true,
-      updated_at: true,
-      agency: { select: { user_id: true, agency_name: true, phone_number: true } },
-      worker: { select: { worker_id: true, name: true, status: true } },
-      user: { select: { user_id: true, phone_number: true, role: true, agency_name: true } },
-    };
-
+    const where = buildWhereClause(isolation, caller, status, agency_user_id);
     const isAll = all === true || String(all) === 'true';
-    const [assignments, total] = await Promise.all([
-      prisma.agencyWorkers.findMany({
-        where,
-        select: assignmentSelect,
-        orderBy: { created_at: 'desc' },
-        ...(isAll ? {} : { skip: offset, take: limit }),
-      }),
-      prisma.agencyWorkers.count({ where }),
-    ]);
-
-    const totalPages = Math.ceil(total / limit);
-    const currentPage = Math.floor(offset / limit) + 1;
+    const { assignments, total } = await fetchAssignments(prisma, where, isAll, limit, offset);
+    const pagination = calculatePagination(total, limit, offset, isAll);
 
     return reply.send({
       success: true,
       data: assignments,
-      pagination: { total, limit, offset, totalPages, currentPage, all: isAll },
+      pagination,
       message: 'Agency workers retrieved successfully',
     });
   } catch (error) {
