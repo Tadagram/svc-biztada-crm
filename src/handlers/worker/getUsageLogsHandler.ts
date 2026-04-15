@@ -17,6 +17,16 @@ interface GetUsageLogsQuerystring {
   all?: boolean;
 }
 
+function buildUsageLogIsolation(caller: {
+  userId: string;
+  role: string;
+}): Record<string, string> | null {
+  if (caller.role === 'mod') return {};
+  if (caller.role === 'agency') return { agency_user_id: caller.userId };
+  if (caller.role === 'user') return { user_id: caller.userId };
+  return null;
+}
+
 /**
  * GET /usage-logs
  * Returns worker usage history with pagination.
@@ -46,6 +56,13 @@ export async function getUsageLogsHandler(
   const isAll = all === true || String(all) === 'true';
 
   try {
+    const caller = request.user;
+    const isolation = buildUsageLogIsolation(caller);
+
+    if (isolation === null) {
+      return reply.status(403).send({ success: false, message: 'Forbidden' });
+    }
+
     // If filtering by worker name, resolve to worker IDs first
     let resolvedWorkerIds: string[] | undefined;
     if (workerName) {
@@ -65,10 +82,11 @@ export async function getUsageLogsHandler(
     }
 
     const where = {
+      ...isolation,
       ...(workerId && { worker_id: workerId }),
       ...(resolvedWorkerIds && { worker_id: { in: resolvedWorkerIds } }),
-      ...(agencyId && { agency_user_id: agencyId }),
-      ...(userId && { user_id: userId }),
+      ...(caller.role === 'mod' && agencyId && { agency_user_id: agencyId }),
+      ...(caller.role === 'mod' && userId && { user_id: userId }),
       ...(isOpen && { end_at: null }),
       ...((from || to) && {
         start_at: {

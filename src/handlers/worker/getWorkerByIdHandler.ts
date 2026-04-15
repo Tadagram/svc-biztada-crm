@@ -10,10 +10,19 @@ export async function getWorkerByIdHandler(
 ) {
   const { prisma } = request;
   const { workerId } = request.params;
+  const caller = request.user;
 
   try {
+    // Build isolation filter so non-mod users can only see workers related to them
+    const isolationFilter =
+      caller.role === 'agency'
+        ? { agencyWorkers: { some: { agency_user_id: caller.userId, deleted_at: null } } }
+        : caller.role === 'user'
+          ? { agencyWorkers: { some: { using_by: caller.userId, deleted_at: null } } }
+          : {};
+
     const worker = await prisma.workers.findFirst({
-      where: { worker_id: workerId, deleted_at: null },
+      where: { worker_id: workerId, deleted_at: null, ...isolationFilter },
       select: {
         worker_id: true,
         name: true,

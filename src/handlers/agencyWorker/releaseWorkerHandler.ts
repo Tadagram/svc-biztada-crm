@@ -12,8 +12,14 @@ export async function releaseWorkerHandler(
   const { agencyWorkerId } = request.params;
 
   try {
+    const caller = request.user;
+
     const assignment = await prisma.agencyWorkers.findFirst({
-      where: { agency_worker_id: agencyWorkerId, deleted_at: null },
+      where: {
+        agency_worker_id: agencyWorkerId,
+        deleted_at: null,
+        ...(caller.role === 'agency' && { agency_user_id: caller.userId }),
+      },
     });
 
     if (!assignment) {

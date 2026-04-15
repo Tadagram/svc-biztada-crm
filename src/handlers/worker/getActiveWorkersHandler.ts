@@ -9,6 +9,16 @@ interface GetActiveWorkersQuerystring {
  * Returns workers that are currently assigned (active) to the given agency.
  * Each result includes the AgencyWorker assignment and nested Worker details.
  */
+function buildActiveWorkerIsolation(caller: {
+  userId: string;
+  role: string;
+}): Record<string, string> | null {
+  if (caller.role === 'mod') return {};
+  if (caller.role === 'agency') return { agency_user_id: caller.userId };
+  if (caller.role === 'user') return { using_by: caller.userId };
+  return null;
+}
+
 export async function getActiveWorkersHandler(
   request: FastifyRequest<{ Querystring: GetActiveWorkersQuerystring }>,
   reply: FastifyReply,
@@ -17,10 +27,18 @@ export async function getActiveWorkersHandler(
   const { agencyId } = request.query;
 
   try {
+    const caller = request.user;
+    const isolation = buildActiveWorkerIsolation(caller);
+
+    if (isolation === null) {
+      return reply.status(403).send({ success: false, message: 'Forbidden' });
+    }
+
     const where = {
       status: 'active' as const,
       deleted_at: null,
-      ...(agencyId && { agency_user_id: agencyId }),
+      ...isolation,
+      ...(caller.role === 'mod' && agencyId && { agency_user_id: agencyId }),
     };
 
     const assignments = await prisma.agencyWorkers.findMany({

@@ -10,9 +10,16 @@ export const getUserSummaryHandler = async (
 ) => {
   const { userId } = request.params;
   const prisma = request.server.prisma;
+  const caller = request.user;
 
-  const user = await prisma.users.findUnique({
-    where: { user_id: userId },
+  const user = await prisma.users.findFirst({
+    where: {
+      user_id: userId,
+      ...(caller.role === 'agency' && { parent_user_id: caller.userId }),
+      ...(caller.role === 'user' && {
+        OR: [{ user_id: caller.userId }, { parent_user_id: caller.parentUserId ?? '' }],
+      }),
+    },
     select: { user_id: true, role: true, status: true },
   });
 

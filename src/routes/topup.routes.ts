@@ -33,7 +33,6 @@ async function topupRoutes(fastify: FastifyInstance) {
           }
           await fastify.authenticate(request, reply);
         },
-        fastify.requirePermission('topup:review'),
       ],
     },
     streamTopUpHandler as RouteHandlerMethod,

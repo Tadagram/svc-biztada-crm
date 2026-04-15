@@ -9,6 +9,16 @@ interface GetUsageLogsByWorkerQuerystring {
   offset?: number;
 }
 
+function buildUsageLogIsolation(caller: {
+  userId: string;
+  role: string;
+}): Record<string, string> | null {
+  if (caller.role === 'mod') return {};
+  if (caller.role === 'agency') return { agency_user_id: caller.userId };
+  if (caller.role === 'user') return { user_id: caller.userId };
+  return null;
+}
+
 export async function getUsageLogsByWorkerHandler(
   request: FastifyRequest<{ Querystring: GetUsageLogsByWorkerQuerystring }>,
   reply: FastifyReply,
@@ -27,6 +37,12 @@ export async function getUsageLogsByWorkerHandler(
   const offset = Number(queryOffset);
 
   try {
+    const caller = request.user;
+    const isolation = buildUsageLogIsolation(caller);
+
+    if (isolation === null) {
+      return reply.status(403).send({ success: false, message: 'Forbidden' });
+    }
     let workerIdFilter: { in: string[] } | undefined;
     if (workerName) {
       const matchingWorkers = await prisma.workers.findMany({
@@ -45,8 +61,9 @@ export async function getUsageLogsByWorkerHandler(
     }
 
     const logWhere = {
+      ...isolation,
       ...(workerIdFilter && { worker_id: workerIdFilter }),
-      ...(agencyId && { agency_user_id: agencyId }),
+      ...(caller.role === 'mod' && agencyId && { agency_user_id: agencyId }),
       ...((from || to) && {
         start_at: {
           ...(from && { gte: new Date(from) }),
