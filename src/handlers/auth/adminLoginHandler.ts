@@ -13,13 +13,25 @@
 
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { UserStatus } from '@prisma/client';
-import { mappingPrefixPhoneNumber } from '@/utils';
 import {
   generateAccessToken,
   generateRefreshToken,
   saveUserSession,
 } from '@handlers/user/userHelper';
 import crypto from 'crypto';
+
+/**
+ * Normalize phone to Telegram storage format (no +, no leading 0).
+ * Examples: "+84926034793" → "84926034793", "0926034793" → "84926034793"
+ * This matches how Telegram stores telegram_phone in svc-core-api DB.
+ */
+function normalizeTelegramPhone(phone: string): string {
+  const stripped = phone.replace(/[\s\-()]/g, '').replace(/^\+/, '');
+  if (stripped.startsWith('0')) {
+    return '84' + stripped.slice(1);
+  }
+  return stripped;
+}
 
 interface AdminLoginBody {
   phoneNumber: string;
@@ -62,7 +74,7 @@ export async function adminLoginHandler(
   const { prisma, log: logger } = request;
 
   try {
-    const normalizedPhone = mappingPrefixPhoneNumber(phoneNumber);
+    const normalizedPhone = normalizeTelegramPhone(phoneNumber);
 
     // --- Step 1: Verify admin status in svc-core-api ---
     let coreCheck: CoreApiAdminCheckResponse;
