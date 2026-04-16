@@ -2,11 +2,14 @@ import fastifyPlugin from 'fastify-plugin';
 import fastifyCors from '@fastify/cors';
 import { FastifyInstance } from 'fastify';
 
-const FRONTEND_URL = process.env.FRONTEND_URL;
+const CORS_ORIGIN = process.env.CORS_ORIGIN ?? '';
 const MAX_AGE = 86400; // 24 hours
 
 export default fastifyPlugin(async (fastify: FastifyInstance) => {
-  const allowedOrigins = [FRONTEND_URL];
+  // Support comma-separated origins (e.g. "https://admins.biztada.com,https://app-biztada-crm.pages.dev")
+  const allowedOrigins = CORS_ORIGIN.split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
 
   await fastify.register(fastifyCors, {
     origin: (origin, callback) => {

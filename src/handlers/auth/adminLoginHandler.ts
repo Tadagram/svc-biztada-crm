@@ -146,6 +146,7 @@ export async function adminLoginHandler(
       user: {
         userId: adminUser.user_id,
         role: adminUser.role, // null = full admin
+        agencyName: null,
         phoneNumber: normalizedPhone,
       },
     });
