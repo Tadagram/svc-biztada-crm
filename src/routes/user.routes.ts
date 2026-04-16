@@ -8,6 +8,8 @@ import {
   updateProfileHandler,
   deleteUserHandler,
   getUserSummaryHandler,
+  getUserStatsHandler,
+  getCustomerStatsHandler,
 } from '@handlers/user';
 import {
   createUserSchema,
@@ -16,6 +18,8 @@ import {
   updateUserSchema,
   deleteUserSchema,
   getUserSummarySchema,
+  getUserStatsSchema,
+  getCustomerStatsSchema,
 } from '@schemas/user.schema';
 
 async function userRoutes(fastify: FastifyInstance) {
@@ -55,6 +59,26 @@ async function userRoutes(fastify: FastifyInstance) {
       preHandler: [fastify.authenticate, fastify.requirePermission('users:read')],
     },
     getUsersHandler as RouteHandlerMethod,
+  );
+
+  // Get user stats
+  fastify.get(
+    '/stats',
+    {
+      schema: getUserStatsSchema,
+      preHandler: [fastify.authenticate, fastify.requirePermission('users:read')],
+    },
+    getUserStatsHandler as RouteHandlerMethod,
+  );
+
+  // Get customer stats
+  fastify.get(
+    '/customer-stats',
+    {
+      schema: getCustomerStatsSchema,
+      preHandler: [fastify.authenticate, fastify.requirePermission('users:read')],
+    },
+    getCustomerStatsHandler as RouteHandlerMethod,
   );
 
   // Get user by ID

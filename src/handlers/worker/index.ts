@@ -5,5 +5,6 @@ export { handler as updateWorkerHandler } from './updateWorkerHandler';
 export { handler as deleteWorkerHandler } from './deleteWorkerHandler';
 export { handler as reactivateWorkerHandler } from './reactivateWorkerHandler';
 export { handler as getActiveWorkersHandler } from './getActiveWorkersHandler';
+export { handler as getWorkerStatsHandler } from './getWorkerStatsHandler';
 export { handler as getUsageLogsHandler } from './getUsageLogsHandler';
 export { handler as getUsageLogsByWorkerHandler } from './getUsageLogsByWorkerHandler';

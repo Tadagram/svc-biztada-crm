@@ -8,6 +8,7 @@ import usageLogsRoutes from './usageLogs.routes';
 import notificationRoutes from './notification.routes';
 import topupRoutes from './topup.routes';
 import settingsRoutes from './settings.routes';
+import dashboardRoutes from './dashboard.routes';
 
 async function routes(fastify: FastifyInstance, _options: FastifyPluginOptions) {
   fastify.register(userRoutes, { prefix: '/users' });
@@ -19,6 +20,7 @@ async function routes(fastify: FastifyInstance, _options: FastifyPluginOptions) 
   fastify.register(notificationRoutes, { prefix: '/notifications' });
   fastify.register(topupRoutes, { prefix: '/topup' });
   fastify.register(settingsRoutes, { prefix: '/settings' });
+  fastify.register(dashboardRoutes, { prefix: '/dashboard' });
 
   fastify.get(
     '/health',

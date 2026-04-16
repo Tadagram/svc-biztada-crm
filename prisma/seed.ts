@@ -1,6 +1,19 @@
-import { PrismaClient } from '@prisma/client';
+import dotenv from 'dotenv';
+import { PrismaClient, UserRole, UserStatus } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import pg from 'pg';
 
-const prisma = new PrismaClient();
+// Load environment variables
+dotenv.config({ path: '.env.dev' });
+
+const { Pool } = pg;
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
 // ─── Permission codes chuẩn mới ───────────────────────────────────────────────
 const PERMISSIONS = [
@@ -97,6 +110,7 @@ async function main() {
     { phone: '0900000001', name: 'Biztada Agency' },
     { phone: '0900000002', name: 'TechWork Solutions' },
     { phone: '0900000003', name: 'Smart Labor Co' },
+    { phone: '0999888777', name: 'Elite Staffing Solutions' },
   ];
 
   const agencyIds: Record<string, string> = {};
@@ -152,6 +166,18 @@ async function main() {
       lastActive: daysBack(10),
     },
     { phone: '0911000006', name: 'Võ Thị Mai', parent: agencyIds['0900000003'], lastActive: null },
+    {
+      phone: '0988888001',
+      name: 'Lê Minh Dũng',
+      parent: agencyIds['0999888777'],
+      lastActive: daysBack(1),
+    },
+    {
+      phone: '0988888002',
+      name: 'Nguyễn Thị Hương',
+      parent: agencyIds['0999888777'],
+      lastActive: daysBack(0),
+    },
   ];
 
   const userIds: Record<string, string> = {};
@@ -200,11 +226,14 @@ async function main() {
     console.log('✅ Workers already exist, skipping:', workerIds.length);
   }
 
-  // ── 8. Agency ↔ Worker Assignments (3 workers per agency) ─────────────────
+  // ── 8. Agency ↔ Worker Assignments (3 workers per agency, plus extra for Elite Staffing) ─────────────────
   const agencyPhones = Object.keys(agencyIds);
   for (let i = 0; i < agencyPhones.length; i++) {
     const agencyId = agencyIds[agencyPhones[i]];
-    const chunk = workerIds.slice(i * 3, i * 3 + 3);
+    const agencyPhone = agencyPhones[i];
+    // Elite Staffing Solutions (0999888777) gets 6 workers, others get 3
+    const numWorkers = agencyPhone === '0999888777' ? 6 : 3;
+    const chunk = workerIds.slice(i * 3, i * 3 + numWorkers);
     for (const wId of chunk) {
       const existing = await prisma.agencyWorkers.findFirst({
         where: { agency_user_id: agencyId, worker_id: wId, deleted_at: null },
@@ -319,6 +348,28 @@ async function main() {
     [8, '0900000003', '0911000005', 12, 1.5],
     [8, '0900000003', '0911000006', 6, 3],
     [8, '0900000003', '0911000005', 2, 2],
+    // Elite Staffing Solutions — New Agency (0999888777) - 6 workers total
+    // Using Worker Alpha (idx 0), Beta (idx 1), Gamma (idx 2), Delta (idx 3), Epsilon (idx 4), Zeta (idx 5)
+    [0, '0999888777', '0988888001', 7, 2],
+    [0, '0999888777', '0988888002', 5, 1.5],
+    [0, '0999888777', '0988888001', 2, null], // active
+    [1, '0999888777', '0988888001', 6, 3],
+    [1, '0999888777', '0988888002', 3, 2.5],
+    [1, '0999888777', '0988888002', 1, null], // active
+    [2, '0999888777', '0988888001', 4, 1.5],
+    [2, '0999888777', '0988888002', 2, 2],
+    [2, '0999888777', '0988888001', 0, null], // active
+    [3, '0999888777', '0988888001', 8, 1.5],
+    [3, '0999888777', '0988888002', 6, 2],
+    [3, '0999888777', '0988888001', 3, 1.5],
+    [3, '0999888777', '0988888002', 1, null], // active
+    [4, '0999888777', '0988888001', 10, 2.5],
+    [4, '0999888777', '0988888002', 7, 1],
+    [4, '0999888777', '0988888001', 4, 2],
+    [4, '0999888777', '0988888002', 2, 1.5],
+    [5, '0999888777', '0988888001', 9, 1],
+    [5, '0999888777', '0988888002', 5, 2.5],
+    [5, '0999888777', '0988888001', 1, null], // active
   ];
 
   let logCount = 0;
@@ -799,15 +850,54 @@ async function main() {
   }
   console.log(`✅ Notifications seeded: ${notiSeed.length} entries (25 for mod, spread 0–30 days)`);
 
-  // ── TopUp Requests (test data) ────────────────────────────────────────────
+  // ── TopUp Requests (test data with revenue history) ────────────────────────
   await prisma.topUpRequests.deleteMany({});
 
   const modId = modUser.user_id;
 
   if (user1Id && user2Id) {
+    // Generate realistic historical revenue data for past 30 days
+    // with daily variations, weekday patterns, and trend
+    const historicalData = [];
+    const today = new Date();
+    const baseAmount = 500000; // Base daily revenue
+    const variance = 0.4; // ±40% variation
+
+    for (let i = 30; i > 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dayOfWeek = date.getDay();
+
+      // Higher revenue on weekdays (Mon-Fri), lower on weekends
+      const weekdayMultiplier = dayOfWeek === 0 || dayOfWeek === 6 ? 0.7 : 1.2;
+
+      // Trend: gradually increasing revenue over time
+      const trendFactor = 0.9 + (i / 30) * 0.3;
+
+      // Random daily variation
+      const randomFactor = 0.8 + Math.random() * variance;
+
+      const dailyAmount = Math.floor(baseAmount * weekdayMultiplier * trendFactor * randomFactor);
+
+      // Approval rate: 75-95% of submitted amount gets approved
+      const approvedAmount = Math.floor(dailyAmount * (0.75 + Math.random() * 0.2));
+
+      historicalData.push({
+        user_id: user1Id,
+        amount: approvedAmount,
+        proof_note: `Historical revenue - ${date.toLocaleDateString('vi-VN')} (${['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][dayOfWeek]})`,
+        status: 'APPROVED' as const,
+        submitted_at: date,
+        reviewed_by: modId,
+        reviewed_at: date,
+        review_note: 'Auto-approved historical data',
+      });
+    }
+
     await prisma.topUpRequests.createMany({
       data: [
-        // PENDING — chờ duyệt
+        ...historicalData,
+        // Current PENDING
         {
           user_id: user1Id,
           amount: 500000,
@@ -822,7 +912,7 @@ async function main() {
           status: 'PENDING',
           submitted_at: daysAgo(1),
         },
-        // APPROVED — đã duyệt (balance đã cộng)
+        // APPROVED
         {
           user_id: user1Id,
           amount: 1000000,
@@ -833,7 +923,7 @@ async function main() {
           reviewed_at: daysAgo(3),
           review_note: 'Đã xác nhận bank',
         },
-        // REJECTED — bị từ chối
+        // REJECTED
         {
           user_id: user2Id,
           amount: 999999,
@@ -846,12 +936,17 @@ async function main() {
         },
       ],
     });
-    // Cộng balance cho approved requests
+
+    // Calculate total approved amount and update balance
+    const totalApproved =
+      historicalData.reduce((sum, req) => sum + Number(req.amount), 0) + 1000000;
     await prisma.users.update({
       where: { user_id: user1Id },
-      data: { balance: { increment: 1000000 } },
+      data: { balance: { increment: totalApproved } },
     });
-    console.log('✅ TopUpRequests seeded: 4 entries (2 PENDING, 1 APPROVED, 1 REJECTED)');
+    console.log(
+      `✅ TopUpRequests seeded: ${historicalData.length + 4} entries (30 days realistic history + current)`,
+    );
   }
   console.log('\n🏁 Seeding completed!');
   console.log(`   • Permissions   : ${PERMISSIONS.length} (codes mới chuẩn resource:action)`);

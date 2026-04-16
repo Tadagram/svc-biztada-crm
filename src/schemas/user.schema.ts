@@ -164,6 +164,11 @@ export const getUsersSchema: FastifySchema = {
         type: 'string',
         description: 'Filter by parent user ID',
       },
+      lifecycle: {
+        type: 'string',
+        enum: ['active', 'new', 'dormant'],
+        description: 'Filter by lifecycle stage (for customers)',
+      },
     },
   },
   response: {
@@ -378,6 +383,57 @@ export const deleteUserSchema: FastifySchema = {
     500: {
       description: 'Internal server error',
       ...errorResponse,
+    },
+  },
+};
+
+export const getUserStatsSchema: FastifySchema = {
+  tags: ['Users'],
+  summary: 'Get user stats (counts by role/status)',
+  querystring: {
+    type: 'object',
+    properties: {
+      role: { type: 'string' },
+      status: { type: 'string' },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'object',
+          properties: {
+            total: { type: 'number' },
+            active: { type: 'number' },
+            agencies: { type: 'number' },
+            mods: { type: 'number' },
+          },
+        },
+      },
+    },
+  },
+};
+
+export const getCustomerStatsSchema: FastifySchema = {
+  tags: ['Users'],
+  summary: 'Get customer lifecycle stats',
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'object',
+          properties: {
+            total: { type: 'number' },
+            active: { type: 'number' },
+            new: { type: 'number' },
+            dormant: { type: 'number' },
+          },
+        },
+      },
     },
   },
 };

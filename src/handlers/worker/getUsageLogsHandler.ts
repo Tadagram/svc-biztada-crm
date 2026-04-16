@@ -15,16 +15,6 @@ interface GetUsageLogsQuerystring {
   all?: boolean;
 }
 
-function buildUsageLogIsolation(caller: {
-  userId: string;
-  role: UserRole;
-}): Record<string, string> | null {
-  if (caller.role === USER_ROLES.MOD) return {};
-  if (caller.role === USER_ROLES.AGENCY) return { agency_user_id: caller.userId };
-  if (caller.role === USER_ROLES.USER) return { user_id: caller.userId };
-  return null;
-}
-
 const logSelect = {
   usage_log_id: true,
   worker_id: true,
@@ -105,32 +95,37 @@ export async function handler(
     to,
   } = request.query;
 
+  const caller = request.user as { userId: string; role: UserRole };
+
+  // Only MOD can access detailed usage logs
+  if (caller.role !== USER_ROLES.MOD) {
+    return reply.status(403).send({
+      success: false,
+      message: 'Only administrators can access detailed usage logs',
+    });
+  }
+
   const limit = Number(queryLimit);
   const offset = Number(queryOffset);
   const isOpen = open === true || String(open) === 'true';
 
   try {
-    const caller = request.user as { userId: string; role: UserRole };
-    const isolation = buildUsageLogIsolation(caller);
-
-    if (isolation === null) {
-      return reply.status(403).send({ success: false, message: 'Forbidden' });
-    }
-
     let resolvedWorkerIds: string[] | undefined;
+
     if (workerName) {
-      resolvedWorkerIds = await resolveWorkerIds(prisma, workerName);
-      if (resolvedWorkerIds.length === 0) {
+      const allWorkerIds = await resolveWorkerIds(prisma, workerName);
+      if (allWorkerIds.length === 0) {
         return reply.send({
           success: true,
           data: [],
           pagination: { total: 0, limit, offset, pages: 0 },
         });
       }
+      resolvedWorkerIds = allWorkerIds;
     }
 
     const where = buildWhereClause(
-      isolation,
+      {},
       workerId,
       resolvedWorkerIds,
       agencyId,
@@ -138,7 +133,7 @@ export async function handler(
       isOpen,
       from,
       to,
-      caller.role === USER_ROLES.MOD,
+      true,
     );
 
     const { logs, total } = await fetchLogs(prisma, where, limit, offset);

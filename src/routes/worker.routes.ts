@@ -7,6 +7,7 @@ import {
   deleteWorkerHandler,
   reactivateWorkerHandler,
   getActiveWorkersHandler,
+  getWorkerStatsHandler,
 } from '@handlers/worker';
 import {
   createWorkerSchema,
@@ -34,6 +35,13 @@ async function workerRoutes(fastify: FastifyInstance) {
       preHandler: [fastify.authenticate, fastify.requirePermission('workers:read')],
     },
     getWorkersHandler as RouteHandlerMethod,
+  );
+  fastify.get(
+    '/stats',
+    {
+      preHandler: [fastify.authenticate, fastify.requirePermission('workers:read')],
+    },
+    getWorkerStatsHandler as RouteHandlerMethod,
   );
   fastify.get(
     '/active',

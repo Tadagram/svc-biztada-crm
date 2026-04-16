@@ -11,6 +11,7 @@ interface GetUsersQuerystring {
   all?: boolean;
   status?: 'active' | 'disabled' | 'deleted';
   parent_user_id?: string;
+  lifecycle?: 'active' | 'new' | 'dormant';
 }
 
 function buildUserIsolation(caller: {
@@ -104,6 +105,7 @@ export async function handler(
       not_role,
       status,
       parent_user_id,
+      lifecycle,
     } = request.query;
 
     const limit = Number(queryLimit);
@@ -128,7 +130,7 @@ export async function handler(
       deleted_at: true,
     };
 
-    const where = buildWhereClause(
+    let where: any = buildWhereClause(
       isolation,
       search,
       role,
@@ -137,6 +139,25 @@ export async function handler(
       parent_user_id,
       caller.role === USER_ROLES.MOD,
     );
+
+    if (lifecycle) {
+      const now = new Date();
+      const fourteenDaysAgo = new Date(now.getTime() - 14 * 86_400_000);
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 86_400_000);
+      if (lifecycle === 'active') {
+        where = { ...where, last_active_at: { not: null, gte: fourteenDaysAgo } };
+      } else if (lifecycle === 'new') {
+        where = { ...where, last_active_at: null, created_at: { gte: sevenDaysAgo } };
+      } else if (lifecycle === 'dormant') {
+        where = {
+          ...where,
+          OR: [
+            { last_active_at: { not: null, lt: fourteenDaysAgo } },
+            { last_active_at: null, created_at: { lt: sevenDaysAgo } },
+          ],
+        };
+      }
+    }
 
     const { users, total } = await fetchUsers(
       request.server.prisma,

@@ -11,43 +11,12 @@ interface GetUsageLogsByWorkerQuerystring {
   offset?: number;
 }
 
-function buildUsageLogIsolation(caller: {
-  userId: string;
-  role: UserRole;
-}): Record<string, string> | null {
-  if (caller.role === USER_ROLES.MOD) return {};
-  if (caller.role === USER_ROLES.AGENCY) return { agency_user_id: caller.userId };
-  if (caller.role === USER_ROLES.USER) return { user_id: caller.userId };
-  return null;
-}
-
 async function resolveWorkerIds(prisma: PrismaClient, workerName: string) {
   const matchingWorkers = await prisma.workers.findMany({
     where: { name: { contains: workerName, mode: 'insensitive' } },
     select: { worker_id: true },
   });
   return matchingWorkers.map((w) => w.worker_id);
-}
-
-function buildWhereClause(
-  isolation: any,
-  workerIdFilter?: any,
-  agencyId?: string,
-  from?: string,
-  to?: string,
-  isModCaller?: boolean,
-) {
-  return {
-    ...isolation,
-    ...(workerIdFilter && { worker_id: workerIdFilter }),
-    ...(isModCaller && agencyId && { agency_user_id: agencyId }),
-    ...((from || to) && {
-      start_at: {
-        ...(from && { gte: new Date(from) }),
-        ...(to && { lte: new Date(to) }),
-      },
-    }),
-  };
 }
 
 async function fetchGroupedLogs(prisma: PrismaClient, where: any, limit: number, offset: number) {
@@ -107,38 +76,42 @@ export async function handler(
     offset: queryOffset = 0,
   } = request.query;
 
+  const caller = request.user as { userId: string; role: UserRole };
+
+  if (caller.role !== USER_ROLES.MOD) {
+    return reply.status(403).send({
+      success: false,
+      message: 'Only administrators can access detailed usage logs',
+    });
+  }
+
   const limit = Number(queryLimit);
   const offset = Number(queryOffset);
 
   try {
-    const caller = request.user as { userId: string; role: UserRole };
-    const isolation = buildUsageLogIsolation(caller);
-
-    if (isolation === null) {
-      return reply.status(403).send({ success: false, message: 'Forbidden' });
-    }
-
     let workerIdFilter: { in: string[] } | undefined;
     if (workerName) {
-      const ids = await resolveWorkerIds(prisma, workerName);
-      if (ids.length === 0) {
+      const allIds = await resolveWorkerIds(prisma, workerName);
+      if (allIds.length === 0) {
         return reply.send({
           success: true,
           data: [],
           pagination: { total: 0, limit, offset, pages: 0 },
         });
       }
-      workerIdFilter = { in: ids };
+      workerIdFilter = { in: allIds };
     }
 
-    const logWhere = buildWhereClause(
-      isolation,
-      workerIdFilter,
-      agencyId,
-      from,
-      to,
-      caller.role === USER_ROLES.MOD,
-    );
+    const logWhere = {
+      ...(workerIdFilter && { worker_id: workerIdFilter }),
+      ...(agencyId && { agency_user_id: agencyId }),
+      ...((from || to) && {
+        start_at: {
+          ...(from && { gte: new Date(from) }),
+          ...(to && { lte: new Date(to) }),
+        },
+      }),
+    };
 
     const { groupedData, totalGroups } = await fetchGroupedLogs(prisma, logWhere, limit, offset);
 
