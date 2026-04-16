@@ -27,16 +27,18 @@ export async function handler(request: FastifyRequest, reply: FastifyReply) {
           created_at: { gte: sevenDaysAgo },
         },
       }),
-      prisma.$queryRawUnsafe<[{ count: bigint }]>(
-        `SELECT COUNT(*)::bigint as count FROM users
-         WHERE role = 'user' AND deleted_at IS NULL AND status = 'active'
-         AND (
-           (last_active_at IS NOT NULL AND last_active_at < $1)
-           OR (last_active_at IS NULL AND created_at < $2)
-         )`,
-        fourteenDaysAgo,
-        sevenDaysAgo,
-      ),
+      // Dormant: active users who haven't interacted recently
+      // (last_active_at < 14d ago) OR (never active + created > 7d ago)
+      prisma.users.count({
+        where: {
+          ...baseWhere,
+          status: 'active',
+          OR: [
+            { last_active_at: { not: null, lt: fourteenDaysAgo } },
+            { last_active_at: null, created_at: { lt: sevenDaysAgo } },
+          ],
+        },
+      }),
     ]);
 
     return reply.send({
@@ -45,7 +47,7 @@ export async function handler(request: FastifyRequest, reply: FastifyReply) {
         total,
         active,
         new: newCount,
-        dormant: Number(dormant[0]?.count ?? 0),
+        dormant,
       },
     });
   } catch (error) {

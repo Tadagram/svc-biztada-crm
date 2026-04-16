@@ -1,5 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { TopUpStatus } from '@prisma/client';
+import { Prisma, TopUpStatus, UserRole } from '@prisma/client';
+import { USER_ROLES } from '@/utils/constants';
 
 interface RevenueQuery {
   days?: string;
@@ -18,6 +19,7 @@ export async function handler(
   const { prisma } = request;
   const { days = '30' } = request.query;
   const numDays = Math.min(Math.max(parseInt(days) || 30, 1), 365);
+  const caller = request.user as { userId: string; role: UserRole | null };
 
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - numDays);
@@ -26,14 +28,23 @@ export async function handler(
   const endDate = new Date();
   endDate.setHours(23, 59, 59, 999);
 
+  // Build role-isolated where clause
+  const where: Prisma.TopUpRequestsWhereInput = {
+    status: TopUpStatus.APPROVED,
+    reviewed_at: { gte: startDate, lte: endDate },
+  };
+
+  // MOD + admin (null role) see all; AGENCY sees sub-users'; USER sees own
+  if (caller.role !== null && caller.role !== USER_ROLES.MOD) {
+    if (caller.role === USER_ROLES.AGENCY) {
+      where.user = { parent_user_id: caller.userId };
+    } else {
+      where.user_id = caller.userId;
+    }
+  }
+
   const approvedTopUps = await prisma.topUpRequests.findMany({
-    where: {
-      status: TopUpStatus.APPROVED,
-      reviewed_at: {
-        gte: startDate,
-        lte: endDate,
-      },
-    },
+    where,
     select: {
       amount: true,
       reviewed_at: true,

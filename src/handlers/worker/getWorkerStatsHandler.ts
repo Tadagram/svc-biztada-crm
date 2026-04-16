@@ -6,10 +6,10 @@ interface GetWorkerStatsQuerystring {
   status?: string;
 }
 
-function buildWorkerIsolation(caller: {
-  userId: string;
-  role: UserRole;
-}): Record<string, unknown> | null {
+function buildWorkerIsolation(
+  caller: { userId: string; role: UserRole | null },
+): Record<string, unknown> | null {
+  if (caller.role === null) return {}; // admin (role=null) → full access
   if (caller.role === USER_ROLES.MOD) return {};
   if (caller.role === USER_ROLES.AGENCY) {
     return { agency_workers: { some: { agency_user_id: caller.userId, deleted_at: null } } };
@@ -26,7 +26,7 @@ export async function handler(
 ) {
   try {
     const prisma = request.server.prisma;
-    const caller = request.user as { userId: string; role: UserRole };
+    const caller = request.user as { userId: string; role: UserRole | null };
     const isolation = buildWorkerIsolation(caller);
 
     if (isolation === null) {
