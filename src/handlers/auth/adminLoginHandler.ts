@@ -14,7 +14,12 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { UserStatus } from '@prisma/client';
 import { mappingPrefixPhoneNumber } from '@/utils';
-import { generateToken, saveUserSession } from '@handlers/user/userHelper';
+import {
+  generateAccessToken,
+  generateRefreshToken,
+  saveUserSession,
+} from '@handlers/user/userHelper';
+import crypto from 'crypto';
 
 interface AdminLoginBody {
   phoneNumber: string;
@@ -30,7 +35,8 @@ interface CoreApiAdminCheckResponse {
 }
 
 async function checkAdminInCoreApi(phone: string): Promise<CoreApiAdminCheckResponse> {
-  const coreApiUrl = process.env.CORE_API_URL ?? 'http://svc-core-api.tadagram.svc.cluster.local:3000';
+  const coreApiUrl =
+    process.env.CORE_API_URL ?? 'http://svc-core-api.tadagram.svc.cluster.local:3000';
   const url = `${coreApiUrl}/internal/users/admin-check?phone=${encodeURIComponent(phone)}`;
 
   const res = await fetch(url, {
@@ -107,7 +113,9 @@ export async function adminLoginHandler(
     }
 
     // --- Step 3: Issue JWT ---
-    const { accessToken: token, refreshToken, expiresAt } = await generateToken(jwt, adminUser);
+    const sessionId = crypto.randomBytes(16).toString('hex');
+    const token = generateAccessToken(jwt, adminUser, sessionId);
+    const { token: refreshToken, expiresAt } = generateRefreshToken();
 
     await saveUserSession(
       prisma,

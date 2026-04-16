@@ -16,10 +16,11 @@ interface GetUsersQuerystring {
 
 function buildUserIsolation(caller: {
   userId: string;
-  role: string;
+  role: string | null;
   parentUserId?: string | null;
 }): Record<string, any> | null {
-  if (caller.role === UserRole.mod) {
+  // null role = admin, full access
+  if (caller.role === null || caller.role === UserRole.mod) {
     return {};
   }
 

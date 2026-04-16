@@ -1,19 +1,10 @@
 import dotenv from 'dotenv';
 import { PrismaClient, UserRole, UserStatus } from '@prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
-import pg from 'pg';
 
 // Load environment variables
 dotenv.config({ path: '.env.dev' });
 
-const { Pool } = pg;
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
-
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient();
 
 // ─── Permission codes chuẩn mới ───────────────────────────────────────────────
 const PERMISSIONS = [
