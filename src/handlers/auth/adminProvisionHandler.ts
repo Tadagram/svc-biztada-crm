@@ -15,7 +15,7 @@
  */
 
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { UserStatus, UserRole } from '@prisma/client';
+import { UserStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { checkAdminInCoreApi, normalizeTelegramPhone } from './adminLoginHandler';
 
@@ -69,17 +69,18 @@ export async function adminProvisionHandler(
     const passwordHash = await bcrypt.hash(plainPassword, BCRYPT_ROUNDS);
 
     // Step 3: Upsert user in biztada-crm DB
+    // role = null means full admin access (no sub-role restriction)
     await prisma.users.upsert({
       where: { phone_number: normalizedPhone },
       create: {
         phone_number: normalizedPhone,
         password_hash: passwordHash,
-        role: UserRole.admin,
+        role: null,
         status: UserStatus.active,
       },
       update: {
         password_hash: passwordHash,
-        role: UserRole.admin,
+        role: null,
         status: UserStatus.active,
       },
     });

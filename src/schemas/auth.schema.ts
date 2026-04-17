@@ -77,7 +77,15 @@ export const adminProvisionSchema: FastifySchema = {
     'Super-admin endpoint: verify phone is_admin in svc-core-api, ' +
     'auto-generate a random 12-char password, store bcrypt hash, ' +
     'return plaintext password once for distribution to the admin. ' +
-    'Calling again force-resets the password.',
+    'Calling again force-resets the password. ' +
+    'Requires header: X-Super-Admin-Secret matching SUPER_ADMIN_SECRET env var.',
+  headers: {
+    type: 'object',
+    required: ['x-super-admin-secret'],
+    properties: {
+      'x-super-admin-secret': { type: 'string', description: 'Super-admin provisioning secret' },
+    },
+  },
   body: {
     type: 'object',
     required: ['phoneNumber'],
