@@ -1,26 +1,23 @@
 ﻿import type { FastifySchema } from 'fastify';
 
-export const adminLoginSchema: FastifySchema = {
+export const adminTelegramLoginSchema: FastifySchema = {
   tags: ['Auth'],
-  summary: 'Admin Login',
+  summary: 'Admin Telegram Login',
   description:
-    'Dang nhap danh cho quan tri vien he thong. ' +
-    'Xac thuc so dien thoai qua svc-core-api (is_admin=true), ' +
-    'xac thuc mat khau bcrypt, va tra ve JWT access token + refresh token.',
+    'Xac thuc admin qua Telegram Login Widget. ' +
+    'Body la du lieu tra ve tu widget (id, first_name, auth_date, hash...). ' +
+    'Backend verify HMAC hash bang TELEGRAM_BOT_TOKEN, kiem tra is_admin trong svc-core-api.',
   body: {
     type: 'object',
-    required: ['phoneNumber', 'password'],
+    required: ['id', 'first_name', 'auth_date', 'hash'],
     properties: {
-      phoneNumber: {
-        type: 'string',
-        description: 'So dien thoai dang ky (E.164 hoac dinh dang VN: 0912..., +84912...)',
-        examples: ['+84912345678', '0912345678'],
-      },
-      password: {
-        type: 'string',
-        minLength: 6,
-        description: 'Mat khau admin',
-      },
+      id: { type: 'number', description: 'Telegram user ID' },
+      first_name: { type: 'string' },
+      last_name: { type: 'string' },
+      username: { type: 'string' },
+      photo_url: { type: 'string' },
+      auth_date: { type: 'number', description: 'Unix timestamp cua xac thuc' },
+      hash: { type: 'string', description: 'HMAC-SHA256 hash tu Telegram' },
     },
   },
   response: {
@@ -38,12 +35,17 @@ export const adminLoginSchema: FastifySchema = {
             userId: { type: 'string' },
             role: { type: ['string', 'null'] },
             phoneNumber: { type: 'string' },
+            telegramId: { type: 'number' },
+            firstName: { type: 'string' },
+            lastName: { type: ['string', 'null'] },
+            username: { type: ['string', 'null'] },
+            photoUrl: { type: ['string', 'null'] },
           },
         },
       },
     },
     401: {
-      description: 'Sai mat khau',
+      description: 'Hash khong hop le hoac het han',
       type: 'object',
       properties: {
         success: { type: 'boolean' },
@@ -51,64 +53,7 @@ export const adminLoginSchema: FastifySchema = {
       },
     },
     403: {
-      description: 'Khong co quyen admin, tai khoan bi khoa, hoac chua duoc cap mat khau',
-      type: 'object',
-      properties: {
-        success: { type: 'boolean' },
-        code: { type: 'string', description: 'NOT_PROVISIONED neu chua duoc cap mat khau' },
-        message: { type: 'string' },
-      },
-    },
-    503: {
-      description: 'Khong the ket noi svc-core-api',
-      type: 'object',
-      properties: {
-        success: { type: 'boolean' },
-        message: { type: 'string' },
-      },
-    },
-  },
-};
-
-export const adminProvisionSchema: FastifySchema = {
-  tags: ['Auth'],
-  summary: 'Provision Admin Account (Super-admin only)',
-  description:
-    'Super-admin endpoint: verify phone is_admin in svc-core-api, ' +
-    'auto-generate a random 12-char password, store bcrypt hash, ' +
-    'return plaintext password once for distribution to the admin. ' +
-    'Calling again force-resets the password. ' +
-    'Requires header: X-Super-Admin-Secret matching SUPER_ADMIN_SECRET env var.',
-  headers: {
-    type: 'object',
-    required: ['x-super-admin-secret'],
-    properties: {
-      'x-super-admin-secret': { type: 'string', description: 'Super-admin provisioning secret' },
-    },
-  },
-  body: {
-    type: 'object',
-    required: ['phoneNumber'],
-    properties: {
-      phoneNumber: {
-        type: 'string',
-        description: 'Admin phone number to provision',
-        examples: ['+84912345678', '0912345678'],
-      },
-    },
-  },
-  response: {
-    200: {
-      description: 'Provisioned successfully - returns one-time plaintext password',
-      type: 'object',
-      properties: {
-        success: { type: 'boolean' },
-        message: { type: 'string' },
-        phoneNumber: { type: 'string' },
-        password: { type: 'string', description: 'Plaintext password - share with admin once' },
-      },
-    },
-    403: {
+      description: 'Khong co quyen admin',
       type: 'object',
       properties: {
         success: { type: 'boolean' },
@@ -116,6 +61,7 @@ export const adminProvisionSchema: FastifySchema = {
       },
     },
     503: {
+      description: 'Khong the ket noi svc-core-api',
       type: 'object',
       properties: {
         success: { type: 'boolean' },
