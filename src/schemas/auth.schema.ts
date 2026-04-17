@@ -1,75 +1,66 @@
-import type { FastifySchema } from 'fastify';
+﻿import type { FastifySchema } from 'fastify';
 
 export const adminLoginSchema: FastifySchema = {
   tags: ['Auth'],
   summary: 'Admin Login',
   description:
-    'Đăng nhập dành cho quản trị viên hệ thống. ' +
-    'Xác thực số điện thoại qua svc-core-api (is_admin=true), ' +
-    'tự động tạo/cập nhật tài khoản trong biztada-crm với role=null (full access), ' +
-    'xác thực mật khẩu bcrypt, và trả về JWT access token + refresh token.',
+    'Dang nhap danh cho quan tri vien he thong. ' +
+    'Xac thuc so dien thoai qua svc-core-api (is_admin=true), ' +
+    'xac thuc mat khau bcrypt, va tra ve JWT access token + refresh token.',
   body: {
     type: 'object',
     required: ['phoneNumber', 'password'],
     properties: {
       phoneNumber: {
         type: 'string',
-        description: 'Số điện thoại đăng ký (E.164 hoặc định dạng VN: 0912..., +84912...)',
+        description: 'So dien thoai dang ky (E.164 hoac dinh dang VN: 0912..., +84912...)',
         examples: ['+84912345678', '0912345678'],
       },
       password: {
         type: 'string',
         minLength: 6,
-        description: 'Mật khẩu admin',
+        description: 'Mat khau admin',
       },
     },
   },
   response: {
     200: {
-      description: 'Đăng nhập thành công',
+      description: 'Dang nhap thanh cong',
       type: 'object',
       properties: {
         success: { type: 'boolean' },
         message: { type: 'string' },
         token: { type: 'string', description: 'JWT access token (1h)' },
-        refreshToken: { type: 'string', description: 'Refresh token (7 ngày)' },
+        refreshToken: { type: 'string', description: 'Refresh token (7 ngay)' },
         user: {
           type: 'object',
           properties: {
             userId: { type: 'string' },
-            role: { type: ['string', 'null'], description: 'null = full admin access' },
+            role: { type: ['string', 'null'] },
             phoneNumber: { type: 'string' },
           },
         },
       },
     },
-    403: {
-      description: 'Không có quyền admin, tài khoản bị khóa, hoặc chưa đặt mật khẩu',
-      type: 'object',
-      properties: {
-        success: { type: 'boolean' },
-        code: { type: 'string', description: 'PASSWORD_NOT_SET nếu chưa đặt mật khẩu' },
-        message: { type: 'string' },
-      },
-    },
     401: {
-      description: 'Sai mật khẩu',
+      description: 'Sai mat khau',
       type: 'object',
       properties: {
         success: { type: 'boolean' },
         message: { type: 'string' },
       },
     },
-    404: {
-      description: 'Số điện thoại chưa đăng ký',
+    403: {
+      description: 'Khong co quyen admin, tai khoan bi khoa, hoac chua duoc cap mat khau',
       type: 'object',
       properties: {
         success: { type: 'boolean' },
+        code: { type: 'string', description: 'NOT_PROVISIONED neu chua duoc cap mat khau' },
         message: { type: 'string' },
       },
     },
     503: {
-      description: 'Không thể kết nối svc-core-api',
+      description: 'Khong the ket noi svc-core-api',
       type: 'object',
       properties: {
         success: { type: 'boolean' },
@@ -79,34 +70,34 @@ export const adminLoginSchema: FastifySchema = {
   },
 };
 
-export const adminInitPasswordSchema: FastifySchema = {
+export const adminProvisionSchema: FastifySchema = {
   tags: ['Auth'],
-  summary: 'Đặt mật khẩu lần đầu (Admin)',
+  summary: 'Provision Admin Account (Super-admin only)',
   description:
-    'Cho phép admin đặt mật khẩu lần đầu. ' +
-    'Chỉ hoạt động khi tài khoản chưa có mật khẩu. ' +
-    'Số điện thoại phải có is_admin=true trong svc-core-api.',
+    'Super-admin endpoint: verify phone is_admin in svc-core-api, ' +
+    'auto-generate a random 12-char password, store bcrypt hash, ' +
+    'return plaintext password once for distribution to the admin. ' +
+    'Calling again force-resets the password.',
   body: {
     type: 'object',
-    required: ['phoneNumber', 'password'],
+    required: ['phoneNumber'],
     properties: {
       phoneNumber: {
         type: 'string',
-        description: 'Số điện thoại admin',
-      },
-      password: {
-        type: 'string',
-        minLength: 6,
-        description: 'Mật khẩu mới (tối thiểu 6 ký tự)',
+        description: 'Admin phone number to provision',
+        examples: ['+84912345678', '0912345678'],
       },
     },
   },
   response: {
     200: {
+      description: 'Provisioned successfully - returns one-time plaintext password',
       type: 'object',
       properties: {
         success: { type: 'boolean' },
         message: { type: 'string' },
+        phoneNumber: { type: 'string' },
+        password: { type: 'string', description: 'Plaintext password - share with admin once' },
       },
     },
     403: {
@@ -116,8 +107,7 @@ export const adminInitPasswordSchema: FastifySchema = {
         message: { type: 'string' },
       },
     },
-    409: {
-      description: 'Mật khẩu đã được đặt rồi',
+    503: {
       type: 'object',
       properties: {
         success: { type: 'boolean' },

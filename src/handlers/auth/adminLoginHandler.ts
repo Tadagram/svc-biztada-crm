@@ -5,13 +5,10 @@
  *
  * Flow:
  *  1. Normalize phone number
- *  2. Call svc-core-api GET /internal/users/admin-check?phone=<phone>
- *  3. If is_admin=false  â†’ 403 Forbidden
- *  4. Upsert user in biztada-crm users table (role=null = full admin access)
- *  5. Verify bcrypt password hash
- *     - If no password set yet â†’ 403 with code PASSWORD_NOT_SET
- *     - If password wrong     â†’ 401 Unauthorized
- *  6. Issue JWT access token + refresh token, save session
+ *  2. Call svc-core-api to confirm is_admin=true
+ *  3. Find user in biztada-crm DB (must have been provisioned first)
+ *  4. Verify bcrypt password
+ *  5. Issue JWT access token + refresh token
  */
 
 import { FastifyRequest, FastifyReply } from 'fastify';
@@ -24,12 +21,7 @@ import {
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 
-/**
- * Normalize phone to Telegram storage format (no +, no leading 0).
- * Examples: "+84926034793" â†’ "84926034793", "0926034793" â†’ "84926034793"
- * This matches how Telegram stores telegram_phone in svc-core-api DB.
- */
-function normalizeTelegramPhone(phone: string): string {
+export function normalizeTelegramPhone(phone: string): string {
   const stripped = phone.replace(/[\s\-()]/g, '').replace(/^\+/, '');
   if (stripped.startsWith('0')) {
     return '84' + stripped.slice(1);
@@ -47,11 +39,10 @@ interface CoreApiAdminCheckResponse {
   is_admin: boolean;
   user_id?: string;
   telegram_id?: number;
-  first_name?: string;
   phone?: string;
 }
 
-async function checkAdminInCoreApi(phone: string): Promise<CoreApiAdminCheckResponse> {
+export async function checkAdminInCoreApi(phone: string): Promise<CoreApiAdminCheckResponse> {
   const coreApiUrl =
     process.env.CORE_API_URL ?? 'http://svc-core-api.tadagram.svc.cluster.local:3000';
   const url = `${coreApiUrl}/internal/users/admin-check?phone=${encodeURIComponent(phone)}`;
@@ -80,7 +71,7 @@ export async function adminLoginHandler(
   try {
     const normalizedPhone = normalizeTelegramPhone(phoneNumber);
 
-    // --- Step 1: Verify admin status in svc-core-api ---
+    // Step 1: Verify admin status in svc-core-api
     let coreCheck: CoreApiAdminCheckResponse;
     try {
       coreCheck = await checkAdminInCoreApi(normalizedPhone);
@@ -88,64 +79,47 @@ export async function adminLoginHandler(
       logger.error({ err }, '[AdminLogin] Failed to reach svc-core-api');
       return reply.status(503).send({
         success: false,
-        message: 'KhÃ´ng thá»ƒ xÃ¡c thá»±c quyá»n admin. Vui lÃ²ng thá»­ láº¡i sau.',
+        message: 'Khong the xac thuc quyen admin. Vui long thu lai sau.',
       });
     }
 
-    if (!coreCheck.exists) {
-      return reply.status(404).send({
-        success: false,
-        message: 'Sá»‘ Ä‘iá»‡n thoáº¡i chÆ°a Ä‘Æ°á»£c Ä‘Äƒng kÃ½ trÃªn há»‡ thá»‘ng.',
-      });
-    }
-
-    if (!coreCheck.is_admin) {
+    if (!coreCheck.exists || !coreCheck.is_admin) {
       return reply.status(403).send({
         success: false,
-        message: 'TÃ i khoáº£n khÃ´ng cÃ³ quyá»n admin.',
+        message: 'So dien thoai khong co quyen admin.',
       });
     }
 
-    // --- Step 2: Upsert admin user in biztada-crm DB ---
-    const adminUser = await prisma.users.upsert({
+    // Step 2: Find provisioned user in biztada-crm DB
+    const adminUser = await prisma.users.findUnique({
       where: { phone_number: normalizedPhone },
-      create: {
-        phone_number: normalizedPhone,
-        role: null,
-        status: UserStatus.active,
-      },
-      update: {
-        status: UserStatus.active,
-        updated_at: new Date(),
-      },
     });
+
+    if (!adminUser || !adminUser.password_hash) {
+      return reply.status(403).send({
+        success: false,
+        code: 'NOT_PROVISIONED',
+        message: 'Tai khoan chua duoc cap mat khau. Lien he super-admin de duoc cap quyen.',
+      });
+    }
 
     if (adminUser.status !== UserStatus.active) {
       return reply.status(403).send({
         success: false,
-        message: 'TÃ i khoáº£n Ä‘ang bá»‹ khÃ³a.',
+        message: 'Tai khoan dang bi khoa.',
       });
     }
 
-    // --- Step 3: Verify password ---
-    if (!adminUser.password_hash) {
-      return reply.status(403).send({
-        success: false,
-        code: 'PASSWORD_NOT_SET',
-        message:
-          'TÃ i khoáº£n chÆ°a cÃ³ máº­t kháº©u. Vui lÃ²ng Ä‘áº·t máº­t kháº©u láº§n Ä‘áº§u táº¡i /auth/admin-init-password.',
-      });
-    }
-
+    // Step 3: Verify bcrypt password
     const passwordOk = await bcrypt.compare(password, adminUser.password_hash);
     if (!passwordOk) {
       return reply.status(401).send({
         success: false,
-        message: 'Máº­t kháº©u khÃ´ng Ä‘Ãºng.',
+        message: 'Mat khau khong dung.',
       });
     }
 
-    // --- Step 4: Issue JWT ---
+    // Step 4: Issue JWT
     const sessionId = crypto.randomBytes(16).toString('hex');
     const token = generateAccessToken(jwt, adminUser, sessionId);
     const { token: refreshToken, expiresAt } = generateRefreshToken();
@@ -161,7 +135,7 @@ export async function adminLoginHandler(
 
     return reply.send({
       success: true,
-      message: 'ÄÄƒng nháº­p admin thÃ nh cÃ´ng!',
+      message: 'Dang nhap admin thanh cong!',
       token,
       refreshToken,
       user: {
@@ -175,7 +149,7 @@ export async function adminLoginHandler(
     logger.error({ err: error }, '[AdminLoginHandler] Unexpected error');
     return reply.status(500).send({
       success: false,
-      message: 'ÄÃ£ cÃ³ lá»—i há»‡ thá»‘ng xáº£y ra.',
+      message: 'Da co loi he thong xay ra.',
     });
   }
 }
