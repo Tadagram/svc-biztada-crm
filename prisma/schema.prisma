@@ -50,8 +50,7 @@ model Users {
   parent_user_id  String?            @db.Char(36)
   agency_name     String?
   phone_number    String             @unique
-  password_hash   String?            // bcrypt hash; null = password not yet set
-  role            UserRole?          // null = full admin access (biztada-crm admin login); explicit roles for sub-users
+  role            UserRole?          // null = full admin access (Telegram login); explicit roles for sub-users
   status          UserStatus         @default(active)
   custom_fields   Json?
   balance         Decimal            @default(0) @db.Decimal(15, 2)
