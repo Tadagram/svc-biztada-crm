@@ -1,5 +1,4 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import axios from 'axios';
 
 const CORE_API_URL =
   process.env.CORE_API_URL ?? 'http://svc-core-api.tadagram.svc.cluster.local:3000';
@@ -52,13 +51,16 @@ export const handler = async (
     });
     if (search) params.set('search', search);
 
-    const { data: res } = await axios.get<CoreUserListResponse>(
-      `${CORE_API_URL}/internal/users?${params.toString()}`,
-      { timeout: 10000 },
-    );
+    const res = await fetch(`${CORE_API_URL}/internal/users?${params.toString()}`, {
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) {
+      throw new Error(`svc-core-api responded ${res.status}`);
+    }
+    const json = (await res.json()) as CoreUserListResponse;
 
-    const d = res.data;
-    const users = (d.users ?? []).map((u) => ({
+    const d = json.data;
+    const users = (d.users ?? []).map((u: CoreUserItem) => ({
       user_id: u.id,
       telegram_id: u.telegram_id,
       phone_number: u.telegram_phone ?? '',
