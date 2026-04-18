@@ -51,12 +51,21 @@ const userDataResponse = {
     user_id: { type: 'string' },
     phone_number: { type: 'string' },
     agency_name: { type: ['string', 'null'] },
-    role: { type: 'string' },
+    role: { type: ['string', 'null'] },
     status: { type: 'string' },
     parent_user_id: { type: ['string', 'null'] },
     created_at: { type: 'string' },
     updated_at: { type: 'string' },
     deleted_at: { type: ['string', 'null'] },
+    // svc-core-api enriched fields (biztada users)
+    telegram_id: { type: ['number', 'null'] },
+    first_name: { type: ['string', 'null'] },
+    last_name: { type: ['string', 'null'] },
+    username: { type: ['string', 'null'] },
+    is_premium: { type: 'boolean' },
+    business_count: { type: 'integer' },
+    portal_count: { type: 'integer' },
+    worker_count: { type: 'integer' },
   },
 };
 
@@ -176,7 +185,6 @@ export const getUsersSchema: FastifySchema = {
       description: 'Users retrieved successfully',
       type: 'object',
       properties: {
-        success: { type: 'boolean' },
         data: {
           type: 'array',
           items: userDataResponse,
@@ -187,6 +195,7 @@ export const getUsersSchema: FastifySchema = {
             total: { type: 'integer' },
             limit: { type: 'integer' },
             offset: { type: 'integer' },
+            pages: { type: 'integer' },
             totalPages: { type: 'integer' },
             currentPage: { type: 'integer' },
             all: { type: 'boolean' },

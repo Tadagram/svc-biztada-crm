@@ -82,6 +82,7 @@ export const handler = async (
         limit,
         offset,
         pages: d.total_pages,
+        totalPages: d.total_pages,
       },
     });
   } catch (err: unknown) {
