@@ -12,8 +12,9 @@ interface GetAgencyWorkersQuerystring {
 
 function buildAgencyWorkerIsolation(caller: {
   userId: string;
-  role: UserRole;
+  role: UserRole | null;
 }): Record<string, string> | null {
+  if (caller.role === null) return {}; // admin → full access
   if (caller.role === USER_ROLES.MOD) return {};
   if (caller.role === USER_ROLES.AGENCY) return { agency_user_id: caller.userId };
   if (caller.role === USER_ROLES.USER) return { using_by: caller.userId };
@@ -26,7 +27,10 @@ function buildWhereClause(
   status?: AssignmentStatus,
   agency_user_id?: string,
 ) {
-  const agencyFilter = caller.role === USER_ROLES.MOD && agency_user_id ? { agency_user_id } : {};
+  const agencyFilter =
+    (caller.role === null || caller.role === USER_ROLES.MOD) && agency_user_id
+      ? { agency_user_id }
+      : {};
 
   return {
     deleted_at: null,

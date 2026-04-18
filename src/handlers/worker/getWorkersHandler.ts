@@ -12,8 +12,9 @@ interface GetWorkersQuerystring {
 
 function buildWorkerIsolation(caller: {
   userId: string;
-  role: UserRole;
+  role: UserRole | null;
 }): Record<string, unknown> | null {
+  if (caller.role === null) return {}; // admin → full access
   if (caller.role === USER_ROLES.MOD) return {};
   if (caller.role === USER_ROLES.AGENCY) {
     return { agency_workers: { some: { agency_user_id: caller.userId, deleted_at: null } } };

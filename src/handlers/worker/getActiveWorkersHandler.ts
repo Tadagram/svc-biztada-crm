@@ -8,8 +8,9 @@ interface GetActiveWorkersQuerystring {
 
 function buildActiveWorkerIsolation(caller: {
   userId: string;
-  role: UserRole;
+  role: UserRole | null;
 }): Record<string, string> | null {
+  if (caller.role === null) return {}; // admin → full access
   if (caller.role === USER_ROLES.MOD) return {};
   if (caller.role === USER_ROLES.AGENCY) return { agency_user_id: caller.userId };
   if (caller.role === USER_ROLES.USER) return { using_by: caller.userId };
@@ -62,7 +63,8 @@ export async function handler(
       status: ASSIGNMENT_STATUSES.ACTIVE,
       deleted_at: null,
       ...isolation,
-      ...(caller.role === USER_ROLES.MOD && agencyId && { agency_user_id: agencyId }),
+      ...((caller.role === null || caller.role === USER_ROLES.MOD) &&
+        agencyId && { agency_user_id: agencyId }),
     };
 
     const assignments = await fetchActiveAssignments(prisma, where);
