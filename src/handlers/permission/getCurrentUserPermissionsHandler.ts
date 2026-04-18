@@ -4,9 +4,10 @@ import { UserRole } from '@prisma/client';
 
 export async function handler(request: FastifyRequest, reply: FastifyReply) {
   try {
-    const caller = request.user as { userId: string; role: string };
+    const caller = request.user as { userId: string; role: string | null };
 
-    if (caller.role === UserRole.mod) {
+    // null role = full admin (no role restriction), mod = moderator with all permissions
+    if (caller.role === null || caller.role === UserRole.mod) {
       const allPermissions = await request.server.prisma.permissions.findMany({
         select: { code: true },
       });
@@ -18,7 +19,8 @@ export async function handler(request: FastifyRequest, reply: FastifyReply) {
           permissions: allCodes,
           roleDefaults: allCodes,
           overrides: [],
-          isMod: true,
+          isMod: caller.role === UserRole.mod,
+          isAdmin: caller.role === null,
         },
       });
     }
