@@ -18,7 +18,8 @@ async function rbacPlugin(fastify: FastifyInstance, _options: FastifyPluginOptio
       async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
         const caller = request.user;
 
-        if (caller.role === UserRole.mod) {
+        // null role = full admin; mod also bypasses RBAC
+        if (caller.role === null || caller.role === UserRole.mod) {
           return;
         }
 

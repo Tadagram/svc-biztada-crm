@@ -30,7 +30,7 @@ export async function handler(
     return reply.status(404).send({ success: false, message: 'Yêu cầu nạp tiền không tồn tại' });
   }
 
-  const isMod = caller.role === USER_ROLES.MOD;
+  const isMod = caller.role === null || caller.role === USER_ROLES.MOD;
   if (!isMod && topup.user_id !== caller.userId) {
     return reply.status(403).send({ success: false, message: 'Không có quyền xem yêu cầu này' });
   }

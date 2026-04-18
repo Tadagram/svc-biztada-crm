@@ -14,7 +14,8 @@ const userSelect = {
   deleted_at: true,
 };
 
-function validateUpdatePermission(callerRole: UserRole): { valid: boolean; error?: string } {
+function validateUpdatePermission(callerRole: UserRole | null): { valid: boolean; error?: string } {
+  if (callerRole === null) return { valid: true }; // admin → full access
   if (!CAN_UPDATE_USER.includes(callerRole)) {
     return { valid: false, error: 'Only mod and agency can update users' };
   }

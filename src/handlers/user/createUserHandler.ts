@@ -3,7 +3,8 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { createUserInDatabase, checkUserExists, CreateUserBody, UserPayload } from './userHelper';
 import { CAN_CREATE_USER, USER_ROLES } from '@/utils/constants';
 
-function validateCallerRole(callerRole: UserRole): { valid: boolean; error?: string } {
+function validateCallerRole(callerRole: UserRole | null): { valid: boolean; error?: string } {
+  if (callerRole === null) return { valid: true }; // admin → full access
   if (!CAN_CREATE_USER.includes(callerRole)) {
     return { valid: false, error: 'Only mod and agency can create users' };
   }

@@ -138,7 +138,7 @@ export async function handler(
       not_role,
       status,
       parent_user_id,
-      caller.role === USER_ROLES.MOD,
+      caller.role === null || caller.role === USER_ROLES.MOD,
     );
 
     if (lifecycle) {
