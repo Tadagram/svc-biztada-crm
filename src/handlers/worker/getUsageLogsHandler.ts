@@ -97,8 +97,8 @@ export async function handler(
 
   const caller = request.user as { userId: string; role: UserRole };
 
-  // Only MOD can access detailed usage logs
-  if (caller.role !== USER_ROLES.MOD) {
+  // Only MOD or admin (role=null) can access detailed usage logs
+  if (caller.role !== USER_ROLES.MOD && caller.role !== null) {
     return reply.status(403).send({
       success: false,
       message: 'Only administrators can access detailed usage logs',
