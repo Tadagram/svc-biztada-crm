@@ -1,6 +1,7 @@
 export { handler as createUserHandler } from './createUserHandler';
 export { handler as verifyUserHandler } from './verifyUserHandler';
 export { handler as getUsersHandler } from './getUsersHandler';
+export { handler as getCoreUsersHandler } from './getCoreUsersHandler';
 export { handler as getUserByIdHandler } from './getUserByIdHandler';
 export { handler as getCurrentUserHandler } from './getCurrentUserHandler';
 export { handler as updateUserHandler } from './updateUserHandler';

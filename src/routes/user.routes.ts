@@ -1,7 +1,7 @@
 import { FastifyInstance, RouteHandlerMethod } from 'fastify';
 import {
   createUserHandler,
-  getUsersHandler,
+  getCoreUsersHandler,
   getUserByIdHandler,
   getCurrentUserHandler,
   updateUserHandler,
@@ -58,7 +58,7 @@ async function userRoutes(fastify: FastifyInstance) {
       schema: getUsersSchema,
       preHandler: [fastify.authenticate, fastify.requirePermission('users:read')],
     },
-    getUsersHandler as RouteHandlerMethod,
+    getCoreUsersHandler as RouteHandlerMethod,
   );
 
   // Get user stats
