@@ -49,19 +49,21 @@ async function authenticateTopupViaCoreToken(request: FastifyRequest): Promise<b
   if (!adminCheckRes.ok) return false;
 
   const coreUser = (await adminCheckRes.json()) as CoreAdminCheckResponse;
-  if (!coreUser.exists || !coreUser.phone) return false;
+  if (!coreUser.exists || !coreUser.user_id) return false;
+
+  const resolvedPhone = coreUser.phone ?? `tg_${telegramId}`;
 
   const user = await request.server.prisma.users.upsert({
-    where: { phone_number: coreUser.phone },
+    where: { user_id: coreUser.user_id },
     create: {
       user_id: coreUser.user_id,
-      phone_number: coreUser.phone,
+      phone_number: resolvedPhone,
       role: UserRole.user,
       status: UserStatus.active,
     },
     update: {
       status: UserStatus.active,
-      ...(coreUser.user_id ? { user_id: coreUser.user_id } : {}),
+      phone_number: resolvedPhone,
     },
   });
 
