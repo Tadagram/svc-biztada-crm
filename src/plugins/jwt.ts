@@ -86,19 +86,43 @@ async function authenticateTopupViaCoreToken(request: FastifyRequest): Promise<b
 
   const resolvedPhone = coreUser.phone ?? `tg_${telegramId}`;
 
-  const user = await request.server.prisma.users.upsert({
+  let user = await request.server.prisma.users.findUnique({
     where: { user_id: coreUser.user_id },
-    create: {
-      user_id: coreUser.user_id,
-      phone_number: resolvedPhone,
-      role: UserRole.user,
-      status: UserStatus.active,
-    },
-    update: {
-      status: UserStatus.active,
-      phone_number: resolvedPhone,
-    },
   });
+
+  if (!user && coreUser.phone) {
+    user = await request.server.prisma.users.findUnique({
+      where: { phone_number: coreUser.phone },
+    });
+  }
+
+  if (user) {
+    if (user.user_id !== coreUser.user_id) {
+      request.log.warn(
+        {
+          coreUserId: coreUser.user_id,
+          crmUserId: user.user_id,
+          phone: coreUser.phone,
+          route: request.url,
+        },
+        'Core user_id mismatches CRM user for same phone; using existing CRM user',
+      );
+    }
+
+    user = await request.server.prisma.users.update({
+      where: { user_id: user.user_id },
+      data: { status: UserStatus.active },
+    });
+  } else {
+    user = await request.server.prisma.users.create({
+      data: {
+        user_id: coreUser.user_id,
+        phone_number: resolvedPhone,
+        role: UserRole.user,
+        status: UserStatus.active,
+      },
+    });
+  }
 
   request.user = {
     userId: user.user_id,
