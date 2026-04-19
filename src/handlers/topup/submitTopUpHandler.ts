@@ -4,10 +4,9 @@ import { USER_ROLES, USER_STATUSES, TOPUP_STATUSES, TOPUP_CREDIT_RATE } from '@/
 import topupEmitter from '@plugins/topupEmitter';
 
 interface SubmitTopUpBody {
+  user_uuid: string;
   amount: number;
-  source_channel?: 'DIRECT' | 'WHITELABEL';
-  sales_agency_uuid?: string;
-  proof_note?: string;
+  seller_agency_uuid?: string | null;
 }
 
 function toCreditAmount(amount: number) {
@@ -18,9 +17,7 @@ async function createTopUpRequest(
   prisma: PrismaClient,
   userId: string,
   amount: number,
-  sourceChannel: 'DIRECT' | 'WHITELABEL',
-  salesAgencyUuid?: string,
-  proof_note?: string,
+  sellerAgencyUuid?: string | null,
 ) {
   return prisma.topUpRequests.create({
     data: {
@@ -28,9 +25,9 @@ async function createTopUpRequest(
       amount,
       currency: 'USDT',
       credit_amount: toCreditAmount(amount),
-      source_channel: sourceChannel,
-      sales_agency_uuid: sourceChannel === 'WHITELABEL' ? (salesAgencyUuid ?? null) : null,
-      proof_note: proof_note ?? null,
+      source_channel: 'DIRECT',
+      sales_agency_uuid: sellerAgencyUuid ?? null,
+      proof_note: null,
       status: TOPUP_STATUSES.PENDING,
     },
     include: {
@@ -45,8 +42,7 @@ async function notifyModerators(
   userId: string,
   amount: number,
   userPhone: string,
-  sourceChannel: 'DIRECT' | 'WHITELABEL',
-  salesAgencyUuid?: string,
+  sellerAgencyUuid?: string | null,
 ) {
   const mods = await prisma.users.findMany({
     where: { role: USER_ROLES.MOD, status: USER_STATUSES.ACTIVE },
@@ -62,10 +58,7 @@ async function notifyModerators(
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(toCreditAmount(amount));
-    const sourceText =
-      sourceChannel === 'WHITELABEL'
-        ? `White-label${salesAgencyUuid ? ` (${salesAgencyUuid})` : ''}`
-        : 'biztada.com';
+    const sourceText = sellerAgencyUuid ? `Agency ${sellerAgencyUuid}` : 'biztada.com';
     await prisma.notifications.createMany({
       data: mods.map((mod) => ({
         recipient_id: mod.user_id,
@@ -84,33 +77,10 @@ export async function handler(
   reply: FastifyReply,
 ) {
   const { prisma } = request;
-  const caller = request.user;
-  const { amount, source_channel, sales_agency_uuid, proof_note } = request.body;
-  const sourceChannel = source_channel ?? 'DIRECT';
+  const { user_uuid, amount, seller_agency_uuid } = request.body;
 
-  if (sourceChannel === 'WHITELABEL' && !sales_agency_uuid) {
-    return reply.status(400).send({
-      success: false,
-      message: 'sales_agency_uuid là bắt buộc khi source_channel = WHITELABEL',
-    });
-  }
-
-  const topup = await createTopUpRequest(
-    prisma,
-    caller.userId,
-    amount,
-    sourceChannel,
-    sales_agency_uuid,
-    proof_note,
-  );
-  await notifyModerators(
-    prisma,
-    caller.userId,
-    amount,
-    topup.user.phone_number,
-    sourceChannel,
-    sales_agency_uuid,
-  );
+  const topup = await createTopUpRequest(prisma, user_uuid, amount, seller_agency_uuid);
+  await notifyModerators(prisma, user_uuid, amount, topup.user.phone_number, seller_agency_uuid);
 
   topupEmitter.emit('topup_event', {
     event: 'new_topup',

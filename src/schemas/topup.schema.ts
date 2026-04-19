@@ -103,31 +103,27 @@ const creditLedgerDataResponse = {
 export const submitTopUpSchema: FastifySchema = {
   tags: ['TopUp'],
   summary: 'Gửi yêu cầu nạp tiền',
-  description: 'Khách hàng gửi yêu cầu nạp tiền, kèm ghi chú bằng chứng thanh toán.',
+  description: 'Khách hàng gửi yêu cầu nạp tiền với user_uuid, số tiền, và UUID đại lý (nếu có).',
   security: [{ bearerAuth: [] }],
   body: {
     type: 'object',
-    required: ['amount'],
+    required: ['user_uuid', 'amount'],
     properties: {
+      user_uuid: {
+        type: 'string',
+        format: 'uuid',
+        description: 'UUID của user nạp tiền',
+      },
       amount: {
         type: 'number',
         minimum: 1,
         description:
           'Số tiền muốn nạp (USDT, tối thiểu 1 USDT). Tỷ lệ quy đổi: 1 USDT = 10 credits.',
       },
-      source_channel: {
+      seller_agency_uuid: {
         type: 'string',
-        enum: ['DIRECT', 'WHITELABEL'],
-        description: 'Nguồn nạp tiền: trực tiếp từ biztada.com hoặc từ white-label',
-      },
-      sales_agency_uuid: {
-        type: 'string',
-        description: 'UUID đại lý bán hàng nếu nạp từ white-label',
-      },
-      proof_note: {
-        type: 'string',
-        maxLength: 500,
-        description: 'Nội dung CK, tên ngân hàng, thời gian giao dịch...',
+        format: 'uuid',
+        description: 'UUID đại lý bán hàng (nếu có, null nếu không)',
       },
     },
   },
