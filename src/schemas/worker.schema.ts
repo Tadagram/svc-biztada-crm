@@ -3,24 +3,17 @@ import { FastifySchema } from 'fastify';
 const workerDataResponse = {
   type: 'object',
   properties: {
-    // portal info (from svc-core-api)
-    portal_id: { type: 'string' },
-    device_name: { type: 'string' },
-    portal_type: { type: 'string' },
-    portal_status: { type: 'string' },
-    user_id: { type: 'string' },
-    // worker info
-    worker_uuid: { type: ['string', 'null'] },
-    worker_type: { type: ['string', 'null'] },
-    installed_at: { type: ['string', 'null'] },
-    last_seen_at: { type: ['string', 'null'] },
-    // live enrichment from orchestrator/Redis
-    status: { type: ['string', 'null'] },
-    worker_mode: { type: ['string', 'null'] },
-    ip_type: { type: ['string', 'null'] },
-    last_heartbeat: { type: ['string', 'null'] },
+    worker_uuid: { type: 'string' },
+    worker_type: { type: 'string' },
+    worker_mode: { type: 'string' },
+    ip_type: { type: 'string' },
+    user_id: { type: ['string', 'null'] },
     expires_at: { type: ['string', 'null'] },
-    registered_at: { type: ['string', 'null'] },
+    created_at: { type: 'string' },
+    updated_at: { type: 'string' },
+    status: { type: ['string', 'null'] },
+    last_heartbeat: { type: ['string', 'null'] },
+    url: { type: ['string', 'null'] },
   },
 };
 
@@ -99,9 +92,10 @@ export const getWorkersSchema: FastifySchema = {
       limit: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
       offset: { type: 'integer', minimum: 0, default: 0 },
       search: { type: 'string' },
-      portal_id: { type: 'string' },
-      user_id: { type: 'string' },
       worker_type: { type: 'string' },
+      worker_mode: { type: 'string' },
+      status: { type: 'string' },
+      user_id: { type: 'string' },
     },
   },
   response: {
