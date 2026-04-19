@@ -71,7 +71,7 @@ async function approveTopUpTransaction(
         created_by: userId,
         metadata: {
           currency: updatedTopup.currency,
-          amount_usd: updatedTopup.amount.toString(),
+          amount_usdt: updatedTopup.amount.toString(),
           review_note: reviewNote ?? null,
         },
       },
@@ -91,7 +91,7 @@ async function sendApprovalNotification(
   newCreditBalance: any,
   reviewerId: string,
 ) {
-  const usd = Number(amount).toLocaleString('en-US', {
+  const usdt = Number(amount).toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
@@ -105,7 +105,7 @@ async function sendApprovalNotification(
       sender_id: reviewerId,
       type: 'account_updated',
       title: '✅ Nạp tiền thành công',
-      body: `Yêu cầu nạp ${usd} USD đã được duyệt. Bạn nhận ${credits} credits. Credit hiện tại: ${Number(newCreditBalance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
+      body: `Yêu cầu nạp ${usdt} USDT đã được duyệt. Bạn nhận ${credits} credits. Credit hiện tại: ${Number(newCreditBalance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
       action_url: '/topup/me',
       custom_fields: {
         topup_id: topupId,

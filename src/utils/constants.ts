@@ -47,6 +47,8 @@ export const TOPUP_STATUSES = {
   REJECTED: TopUpStatus.REJECTED,
 } as const;
 
+export const TOPUP_CREDIT_RATE = 10;
+
 // ── Worker Status Constants (not in Prisma enum, but should use these) ─────
 export const WORKER_STATUSES = {
   READY: 'ready',

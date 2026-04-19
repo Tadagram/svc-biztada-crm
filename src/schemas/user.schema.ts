@@ -54,6 +54,8 @@ const userDataResponse = {
     role: { type: ['string', 'null'] },
     status: { type: 'string' },
     parent_user_id: { type: ['string', 'null'] },
+    balance: { type: ['string', 'null'] },
+    available_credits: { type: ['string', 'null'] },
     created_at: { type: 'string' },
     updated_at: { type: 'string' },
     deleted_at: { type: ['string', 'null'] },

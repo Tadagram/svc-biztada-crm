@@ -1,7 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 
 export async function handler(request: FastifyRequest, reply: FastifyReply) {
-  const { prisma } = request;
+  const prisma = request.prisma as any;
   const caller = request.user;
 
   const balance = await prisma.userCreditBalances.findUnique({

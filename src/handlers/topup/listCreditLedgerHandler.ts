@@ -1,16 +1,11 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import {
-  PrismaClient,
-  CreditLedgerEntryType,
-  CreditLedgerDirection,
-  UserRole,
-} from '@prisma/client';
+import { PrismaClient, UserRole } from '@prisma/client';
 import { hasPermission } from '@handlers/permission/permissionHelper';
 
 interface IListCreditLedgerQuery {
   user_id?: string;
-  entry_type?: CreditLedgerEntryType;
-  direction?: CreditLedgerDirection;
+  entry_type?: 'TOPUP_APPROVED' | 'USAGE' | 'ADJUSTMENT' | 'REFUND';
+  direction?: 'CREDIT' | 'DEBIT';
   source_channel?: 'DIRECT' | 'WHITELABEL';
   limit?: number;
   before?: string;
@@ -35,7 +30,7 @@ export async function handler(
   request: FastifyRequest<{ Querystring: IListCreditLedgerQuery }>,
   reply: FastifyReply,
 ) {
-  const { prisma } = request;
+  const prisma = request.prisma as any;
   const caller = request.user;
   const query = request.query;
 

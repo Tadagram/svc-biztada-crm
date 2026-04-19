@@ -13,7 +13,7 @@ export interface ITopUpEvent {
   event: TopUpEventType;
   topup_id: string;
   user_id: string;
-  amount: string; // USD amount serialized as string
+  amount: string; // USDT amount serialized as string
   currency?: string;
   credit_amount?: string;
   source_channel?: 'DIRECT' | 'WHITELABEL';

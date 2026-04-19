@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { PrismaClient } from '@prisma/client';
-import { USER_ROLES, USER_STATUSES, TOPUP_STATUSES } from '@/utils/constants';
+import { USER_ROLES, USER_STATUSES, TOPUP_STATUSES, TOPUP_CREDIT_RATE } from '@/utils/constants';
 import topupEmitter from '@plugins/topupEmitter';
 
 interface SubmitTopUpBody {
@@ -8,6 +8,10 @@ interface SubmitTopUpBody {
   source_channel?: 'DIRECT' | 'WHITELABEL';
   sales_agency_uuid?: string;
   proof_note?: string;
+}
+
+function toCreditAmount(amount: number) {
+  return Math.round(amount * TOPUP_CREDIT_RATE * 100) / 100;
 }
 
 async function createTopUpRequest(
@@ -22,8 +26,8 @@ async function createTopUpRequest(
     data: {
       user_id: userId,
       amount,
-      currency: 'USD',
-      credit_amount: amount,
+      currency: 'USDT',
+      credit_amount: toCreditAmount(amount),
       source_channel: sourceChannel,
       sales_agency_uuid: sourceChannel === 'WHITELABEL' ? (salesAgencyUuid ?? null) : null,
       proof_note: proof_note ?? null,
@@ -54,6 +58,10 @@ async function notifyModerators(
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(amount);
+    const creditsStr = new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(toCreditAmount(amount));
     const sourceText =
       sourceChannel === 'WHITELABEL'
         ? `White-label${salesAgencyUuid ? ` (${salesAgencyUuid})` : ''}`
@@ -64,7 +72,7 @@ async function notifyModerators(
         sender_id: userId,
         type: 'account_updated',
         title: 'Yêu cầu nạp tiền mới',
-        body: `Người dùng ${userPhone} vừa yêu cầu nạp ${amountStr} USD (${amountStr} credits), nguồn: ${sourceText}.`,
+        body: `Người dùng ${userPhone} vừa yêu cầu nạp ${amountStr} USDT (${creditsStr} credits), nguồn: ${sourceText}.`,
         action_url: '/topup/review',
       })),
     });

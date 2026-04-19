@@ -57,8 +57,8 @@ async function sendRejectionNotification(
       type: 'account_updated',
       title: '❌ Yêu cầu nạp tiền bị từ chối',
       body: reviewNote
-        ? `Yêu cầu nạp ${amountStr} USD bị từ chối: ${reviewNote}`
-        : `Yêu cầu nạp ${amountStr} USD không được duyệt.`,
+        ? `Yêu cầu nạp ${amountStr} USDT bị từ chối: ${reviewNote}`
+        : `Yêu cầu nạp ${amountStr} USDT không được duyệt.`,
       action_url: '/topup/me',
       custom_fields: {
         topup_id: topupId,

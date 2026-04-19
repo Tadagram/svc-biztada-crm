@@ -9,7 +9,7 @@ const topupDataResponse = {
   properties: {
     topup_id: { type: 'string' },
     user_id: { type: 'string' },
-    amount: { type: 'string' }, // USD amount (Decimal → string)
+    amount: { type: 'string' }, // USDT amount (Decimal → string)
     currency: { type: 'string' },
     credit_amount: { type: 'string' },
     source_channel: { type: 'string', enum: ['DIRECT', 'WHITELABEL'] },
@@ -112,7 +112,8 @@ export const submitTopUpSchema: FastifySchema = {
       amount: {
         type: 'number',
         minimum: 1,
-        description: 'Số tiền muốn nạp (USD, tối thiểu 1 USD)',
+        description:
+          'Số tiền muốn nạp (USDT, tối thiểu 1 USDT). Tỷ lệ quy đổi: 1 USDT = 10 credits.',
       },
       source_channel: {
         type: 'string',

@@ -126,9 +126,15 @@ export async function handler(
       status: true,
       parent_user_id: true,
       last_active_at: true,
+      balance: true,
       created_at: true,
       updated_at: true,
       deleted_at: true,
+      credit_balance: {
+        select: {
+          available_credits: true,
+        },
+      },
     };
 
     let where: any = buildWhereClause(
@@ -168,9 +174,15 @@ export async function handler(
       offset,
     );
 
+    const normalizedUsers = users.map((user: any) => ({
+      ...user,
+      balance: user.balance?.toString?.() ?? '0.00',
+      available_credits: user.credit_balance?.available_credits?.toString?.() ?? '0.00',
+    }));
+
     return reply.send({
       success: true,
-      data: users,
+      data: normalizedUsers,
       pagination: {
         limit,
         offset,
