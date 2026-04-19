@@ -9,6 +9,14 @@ const CORE_API_URL =
   process.env.CORE_API_URL ?? 'http://svc-core-api.tadagram.svc.cluster.local:3000';
 
 interface CoreAuthMeResponse {
+  valid: boolean;
+  user?: {
+    id?: string;
+    telegram_id?: number;
+  };
+}
+
+interface CoreAuthLegacyMeResponse {
   success: boolean;
   user?: {
     telegram_id?: number;
@@ -32,14 +40,39 @@ async function authenticateTopupViaCoreToken(request: FastifyRequest): Promise<b
   if (!authHeader?.startsWith('Bearer ')) return false;
   if (!request.url.startsWith('/topup/')) return false;
 
-  const meRes = await fetch(`${CORE_API_URL}/api/auth/me`, {
-    headers: { Authorization: authHeader },
-    signal: AbortSignal.timeout(10_000),
-  });
-  if (!meRes.ok) return false;
+  const rawToken = authHeader.slice('Bearer '.length).trim();
+  if (!rawToken) return false;
 
-  const meJson = (await meRes.json()) as CoreAuthMeResponse;
-  const telegramId = meJson.user?.telegram_id;
+  let telegramId: number | undefined;
+
+  // Preferred path: verify-session validates JWT directly and returns user telegram_id.
+  // /api/auth/me in svc-core-api depends on context middleware and is unreliable
+  // for service-to-service requests.
+  const verifyRes = await fetch(
+    `${CORE_API_URL}/api/auth/verify-session?token=${encodeURIComponent(rawToken)}`,
+    { signal: AbortSignal.timeout(10_000) },
+  );
+
+  if (verifyRes.ok) {
+    const verifyJson = (await verifyRes.json()) as CoreAuthMeResponse;
+    if (verifyJson.valid) {
+      telegramId = verifyJson.user?.telegram_id;
+    }
+  }
+
+  // Backward-compat fallback for environments where verify-session is unavailable.
+  if (!telegramId) {
+    const meRes = await fetch(`${CORE_API_URL}/api/auth/me`, {
+      headers: { Authorization: authHeader },
+      signal: AbortSignal.timeout(10_000),
+    });
+
+    if (!meRes.ok) return false;
+
+    const meJson = (await meRes.json()) as CoreAuthLegacyMeResponse;
+    telegramId = meJson.user?.telegram_id;
+  }
+
   if (!telegramId) return false;
 
   const adminCheckRes = await fetch(
