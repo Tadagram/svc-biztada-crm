@@ -2,8 +2,20 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import topupEmitter, { ITopUpEvent } from '@plugins/topupEmitter';
 
 function setCORSHeaders(res: any, requestOrigin?: string): void {
-  const allowedOrigin = process.env.FRONTEND_URL;
-  if (requestOrigin && (requestOrigin === allowedOrigin || !allowedOrigin)) {
+  const corsOrigins = (process.env.CORS_ORIGIN ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  const fallbackOrigin = process.env.FRONTEND_URL;
+
+  const isAllowed =
+    corsOrigins.length === 0
+      ? !fallbackOrigin || requestOrigin === fallbackOrigin
+      : requestOrigin
+        ? corsOrigins.includes(requestOrigin)
+        : false;
+
+  if (requestOrigin && isAllowed) {
     res.setHeader('Access-Control-Allow-Origin', requestOrigin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
   }

@@ -7,6 +7,8 @@ import {
   myTopUpsHandler,
   getTopUpHandler,
   streamTopUpHandler,
+  getCreditBalanceHandler,
+  listCreditLedgerHandler,
 } from '@handlers/topup';
 import {
   submitTopUpSchema,
@@ -16,6 +18,8 @@ import {
   myTopUpsSchema,
   getTopUpSchema,
   streamTopUpSchema,
+  getCreditBalanceSchema,
+  listCreditLedgerSchema,
 } from '@schemas/topup.schema';
 
 async function topupRoutes(fastify: FastifyInstance) {
@@ -32,6 +36,8 @@ async function topupRoutes(fastify: FastifyInstance) {
             request.headers['authorization'] = `Bearer ${query.token}`;
           }
           await fastify.authenticate(request, reply);
+          if (reply.sent) return;
+          await fastify.requirePermission('topup:review')(request, reply);
         },
       ],
     },
@@ -45,7 +51,7 @@ async function topupRoutes(fastify: FastifyInstance) {
     '/submit',
     {
       schema: submitTopUpSchema,
-      preHandler: [fastify.authenticate],
+      preHandler: [fastify.authenticate, fastify.requirePermission('topup:submit')],
     },
     submitTopUpHandler as RouteHandlerMethod,
   );
@@ -58,6 +64,26 @@ async function topupRoutes(fastify: FastifyInstance) {
       preHandler: [fastify.authenticate],
     },
     myTopUpsHandler as RouteHandlerMethod,
+  );
+
+  // GET /topup/credits/balance — current user's credit balance
+  fastify.get(
+    '/credits/balance',
+    {
+      schema: getCreditBalanceSchema,
+      preHandler: [fastify.authenticate],
+    },
+    getCreditBalanceHandler as RouteHandlerMethod,
+  );
+
+  // GET /topup/credits/ledger — credit ledger history
+  fastify.get(
+    '/credits/ledger',
+    {
+      schema: listCreditLedgerSchema,
+      preHandler: [fastify.authenticate],
+    },
+    listCreditLedgerHandler as RouteHandlerMethod,
   );
 
   // ── Reviewer routes ──────────────────────────────────────────────────────────

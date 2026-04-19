@@ -43,7 +43,11 @@ async function jwtPlugin(fastify: FastifyInstance, _options: FastifyPluginOption
       try {
         await request.jwtVerify();
       } catch (err) {
-        reply.send(err);
+        request.log.warn({ err }, 'JWT verification failed');
+        reply.status(401).send({
+          success: false,
+          message: 'Unauthorized',
+        });
       }
     });
 

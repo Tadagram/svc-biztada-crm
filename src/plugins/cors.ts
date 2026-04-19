@@ -13,6 +13,11 @@ export default fastifyPlugin(async (fastify: FastifyInstance) => {
 
   await fastify.register(fastifyCors, {
     origin: (origin, callback) => {
+      if (allowedOrigins.length === 0) {
+        callback(null, true);
+        return;
+      }
+
       if (!origin) {
         callback(null, true);
         return;
@@ -26,7 +31,18 @@ export default fastifyPlugin(async (fastify: FastifyInstance) => {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Request-ID',
+      'X-User-ID',
+      'X-Telegram-ID',
+      'X-User-Role',
+      'X-Business-ID',
+      'Accept',
+      'Cache-Control',
+      'Last-Event-ID',
+    ],
     maxAge: MAX_AGE,
   });
 

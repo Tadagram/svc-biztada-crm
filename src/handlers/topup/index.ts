@@ -5,3 +5,5 @@ export { handler as listTopUpsHandler } from './listTopUpsHandler';
 export { handler as myTopUpsHandler } from './myTopUpsHandler';
 export { handler as getTopUpHandler } from './getTopUpHandler';
 export { handler as streamTopUpHandler } from './streamTopUpHandler';
+export { handler as getCreditBalanceHandler } from './getCreditBalanceHandler';
+export { handler as listCreditLedgerHandler } from './listCreditLedgerHandler';

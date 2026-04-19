@@ -50,6 +50,54 @@ const errorResponse = {
   },
 };
 
+const creditBalanceDataResponse = {
+  type: 'object',
+  properties: {
+    user_id: { type: 'string' },
+    available_credits: { type: 'string' },
+    updated_at: { type: ['string', 'null'] },
+  },
+};
+
+const creditLedgerDataResponse = {
+  type: 'object',
+  properties: {
+    credit_entry_id: { type: 'string' },
+    user_id: { type: 'string' },
+    topup_id: { type: ['string', 'null'] },
+    entry_type: { type: 'string' },
+    direction: { type: 'string' },
+    amount: { type: 'string' },
+    balance_after: { type: 'string' },
+    purpose: { type: ['string', 'null'] },
+    source_channel: { type: 'string', enum: ['DIRECT', 'WHITELABEL'] },
+    sales_agency_uuid: { type: ['string', 'null'] },
+    metadata: { type: ['object', 'null'] },
+    created_by: { type: ['string', 'null'] },
+    created_at: { type: 'string' },
+    user: {
+      type: 'object',
+      properties: {
+        user_id: { type: 'string' },
+        phone_number: { type: 'string' },
+        agency_name: { type: ['string', 'null'] },
+      },
+    },
+    topup: {
+      type: ['object', 'null'],
+      properties: {
+        topup_id: { type: 'string' },
+        amount: { type: 'string' },
+        currency: { type: 'string' },
+        credit_amount: { type: 'string' },
+        source_channel: { type: 'string', enum: ['DIRECT', 'WHITELABEL'] },
+        sales_agency_uuid: { type: ['string', 'null'] },
+        status: { type: 'string', enum: topupStatusEnum },
+      },
+    },
+  },
+};
+
 // ─── POST /topup/submit ────────────────────────────────────────────────────────
 
 export const submitTopUpSchema: FastifySchema = {
@@ -285,5 +333,65 @@ export const streamTopUpSchema: FastifySchema = {
     200: { type: 'string', description: 'text/event-stream' },
     401: errorResponse,
     403: errorResponse,
+  },
+};
+
+// ─── GET /topup/credits/balance ──────────────────────────────────────────────
+
+export const getCreditBalanceSchema: FastifySchema = {
+  tags: ['TopUp'],
+  summary: 'Lấy số dư credit hiện tại của người dùng',
+  security: [{ bearerAuth: [] }],
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: creditBalanceDataResponse,
+      },
+    },
+    401: errorResponse,
+  },
+};
+
+// ─── GET /topup/credits/ledger ───────────────────────────────────────────────
+
+export const listCreditLedgerSchema: FastifySchema = {
+  tags: ['TopUp'],
+  summary: 'Lấy lịch sử biến động credit',
+  description:
+    'User thường xem lịch sử credit của chính mình. Reviewer có quyền topup:review có thể lọc theo user bất kỳ.',
+  security: [{ bearerAuth: [] }],
+  querystring: {
+    type: 'object',
+    properties: {
+      user_id: { type: 'string' },
+      entry_type: { type: 'string', enum: ['TOPUP_APPROVED', 'USAGE', 'ADJUSTMENT', 'REFUND'] },
+      direction: { type: 'string', enum: ['CREDIT', 'DEBIT'] },
+      source_channel: { type: 'string', enum: ['DIRECT', 'WHITELABEL'] },
+      limit: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
+      before: {
+        type: 'string',
+        description: 'Cursor: ISO timestamp của created_at của item cuối trang trước',
+      },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: { type: 'array', items: creditLedgerDataResponse },
+        cursor: {
+          type: 'object',
+          properties: {
+            nextCursor: { type: ['string', 'null'] },
+            hasMore: { type: 'boolean' },
+            limit: { type: 'integer' },
+          },
+        },
+      },
+    },
+    401: errorResponse,
   },
 };
