@@ -46,7 +46,10 @@ async function sendRejectionNotification(
   reviewerId: string,
   reviewNote?: string,
 ) {
-  const amountStr = Number(amount).toLocaleString('vi-VN');
+  const amountStr = Number(amount).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
   await prisma.notifications.create({
     data: {
       recipient_id: userId,
@@ -54,8 +57,8 @@ async function sendRejectionNotification(
       type: 'account_updated',
       title: '❌ Yêu cầu nạp tiền bị từ chối',
       body: reviewNote
-        ? `Yêu cầu nạp ${amountStr}đ bị từ chối: ${reviewNote}`
-        : `Yêu cầu nạp ${amountStr}đ không được duyệt.`,
+        ? `Yêu cầu nạp ${amountStr} USD bị từ chối: ${reviewNote}`
+        : `Yêu cầu nạp ${amountStr} USD không được duyệt.`,
       action_url: '/topup/me',
       custom_fields: {
         topup_id: topupId,
@@ -95,6 +98,10 @@ export async function handler(
     topup_id: updated.topup_id,
     user_id: updated.user_id,
     amount: updated.amount.toString(),
+    currency: updated.currency,
+    credit_amount: updated.credit_amount.toString(),
+    source_channel: updated.source_channel,
+    sales_agency_uuid: updated.sales_agency_uuid ?? undefined,
     status: TOPUP_STATUSES.REJECTED,
     submitted_at: updated.submitted_at.toISOString(),
     reviewed_by: caller.userId,

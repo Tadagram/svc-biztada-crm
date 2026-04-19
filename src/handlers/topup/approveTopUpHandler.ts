@@ -45,7 +45,39 @@ async function approveTopUpTransaction(
       select: { balance: true },
     });
 
-    return { updatedTopup, updatedUser, now };
+    const creditBalance = await tx.userCreditBalances.upsert({
+      where: { user_id: updatedTopup.user_id },
+      update: {
+        available_credits: { increment: updatedTopup.credit_amount },
+      },
+      create: {
+        user_id: updatedTopup.user_id,
+        available_credits: updatedTopup.credit_amount,
+      },
+      select: { available_credits: true },
+    });
+
+    await tx.creditLedgerEntries.create({
+      data: {
+        user_id: updatedTopup.user_id,
+        topup_id: updatedTopup.topup_id,
+        entry_type: 'TOPUP_APPROVED',
+        direction: 'CREDIT',
+        amount: updatedTopup.credit_amount,
+        balance_after: creditBalance.available_credits,
+        purpose: 'Top-up approved',
+        source_channel: updatedTopup.source_channel,
+        sales_agency_uuid: updatedTopup.sales_agency_uuid,
+        created_by: userId,
+        metadata: {
+          currency: updatedTopup.currency,
+          amount_usd: updatedTopup.amount.toString(),
+          review_note: reviewNote ?? null,
+        },
+      },
+    });
+
+    return { updatedTopup, updatedUser, creditBalance, now };
   });
 }
 
@@ -54,21 +86,33 @@ async function sendApprovalNotification(
   userId: string,
   topupId: string,
   amount: any,
+  creditedAmount: any,
   newBalance: any,
+  newCreditBalance: any,
   reviewerId: string,
 ) {
+  const usd = Number(amount).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  const credits = Number(creditedAmount).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
   await prisma.notifications.create({
     data: {
       recipient_id: userId,
       sender_id: reviewerId,
       type: 'account_updated',
       title: '✅ Nạp tiền thành công',
-      body: `Yêu cầu nạp ${Number(amount).toLocaleString('vi-VN')}đ đã được duyệt. Số dư hiện tại: ${Number(newBalance).toLocaleString('vi-VN')}đ`,
+      body: `Yêu cầu nạp ${usd} USD đã được duyệt. Bạn nhận ${credits} credits. Credit hiện tại: ${Number(newCreditBalance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
       action_url: '/topup/me',
       custom_fields: {
         topup_id: topupId,
         amount: amount.toString(),
+        credited_amount: creditedAmount.toString(),
         new_balance: newBalance.toString(),
+        new_credit_balance: newCreditBalance.toString(),
       },
     },
   });
@@ -96,7 +140,7 @@ export async function handler(
     });
   }
 
-  const { updatedTopup, updatedUser, now } = await approveTopUpTransaction(
+  const { updatedTopup, updatedUser, creditBalance, now } = await approveTopUpTransaction(
     prisma,
     topupId,
     caller.userId,
@@ -108,6 +152,10 @@ export async function handler(
     topup_id: updatedTopup.topup_id,
     user_id: updatedTopup.user_id,
     amount: updatedTopup.amount.toString(),
+    currency: updatedTopup.currency,
+    credit_amount: updatedTopup.credit_amount.toString(),
+    source_channel: updatedTopup.source_channel,
+    sales_agency_uuid: updatedTopup.sales_agency_uuid ?? undefined,
     status: TOPUP_STATUSES.APPROVED,
     submitted_at: updatedTopup.submitted_at.toISOString(),
     reviewed_by: caller.userId,
@@ -120,7 +168,9 @@ export async function handler(
     existing.user_id,
     topupId,
     existing.amount,
+    updatedTopup.credit_amount,
     updatedUser.balance,
+    creditBalance.available_credits,
     caller.userId,
   );
 
@@ -128,5 +178,6 @@ export async function handler(
     success: true,
     data: updatedTopup,
     new_balance: updatedUser.balance.toString(),
+    new_credit_balance: creditBalance.available_credits.toString(),
   });
 }

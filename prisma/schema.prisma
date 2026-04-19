@@ -45,6 +45,23 @@ enum TopUpStatus {
   REJECTED
 }
 
+enum TopUpSourceChannel {
+  DIRECT
+  WHITELABEL
+}
+
+enum CreditLedgerEntryType {
+  TOPUP_APPROVED
+  USAGE
+  ADJUSTMENT
+  REFUND
+}
+
+enum CreditLedgerDirection {
+  CREDIT
+  DEBIT
+}
+
 model Users {
   user_id         String             @id @default(uuid()) @db.Char(36)
   parent_user_id  String?            @db.Char(36)
@@ -71,6 +88,8 @@ model Users {
   received_notifications Notifications[]  @relation("NotificationRecipient")
   topup_requests         TopUpRequests[]  @relation("TopUpSubmitter")
   topup_reviews          TopUpRequests[]  @relation("TopUpReviewer")
+  credit_balance         UserCreditBalances?
+  credit_ledger_entries  CreditLedgerEntries[]
 
   @@map("users")
 }
@@ -206,6 +225,10 @@ model TopUpRequests {
   topup_id      String       @id @default(uuid()) @db.Char(36)
   user_id       String       @db.Char(36)
   amount        Decimal      @db.Decimal(15, 2)
+  currency      String       @default("USD") @db.VarChar(8)
+  credit_amount Decimal      @db.Decimal(15, 2)
+  source_channel TopUpSourceChannel @default(DIRECT)
+  sales_agency_uuid String?  @db.Char(36)
   proof_note    String?      // nội dung CK, ngân hàng, thời gian khách khai
   status        TopUpStatus  @default(PENDING)
   submitted_at  DateTime     @default(now()) @db.DateTime(0)
@@ -218,9 +241,44 @@ model TopUpRequests {
   // Relations
   user          Users        @relation("TopUpSubmitter", fields: [user_id],     references: [user_id])
   reviewer      Users?       @relation("TopUpReviewer",  fields: [reviewed_by], references: [user_id])
+  credit_ledger_entries CreditLedgerEntries[]
 
   @@index([status, submitted_at(sort: Desc)])   // reviewer xem PENDING
   @@index([user_id, created_at(sort: Desc)])    // customer xem lịch sử mình
   @@index([reviewed_by])                         // audit theo reviewer
   @@map("topup_requests")
+}
+
+model UserCreditBalances {
+  user_id           String   @id @db.Char(36)
+  available_credits Decimal  @default(0) @db.Decimal(15, 2)
+  updated_at        DateTime @default(now()) @updatedAt @db.DateTime(0)
+
+  user              Users    @relation(fields: [user_id], references: [user_id])
+
+  @@map("user_credit_balances")
+}
+
+model CreditLedgerEntries {
+  credit_entry_id    String                @id @default(uuid()) @db.Char(36)
+  user_id            String                @db.Char(36)
+  topup_id           String?               @db.Char(36)
+  entry_type         CreditLedgerEntryType
+  direction          CreditLedgerDirection
+  amount             Decimal               @db.Decimal(15, 2)
+  balance_after      Decimal               @db.Decimal(15, 2)
+  purpose            String?
+  source_channel     TopUpSourceChannel    @default(DIRECT)
+  sales_agency_uuid  String?               @db.Char(36)
+  metadata           Json?
+  created_by         String?               @db.Char(36)
+  created_at         DateTime              @default(now()) @db.DateTime(0)
+
+  user               Users                 @relation(fields: [user_id], references: [user_id])
+  topup              TopUpRequests?        @relation(fields: [topup_id], references: [topup_id])
+
+  @@index([user_id, created_at(sort: Desc)])
+  @@index([entry_type, created_at(sort: Desc)])
+  @@index([topup_id])
+  @@map("credit_ledger_entries")
 }

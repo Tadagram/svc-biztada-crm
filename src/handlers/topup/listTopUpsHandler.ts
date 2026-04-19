@@ -4,14 +4,24 @@ import { PrismaClient, TopUpStatus } from '.prisma/client';
 interface ListTopUpsQuery {
   status?: TopUpStatus;
   user_id?: string;
+  source_channel?: 'DIRECT' | 'WHITELABEL';
+  sales_agency_uuid?: string;
   limit?: number;
   before?: string;
 }
 
-function buildTopUpWhere(status?: TopUpStatus, user_id?: string, before?: string) {
+function buildTopUpWhere(
+  status?: TopUpStatus,
+  user_id?: string,
+  source_channel?: 'DIRECT' | 'WHITELABEL',
+  sales_agency_uuid?: string,
+  before?: string,
+) {
   return {
     ...(status !== undefined && { status }),
     ...(user_id !== undefined && { user_id }),
+    ...(source_channel !== undefined && { source_channel }),
+    ...(sales_agency_uuid !== undefined && { sales_agency_uuid }),
     ...(before !== undefined && { submitted_at: { lt: new Date(before) } }),
   };
 }
@@ -40,10 +50,17 @@ export async function handler(
   reply: FastifyReply,
 ) {
   const { prisma } = request;
-  const { status, user_id, limit: queryLimit = 20, before } = request.query;
+  const {
+    status,
+    user_id,
+    source_channel,
+    sales_agency_uuid,
+    limit: queryLimit = 20,
+    before,
+  } = request.query;
 
   const limit = Math.min(Number(queryLimit), 100);
-  const where = buildTopUpWhere(status, user_id, before);
+  const where = buildTopUpWhere(status, user_id, source_channel, sales_agency_uuid, before);
   const { items, hasMore, nextCursor } = await fetchTopUps(prisma, where, limit);
 
   return reply.send({

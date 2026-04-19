@@ -876,6 +876,9 @@ async function main() {
       historicalData.push({
         user_id: user1Id,
         amount: approvedAmount,
+        currency: 'USD',
+        credit_amount: approvedAmount,
+        source_channel: 'DIRECT' as const,
         proof_note: `Historical revenue - ${date.toLocaleDateString('vi-VN')} (${['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][dayOfWeek]})`,
         status: 'APPROVED' as const,
         submitted_at: date,
@@ -892,6 +895,9 @@ async function main() {
         {
           user_id: user1Id,
           amount: 500000,
+          currency: 'USD',
+          credit_amount: 500000,
+          source_channel: 'DIRECT',
           proof_note: 'CK từ VCB 9999 - 14/04/2026 10:30 - Nap tien user1',
           status: 'PENDING',
           submitted_at: daysAgo(0),
@@ -899,6 +905,9 @@ async function main() {
         {
           user_id: user2Id,
           amount: 200000,
+          currency: 'USD',
+          credit_amount: 200000,
+          source_channel: 'DIRECT',
           proof_note: 'Techcombank 8888 - 13/04/2026 15:00 - nap tai khoan',
           status: 'PENDING',
           submitted_at: daysAgo(1),
@@ -907,6 +916,9 @@ async function main() {
         {
           user_id: user1Id,
           amount: 1000000,
+          currency: 'USD',
+          credit_amount: 1000000,
+          source_channel: 'DIRECT',
           proof_note: 'ACB 7777 - 10/04/2026 09:00 - nap 1 trieu',
           status: 'APPROVED',
           submitted_at: daysAgo(4),
@@ -918,6 +930,9 @@ async function main() {
         {
           user_id: user2Id,
           amount: 999999,
+          currency: 'USD',
+          credit_amount: 999999,
+          source_channel: 'DIRECT',
           proof_note: 'So tien sai - 08/04/2026',
           status: 'REJECTED',
           submitted_at: daysAgo(6),

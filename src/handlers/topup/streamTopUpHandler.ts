@@ -26,11 +26,11 @@ export async function handler(request: FastifyRequest, reply: FastifyReply) {
   res.write(': connected\n\n');
 
   const keepAlive = setInterval(() => {
-    res.write(': ping\n\n');
+    res.write('event: keep-alive\ndata: {}\n\n');
   }, 25_000);
 
   const handler = (data: ITopUpEvent) => {
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
+    res.write(`event: topup_event\ndata: ${JSON.stringify(data)}\n\n`);
   };
 
   topupEmitter.on('topup_event', handler);

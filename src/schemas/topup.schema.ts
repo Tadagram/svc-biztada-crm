@@ -9,7 +9,11 @@ const topupDataResponse = {
   properties: {
     topup_id: { type: 'string' },
     user_id: { type: 'string' },
-    amount: { type: 'string' }, // Decimal → string
+    amount: { type: 'string' }, // USD amount (Decimal → string)
+    currency: { type: 'string' },
+    credit_amount: { type: 'string' },
+    source_channel: { type: 'string', enum: ['DIRECT', 'WHITELABEL'] },
+    sales_agency_uuid: { type: ['string', 'null'] },
     proof_note: { type: ['string', 'null'] },
     status: { type: 'string', enum: topupStatusEnum },
     submitted_at: { type: 'string' },
@@ -59,8 +63,17 @@ export const submitTopUpSchema: FastifySchema = {
     properties: {
       amount: {
         type: 'number',
-        minimum: 1000,
-        description: 'Số tiền muốn nạp (VND, tối thiểu 1.000đ)',
+        minimum: 1,
+        description: 'Số tiền muốn nạp (USD, tối thiểu 1 USD)',
+      },
+      source_channel: {
+        type: 'string',
+        enum: ['DIRECT', 'WHITELABEL'],
+        description: 'Nguồn nạp tiền: trực tiếp từ biztada.com hoặc từ white-label',
+      },
+      sales_agency_uuid: {
+        type: 'string',
+        description: 'UUID đại lý bán hàng nếu nạp từ white-label',
       },
       proof_note: {
         type: 'string',
@@ -94,6 +107,15 @@ export const listTopUpsSchema: FastifySchema = {
     properties: {
       status: { type: 'string', enum: topupStatusEnum },
       user_id: { type: 'string', description: 'Lọc theo user cụ thể' },
+      source_channel: {
+        type: 'string',
+        enum: ['DIRECT', 'WHITELABEL'],
+        description: 'Lọc theo nguồn nạp',
+      },
+      sales_agency_uuid: {
+        type: 'string',
+        description: 'Lọc theo UUID đại lý bán hàng',
+      },
       limit: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
       before: {
         type: 'string',
@@ -208,6 +230,7 @@ export const approveTopUpSchema: FastifySchema = {
         success: { type: 'boolean' },
         data: topupDataResponse,
         new_balance: { type: 'string' },
+        new_credit_balance: { type: 'string' },
       },
     },
     400: errorResponse,
