@@ -1,8 +1,85 @@
 import { FastifyInstance, FastifyPluginOptions, FastifyRequest, FastifyReply } from 'fastify';
 import fp from 'fastify-plugin';
 import fastifyJwt from '@fastify/jwt';
+import { UserRole, UserStatus } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
+
+const CORE_API_URL =
+  process.env.CORE_API_URL ?? 'http://svc-core-api.tadagram.svc.cluster.local:3000';
+
+interface CoreAuthMeResponse {
+  success: boolean;
+  user?: {
+    telegram_id?: number;
+    first_name?: string;
+    last_name?: string;
+    username?: string;
+  };
+}
+
+interface CoreAdminCheckResponse {
+  exists: boolean;
+  is_admin: boolean;
+  user_id?: string;
+  telegram_id?: number;
+  first_name?: string;
+  phone?: string;
+}
+
+async function authenticateTopupViaCoreToken(request: FastifyRequest): Promise<boolean> {
+  const authHeader = request.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) return false;
+  if (!request.url.startsWith('/topup/')) return false;
+
+  const meRes = await fetch(`${CORE_API_URL}/api/auth/me`, {
+    headers: { Authorization: authHeader },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!meRes.ok) return false;
+
+  const meJson = (await meRes.json()) as CoreAuthMeResponse;
+  const telegramId = meJson.user?.telegram_id;
+  if (!telegramId) return false;
+
+  const adminCheckRes = await fetch(
+    `${CORE_API_URL}/internal/users/admin-check?telegram_id=${telegramId}`,
+    { signal: AbortSignal.timeout(10_000) },
+  );
+  if (!adminCheckRes.ok) return false;
+
+  const coreUser = (await adminCheckRes.json()) as CoreAdminCheckResponse;
+  if (!coreUser.exists || !coreUser.phone) return false;
+
+  const user = await request.server.prisma.users.upsert({
+    where: { phone_number: coreUser.phone },
+    create: {
+      user_id: coreUser.user_id,
+      phone_number: coreUser.phone,
+      role: UserRole.user,
+      status: UserStatus.active,
+    },
+    update: {
+      status: UserStatus.active,
+      ...(coreUser.user_id ? { user_id: coreUser.user_id } : {}),
+    },
+  });
+
+  request.user = {
+    userId: user.user_id,
+    role: user.role,
+    agencyName: user.agency_name,
+    parentUserId: user.parent_user_id,
+    sessionId: `core:${coreUser.user_id ?? telegramId}`,
+  };
+
+  request.log.info(
+    { userId: user.user_id, telegramId, route: request.url },
+    'Authenticated topup request via core-api fallback',
+  );
+
+  return true;
+}
 
 declare module '@fastify/jwt' {
   interface FastifyJWT {
@@ -43,7 +120,16 @@ async function jwtPlugin(fastify: FastifyInstance, _options: FastifyPluginOption
       try {
         await request.jwtVerify();
       } catch (err) {
-        request.log.warn({ err }, 'JWT verification failed');
+        request.log.warn({ err, route: request.url }, 'JWT verification failed');
+
+        try {
+          if (await authenticateTopupViaCoreToken(request)) {
+            return;
+          }
+        } catch (fallbackErr) {
+          request.log.error({ err: fallbackErr, route: request.url }, 'Core token fallback failed');
+        }
+
         reply.status(401).send({
           success: false,
           message: 'Unauthorized',
