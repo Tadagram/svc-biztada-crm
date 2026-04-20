@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { PrismaClient } from '@prisma/client';
-import { USER_ROLES, USER_STATUSES, TOPUP_STATUSES, TOPUP_CREDIT_RATE } from '@/utils/constants';
+import { USER_ROLES, USER_STATUSES, TOPUP_STATUSES } from '@/utils/constants';
 import topupEmitter from '@plugins/topupEmitter';
 
 interface SubmitTopUpBody {
@@ -15,7 +15,7 @@ const VND_TO_CREDIT_RATE = 26_000; // 26,000 VNĐ = 1 Tada Credit
 
 function calcCreditAmount(amount: number, currency: 'VND' | 'USDT'): number {
   if (currency === 'VND') return Math.floor(amount / VND_TO_CREDIT_RATE);
-  return Math.round(amount * TOPUP_CREDIT_RATE * 100) / 100; // USDT existing rate
+  return Math.round(amount * 100) / 100;
 }
 
 async function createTopUpRequest(
