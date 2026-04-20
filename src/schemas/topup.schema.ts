@@ -121,6 +121,10 @@ export const submitTopUpSchema: FastifySchema = {
         description:
           'Số tiền muốn nạp (USDT, tối thiểu 1 USDT). Tỷ lệ quy đổi: 1 USDT = 10 credits.',
       },
+      currency: {
+        anyOf: [{ type: 'string', enum: ['VND', 'USDT'] }, { type: 'null' }],
+        description: 'Loại tiền tệ nạp: VND hoặc USDT (mặc định USDT)',
+      },
       seller_agency_uuid: {
         anyOf: [{ type: 'string', format: 'uuid' }, { type: 'null' }],
         description: 'UUID đại lý bán hàng (nếu có, null nếu không)',

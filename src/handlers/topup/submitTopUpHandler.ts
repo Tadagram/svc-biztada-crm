@@ -6,18 +6,23 @@ import topupEmitter from '@plugins/topupEmitter';
 interface SubmitTopUpBody {
   user_uuid: string;
   amount: number;
+  currency?: 'VND' | 'USDT';
   seller_agency_uuid?: string | null;
   transfer_ref?: string | null;
 }
 
-function toCreditAmount(amount: number) {
-  return Math.round(amount * TOPUP_CREDIT_RATE * 100) / 100;
+const VND_TO_CREDIT_RATE = 26_000; // 26,000 VNĐ = 1 Tada Credit
+
+function calcCreditAmount(amount: number, currency: 'VND' | 'USDT'): number {
+  if (currency === 'VND') return Math.floor(amount / VND_TO_CREDIT_RATE);
+  return Math.round(amount * TOPUP_CREDIT_RATE * 100) / 100; // USDT existing rate
 }
 
 async function createTopUpRequest(
   prisma: PrismaClient,
   userId: string,
   amount: number,
+  currency: 'VND' | 'USDT',
   sellerAgencyUuid?: string | null,
   transferRef?: string | null,
 ) {
@@ -25,8 +30,8 @@ async function createTopUpRequest(
     data: {
       user_id: userId,
       amount,
-      currency: 'USDT',
-      credit_amount: toCreditAmount(amount),
+      currency,
+      credit_amount: calcCreditAmount(amount, currency),
       source_channel: 'DIRECT',
       sales_agency_uuid: sellerAgencyUuid ?? null,
       transfer_ref: transferRef ?? null,
@@ -44,6 +49,7 @@ async function notifyModerators(
   prisma: PrismaClient,
   userId: string,
   amount: number,
+  currency: 'VND' | 'USDT',
   userPhone: string,
   sellerAgencyUuid?: string | null,
 ) {
@@ -53,14 +59,13 @@ async function notifyModerators(
   });
 
   if (mods.length > 0) {
-    const amountStr = new Intl.NumberFormat('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
+    const credits = calcCreditAmount(amount, currency);
+    const amountStr =
+      currency === 'VND' ? amount.toLocaleString('vi-VN') + ' VNĐ' : amount.toFixed(4) + ' USDT';
     const creditsStr = new Intl.NumberFormat('en-US', {
-      minimumFractionDigits: 2,
+      minimumFractionDigits: 0,
       maximumFractionDigits: 2,
-    }).format(toCreditAmount(amount));
+    }).format(credits);
     const sourceText = sellerAgencyUuid ? `Agency ${sellerAgencyUuid}` : 'biztada.com';
     await prisma.notifications.createMany({
       data: mods.map((mod) => ({
@@ -68,7 +73,7 @@ async function notifyModerators(
         sender_id: userId,
         type: 'account_updated',
         title: 'Yêu cầu nạp tiền mới',
-        body: `Người dùng ${userPhone} vừa yêu cầu nạp ${amountStr} USDT (${creditsStr} credits), nguồn: ${sourceText}.`,
+        body: `Người dùng ${userPhone} vừa yêu cầu nạp ${amountStr} (${creditsStr} credits), nguồn: ${sourceText}.`,
         action_url: '/topup/review',
       })),
     });
@@ -80,12 +85,26 @@ export async function handler(
   reply: FastifyReply,
 ) {
   const { prisma } = request;
-  const { amount, seller_agency_uuid, transfer_ref } = request.body;
+  const { amount, currency = 'USDT', seller_agency_uuid, transfer_ref } = request.body;
   const caller = request.user;
   const userId = caller.userId; // CRM user ID (FK-safe)
 
-  const topup = await createTopUpRequest(prisma, userId, amount, seller_agency_uuid, transfer_ref);
-  await notifyModerators(prisma, userId, amount, topup.user.phone_number, seller_agency_uuid);
+  const topup = await createTopUpRequest(
+    prisma,
+    userId,
+    amount,
+    currency,
+    seller_agency_uuid,
+    transfer_ref,
+  );
+  await notifyModerators(
+    prisma,
+    userId,
+    amount,
+    currency,
+    topup.user.phone_number,
+    seller_agency_uuid,
+  );
 
   topupEmitter.emit('topup_event', {
     event: 'new_topup',
