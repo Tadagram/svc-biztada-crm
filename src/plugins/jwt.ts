@@ -133,7 +133,9 @@ async function resolveOrCreateCoreMappedUser(
 async function authenticateTopupViaCoreToken(request: FastifyRequest): Promise<boolean> {
   const authHeader = request.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) return false;
-  if (!request.url.startsWith('/topup/')) return false;
+  const supportsCoreFallback =
+    request.url.startsWith('/topup/') || request.url.startsWith('/service-packages');
+  if (!supportsCoreFallback) return false;
 
   const rawToken = authHeader.slice('Bearer '.length).trim();
   if (!rawToken) return false;
@@ -193,7 +195,7 @@ async function authenticateTopupViaCoreToken(request: FastifyRequest): Promise<b
 
   request.log.info(
     { userId: user.user_id, telegramId, route: request.url },
-    'Authenticated topup request via core-api fallback',
+    'Authenticated request via core-api fallback',
   );
 
   return true;
