@@ -22,6 +22,80 @@ const servicePackageItem = {
   },
 };
 
+const paginationSchema = {
+  type: 'object',
+  properties: {
+    page: { type: 'number' },
+    page_size: { type: 'number' },
+    total: { type: 'number' },
+    total_pages: { type: 'number' },
+  },
+};
+
+const purchaseItem = {
+  type: 'object',
+  properties: {
+    purchase_id: { type: 'string', format: 'uuid' },
+    service_package_id: { type: 'string', format: 'uuid' },
+    product_code: { type: 'string' },
+    type: { type: 'string', enum: ['personal', 'enterprise'] },
+    status: { type: 'string', enum: ['processing', 'completed', 'failed'] },
+    channel: { type: 'string', enum: ['direct', 'agency'] },
+    seller_user_id: { type: ['string', 'null'] },
+    license_key_count: { type: 'number' },
+    unit_price_usd: { type: 'string' },
+    total_price_usd: { type: 'string' },
+    purchased_at: { type: 'string' },
+    core_note_ref: { type: ['string', 'null'] },
+    package: {
+      type: 'object',
+      properties: {
+        price_per_month: { type: 'string' },
+        facebook_personal_limit: { type: 'number' },
+        facebook_fanpage_limit: { type: 'number' },
+        zalo_limit: { type: 'number' },
+        tiktok_limit: { type: 'number' },
+        telegram_limit: { type: 'number' },
+        bonus: { type: ['string', 'null'] },
+        community_support: { type: 'boolean' },
+        support_24_7: { type: 'boolean' },
+        is_popular: { type: 'boolean' },
+      },
+    },
+  },
+};
+
+const licenseKeyItem = {
+  type: 'object',
+  properties: {
+    core_license_key_id: { type: 'string', format: 'uuid' },
+    purchase_id: { type: ['string', 'null'] },
+    license_key: { type: 'string' },
+    status: { type: 'string', enum: ['unused', 'used', 'expired'] },
+    expires_at: { type: ['string', 'null'] },
+    activated_at: { type: ['string', 'null'] },
+    used_by_portal_id: { type: ['string', 'null'] },
+    seller_user_id: { type: ['string', 'null'] },
+    channel: { type: 'string', enum: ['direct', 'agency'] },
+    purchased_at: { type: 'string' },
+    service_package: {
+      type: ['object', 'null'],
+      properties: {
+        service_package_id: { type: 'string', format: 'uuid' },
+        product_code: { type: 'string' },
+        type: { type: 'string', enum: ['personal', 'enterprise'] },
+        license_key_count: { type: 'number' },
+        price_per_month: { type: 'string' },
+        facebook_personal_limit: { type: 'number' },
+        facebook_fanpage_limit: { type: 'number' },
+        zalo_limit: { type: 'number' },
+        tiktok_limit: { type: 'number' },
+        telegram_limit: { type: 'number' },
+      },
+    },
+  },
+};
+
 export const listServicePackagesSchema: FastifySchema = {
   tags: ['Service Packages'],
   summary: 'Danh sách gói dịch vụ',
@@ -53,6 +127,121 @@ export const listServicePackagesSchema: FastifySchema = {
       properties: {
         success: { type: 'boolean' },
         message: { type: 'string' },
+      },
+    },
+  },
+};
+
+export const purchaseServicePackageSchema: FastifySchema = {
+  tags: ['Service Packages'],
+  summary: 'Mua gói dịch vụ',
+  description: 'Trừ số dư USD, gọi svc-core-api phát hành license key, rồi lưu lịch sử mua gói.',
+  security: [{ bearerAuth: [] }],
+  body: {
+    type: 'object',
+    required: ['service_package_id'],
+    properties: {
+      service_package_id: { type: 'string', format: 'uuid' },
+      seller_user_id: { type: ['string', 'null'] },
+    },
+  },
+  response: {
+    201: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'object',
+          properties: {
+            purchase_id: { type: 'string', format: 'uuid' },
+            status: { type: 'string' },
+            channel: { type: 'string' },
+            seller_user_id: { type: ['string', 'null'] },
+            service_package_id: { type: 'string', format: 'uuid' },
+            product_code: { type: 'string' },
+            license_key_count: { type: 'number' },
+            total_price_usd: { type: 'string' },
+            purchased_at: { type: 'string' },
+            expires_at: { type: 'string' },
+            remaining_balance_usd: { type: 'string' },
+          },
+        },
+      },
+    },
+    400: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+      },
+    },
+    401: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+      },
+    },
+    502: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+      },
+    },
+  },
+};
+
+export const listServicePackagePurchasesSchema: FastifySchema = {
+  tags: ['Service Packages'],
+  summary: 'Lịch sử mua gói dịch vụ',
+  description: 'Lấy lịch sử mua gói của người dùng hiện tại.',
+  security: [{ bearerAuth: [] }],
+  querystring: {
+    type: 'object',
+    properties: {
+      page: { type: 'number' },
+      page_size: { type: 'number' },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'array',
+          items: purchaseItem,
+        },
+        pagination: paginationSchema,
+      },
+    },
+  },
+};
+
+export const listPurchasedLicenseKeysSchema: FastifySchema = {
+  tags: ['Service Packages'],
+  summary: 'Danh sách license key đã mua',
+  description:
+    'Lấy license key của người dùng hiện tại từ svc-core-api và enrich bằng dữ liệu gói ở CRM.',
+  security: [{ bearerAuth: [] }],
+  querystring: {
+    type: 'object',
+    properties: {
+      page: { type: 'number' },
+      page_size: { type: 'number' },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'array',
+          items: licenseKeyItem,
+        },
+        pagination: paginationSchema,
       },
     },
   },

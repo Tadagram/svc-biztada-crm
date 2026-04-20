@@ -67,6 +67,17 @@ enum ServicePackageType {
   enterprise
 }
 
+enum ServicePackagePurchaseStatus {
+  processing
+  completed
+  failed
+}
+
+enum ServicePackagePurchaseChannel {
+  direct
+  agency
+}
+
 model Users {
   user_id         String             @id @default(uuid()) @db.Char(36)
   parent_user_id  String?            @db.Char(36)
@@ -95,6 +106,7 @@ model Users {
   topup_reviews          TopUpRequests[]  @relation("TopUpReviewer")
   credit_balance         UserCreditBalances?
   credit_ledger_entries  CreditLedgerEntries[]
+  service_package_purchases ServicePackagePurchases[] @relation("ServicePackagePurchasesUser")
 
   @@map("users")
 }
@@ -310,6 +322,34 @@ model ServicePackages {
   created_at               DateTime           @default(now()) @db.DateTime(0)
   updated_at               DateTime           @default(now()) @updatedAt @db.DateTime(0)
 
+  purchases                ServicePackagePurchases[]
+
   @@index([type, is_active, sort_order])
   @@map("service_packages")
+}
+
+model ServicePackagePurchases {
+  service_package_purchase_id String                       @id @default(uuid()) @db.Char(36)
+  user_id                     String                       @db.Char(36)
+  service_package_id          String                       @db.Char(36)
+  status                      ServicePackagePurchaseStatus @default(processing)
+  channel                     ServicePackagePurchaseChannel @default(direct)
+  seller_user_id              String?                      @db.Char(36)
+  license_key_count_snapshot  Int
+  unit_price_usd              Decimal                      @db.Decimal(15, 2)
+  total_price_usd             Decimal                      @db.Decimal(15, 2)
+  currency                    String                       @default("USD") @db.VarChar(8)
+  core_note_ref               String?                      @unique @db.VarChar(128)
+  failure_reason              String?                      @db.Text
+  purchased_at                DateTime                     @default(now()) @db.DateTime(0)
+  created_at                  DateTime                     @default(now()) @db.DateTime(0)
+  updated_at                  DateTime                     @default(now()) @updatedAt @db.DateTime(0)
+
+  user                        Users                        @relation("ServicePackagePurchasesUser", fields: [user_id], references: [user_id])
+  service_package             ServicePackages              @relation(fields: [service_package_id], references: [service_package_id])
+
+  @@index([user_id, purchased_at(sort: Desc)])
+  @@index([service_package_id, purchased_at(sort: Desc)])
+  @@index([status, purchased_at(sort: Desc)])
+  @@map("service_package_purchases")
 }
