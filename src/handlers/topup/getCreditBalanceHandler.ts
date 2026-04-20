@@ -72,6 +72,54 @@ export async function handler(request: FastifyRequest, reply: FastifyReply) {
     .filter(Boolean)
     .sort((a: Date, b: Date) => b.getTime() - a.getTime())[0];
 
+  let resolvedCredits = totalCredits;
+
+  if (resolvedCredits <= 0) {
+    const ledgerEntries = await prisma.creditLedgerEntries.findMany({
+      where: { user_id: { in: userIds } },
+      select: { direction: true, amount: true },
+    });
+
+    if (ledgerEntries.length > 0) {
+      resolvedCredits = ledgerEntries.reduce(
+        (
+          sum: number,
+          entry: { direction: 'CREDIT' | 'DEBIT'; amount: { toString?: () => string } },
+        ) => {
+          const amount = Number(entry.amount?.toString?.() ?? 0);
+          return entry.direction === 'DEBIT' ? sum - amount : sum + amount;
+        },
+        0,
+      );
+    } else {
+      const approvedTopups = await prisma.topUpRequests.findMany({
+        where: {
+          user_id: { in: userIds },
+          status: 'APPROVED',
+        },
+        select: { credit_amount: true },
+      });
+
+      resolvedCredits = approvedTopups.reduce(
+        (sum: number, item: { credit_amount: { toString?: () => string } }) =>
+          sum + Number(item.credit_amount?.toString?.() ?? 0),
+        0,
+      );
+    }
+
+    if (resolvedCredits > 0) {
+      request.log.warn(
+        {
+          callerUserId: caller.userId,
+          aliasUserIds: userIds,
+          tableBalance: totalCredits,
+          fallbackResolvedCredits: resolvedCredits,
+        },
+        'Credit balance table is stale; returning fallback computed credits',
+      );
+    }
+  }
+
   const matchedPrimary = balances.find(
     (item: { user_id: string }) => item.user_id === caller.userId,
   );
@@ -81,7 +129,7 @@ export async function handler(request: FastifyRequest, reply: FastifyReply) {
     success: true,
     data: {
       user_id: effectiveUserId,
-      available_credits: totalCredits.toFixed(2),
+      available_credits: resolvedCredits.toFixed(2),
       updated_at: latestUpdatedAt?.toISOString?.() ?? null,
     },
   });
