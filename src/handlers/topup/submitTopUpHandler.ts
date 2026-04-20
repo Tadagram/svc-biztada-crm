@@ -7,6 +7,7 @@ interface SubmitTopUpBody {
   user_uuid: string;
   amount: number;
   seller_agency_uuid?: string | null;
+  transfer_ref?: string | null;
 }
 
 function toCreditAmount(amount: number) {
@@ -18,6 +19,7 @@ async function createTopUpRequest(
   userId: string,
   amount: number,
   sellerAgencyUuid?: string | null,
+  transferRef?: string | null,
 ) {
   return prisma.topUpRequests.create({
     data: {
@@ -27,6 +29,7 @@ async function createTopUpRequest(
       credit_amount: toCreditAmount(amount),
       source_channel: 'DIRECT',
       sales_agency_uuid: sellerAgencyUuid ?? null,
+      transfer_ref: transferRef ?? null,
       proof_note: null,
       status: TOPUP_STATUSES.PENDING,
     },
@@ -77,11 +80,11 @@ export async function handler(
   reply: FastifyReply,
 ) {
   const { prisma } = request;
-  const { amount, seller_agency_uuid } = request.body;
+  const { amount, seller_agency_uuid, transfer_ref } = request.body;
   const caller = request.user;
   const userId = caller.userId; // CRM user ID (FK-safe)
 
-  const topup = await createTopUpRequest(prisma, userId, amount, seller_agency_uuid);
+  const topup = await createTopUpRequest(prisma, userId, amount, seller_agency_uuid, transfer_ref);
   await notifyModerators(prisma, userId, amount, topup.user.phone_number, seller_agency_uuid);
 
   topupEmitter.emit('topup_event', {

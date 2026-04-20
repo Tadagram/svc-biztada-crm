@@ -14,6 +14,7 @@ const topupDataResponse = {
     credit_amount: { type: 'string' },
     source_channel: { type: 'string', enum: ['DIRECT', 'WHITELABEL'] },
     sales_agency_uuid: { type: ['string', 'null'] },
+    transfer_ref: { type: ['string', 'null'] },
     proof_note: { type: ['string', 'null'] },
     status: { type: 'string', enum: topupStatusEnum },
     submitted_at: { type: 'string' },
@@ -123,6 +124,10 @@ export const submitTopUpSchema: FastifySchema = {
       seller_agency_uuid: {
         anyOf: [{ type: 'string', format: 'uuid' }, { type: 'null' }],
         description: 'UUID đại lý bán hàng (nếu có, null nếu không)',
+      },
+      transfer_ref: {
+        anyOf: [{ type: 'string', minLength: 1, maxLength: 64 }, { type: 'null' }],
+        description: 'Mã nội dung chuyển khoản do khách nhập vào phần nội dung (VD: TXN06IKVW5)',
       },
     },
   },
