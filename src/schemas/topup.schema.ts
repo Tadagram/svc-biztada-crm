@@ -119,7 +119,7 @@ export const submitTopUpSchema: FastifySchema = {
         type: 'number',
         minimum: 1,
         description:
-          'Số tiền muốn nạp. Quy đổi: VND -> 2,600 VNĐ = 1 credit; USDT -> 1 USDT = 1 credit.',
+          'Số tiền muốn nạp. Quy đổi: VND -> 2,600 VNĐ = 1 credit; USDT -> 1 USDT = 10 credits.',
       },
       currency: {
         anyOf: [{ type: 'string', enum: ['VND', 'USDT'] }, { type: 'null' }],

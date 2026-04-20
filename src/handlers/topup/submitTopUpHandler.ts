@@ -12,10 +12,11 @@ interface SubmitTopUpBody {
 }
 
 const VND_TO_CREDIT_RATE = 2_600; // 2,600 VNĐ = 1 Tada Credit
+const USDT_TO_CREDIT_RATE = 10; // 1 USDT = 10 Tada Credits
 
 function calcCreditAmount(amount: number, currency: 'VND' | 'USDT'): number {
   if (currency === 'VND') return Math.floor(amount / VND_TO_CREDIT_RATE);
-  return Math.round(amount * 100) / 100;
+  return Math.round(amount * USDT_TO_CREDIT_RATE * 100) / 100;
 }
 
 async function createTopUpRequest(
