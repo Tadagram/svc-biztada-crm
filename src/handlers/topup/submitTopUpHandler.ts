@@ -77,10 +77,12 @@ export async function handler(
   reply: FastifyReply,
 ) {
   const { prisma } = request;
-  const { user_uuid, amount, seller_agency_uuid } = request.body;
+  const { amount, seller_agency_uuid } = request.body;
+  const caller = request.user;
+  const userId = caller.userId; // CRM user ID (FK-safe)
 
-  const topup = await createTopUpRequest(prisma, user_uuid, amount, seller_agency_uuid);
-  await notifyModerators(prisma, user_uuid, amount, topup.user.phone_number, seller_agency_uuid);
+  const topup = await createTopUpRequest(prisma, userId, amount, seller_agency_uuid);
+  await notifyModerators(prisma, userId, amount, topup.user.phone_number, seller_agency_uuid);
 
   topupEmitter.emit('topup_event', {
     event: 'new_topup',
