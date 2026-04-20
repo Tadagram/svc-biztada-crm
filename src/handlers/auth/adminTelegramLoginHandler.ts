@@ -46,6 +46,38 @@ interface CoreApiAdminCheckResponse {
   telegram_id?: number;
 }
 
+function normalizePhone(input?: string | null): string {
+  if (!input) return '';
+  const trimmed = input.trim();
+  if (trimmed.startsWith('tg_')) return trimmed;
+  return trimmed.replace(/\D/g, '');
+}
+
+function buildPhoneVariants(input?: string | null): string[] {
+  const raw = (input ?? '').trim();
+  if (!raw) return [];
+  if (raw.startsWith('tg_')) return [raw];
+
+  const digits = normalizePhone(raw);
+  if (!digits) return [raw];
+
+  const variants = new Set<string>([raw, digits, `+${digits}`]);
+
+  if (digits.startsWith('84')) {
+    const local = `0${digits.slice(2)}`;
+    variants.add(local);
+    variants.add(`+${local}`);
+  }
+
+  if (digits.startsWith('0')) {
+    const intl = `84${digits.slice(1)}`;
+    variants.add(intl);
+    variants.add(`+${intl}`);
+  }
+
+  return Array.from(variants).filter(Boolean);
+}
+
 /**
  * Verifies the Telegram Login Widget hash.
  * https://core.telegram.org/widgets/login#checking-authorization
@@ -151,7 +183,13 @@ export async function adminTelegramLoginHandler(
   });
 
   if (!adminUser) {
-    const phoneMatched = await prisma.users.findUnique({ where: { phone_number: phone } });
+    const phoneMatched = await prisma.users.findFirst({
+      where: {
+        phone_number: {
+          in: buildPhoneVariants(phone),
+        },
+      },
+    });
     if (phoneMatched) {
       logger.warn(
         {
@@ -167,6 +205,7 @@ export async function adminTelegramLoginHandler(
         where: { user_id: phoneMatched.user_id },
         data: {
           user_id: coreCheck.user_id,
+          phone_number: phone,
           role: null,
           status: UserStatus.active,
         },

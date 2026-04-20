@@ -35,6 +35,38 @@ interface CoreAdminCheckResponse {
   phone?: string;
 }
 
+function normalizePhone(input?: string | null): string {
+  if (!input) return '';
+  const trimmed = input.trim();
+  if (trimmed.startsWith('tg_')) return trimmed;
+  return trimmed.replace(/\D/g, '');
+}
+
+function buildPhoneVariants(input?: string | null): string[] {
+  const raw = (input ?? '').trim();
+  if (!raw) return [];
+  if (raw.startsWith('tg_')) return [raw];
+
+  const digits = normalizePhone(raw);
+  if (!digits) return [raw];
+
+  const variants = new Set<string>([raw, digits, `+${digits}`]);
+
+  if (digits.startsWith('84')) {
+    const local = `0${digits.slice(2)}`;
+    variants.add(local);
+    variants.add(`+${local}`);
+  }
+
+  if (digits.startsWith('0')) {
+    const intl = `84${digits.slice(1)}`;
+    variants.add(intl);
+    variants.add(`+${intl}`);
+  }
+
+  return Array.from(variants).filter(Boolean);
+}
+
 async function resolveOrCreateCoreMappedUser(
   request: FastifyRequest,
   coreUserId: string,
@@ -57,11 +89,21 @@ async function resolveOrCreateCoreMappedUser(
     where: { phone_number: resolvedPhone },
   });
 
-  if (phoneMatched) {
+  const variantMatched =
+    phoneMatched ||
+    (await prisma.users.findFirst({
+      where: {
+        phone_number: {
+          in: buildPhoneVariants(resolvedPhone),
+        },
+      },
+    }));
+
+  if (variantMatched) {
     request.log.warn(
       {
         coreUserId,
-        crmUserId: phoneMatched.user_id,
+        crmUserId: variantMatched.user_id,
         phone: resolvedPhone,
         route: request.url,
       },
@@ -69,9 +111,10 @@ async function resolveOrCreateCoreMappedUser(
     );
 
     return prisma.users.update({
-      where: { user_id: phoneMatched.user_id },
+      where: { user_id: variantMatched.user_id },
       data: {
         user_id: coreUserId,
+        phone_number: resolvedPhone,
         status: UserStatus.active,
       },
     });
