@@ -41,6 +41,7 @@ export interface TelegramAuthData {
 interface CoreApiAdminCheckResponse {
   exists: boolean;
   is_admin: boolean;
+  user_id?: string;
   phone?: string;
   telegram_id?: number;
 }
@@ -133,21 +134,62 @@ export async function adminTelegramLoginHandler(
     });
   }
 
+  if (!coreCheck.user_id) {
+    logger.error({ telegramId: data.id }, '[AdminTelegramLogin] core-api response missing user_id');
+    return reply.status(503).send({
+      success: false,
+      message: 'Khong the dong bo dinh danh user tu core-api. Vui long thu lai sau.',
+    });
+  }
+
   // 4. Upsert user in biztada-crm DB
   // phone from svc-core-api; fall back to telegram_id string if not available
   const phone = coreCheck.phone ?? `tg_${data.id}`;
 
-  const adminUser = await prisma.users.upsert({
-    where: { phone_number: phone },
-    create: {
-      phone_number: phone,
-      role: null, // null = full admin access in biztada-crm
-      status: UserStatus.active,
-    },
-    update: {
-      status: UserStatus.active,
-    },
+  let adminUser = await prisma.users.findUnique({
+    where: { user_id: coreCheck.user_id },
   });
+
+  if (!adminUser) {
+    const phoneMatched = await prisma.users.findUnique({ where: { phone_number: phone } });
+    if (phoneMatched) {
+      logger.warn(
+        {
+          coreUserId: coreCheck.user_id,
+          crmUserId: phoneMatched.user_id,
+          phone,
+          telegramId: data.id,
+        },
+        '[AdminTelegramLogin] Migrating CRM user_id to core user_id',
+      );
+
+      adminUser = await prisma.users.update({
+        where: { user_id: phoneMatched.user_id },
+        data: {
+          user_id: coreCheck.user_id,
+          role: null,
+          status: UserStatus.active,
+        },
+      });
+    } else {
+      adminUser = await prisma.users.create({
+        data: {
+          user_id: coreCheck.user_id,
+          phone_number: phone,
+          role: null,
+          status: UserStatus.active,
+        },
+      });
+    }
+  } else {
+    adminUser = await prisma.users.update({
+      where: { user_id: adminUser.user_id },
+      data: {
+        role: null,
+        status: UserStatus.active,
+      },
+    });
+  }
 
   if (adminUser.status !== UserStatus.active) {
     return reply.status(403).send({

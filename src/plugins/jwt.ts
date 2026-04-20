@@ -35,6 +35,58 @@ interface CoreAdminCheckResponse {
   phone?: string;
 }
 
+async function resolveOrCreateCoreMappedUser(
+  request: FastifyRequest,
+  coreUserId: string,
+  resolvedPhone: string,
+) {
+  const prisma = request.server.prisma;
+
+  const coreMapped = await prisma.users.findUnique({
+    where: { user_id: coreUserId },
+  });
+
+  if (coreMapped) {
+    return prisma.users.update({
+      where: { user_id: coreMapped.user_id },
+      data: { status: UserStatus.active },
+    });
+  }
+
+  const phoneMatched = await prisma.users.findUnique({
+    where: { phone_number: resolvedPhone },
+  });
+
+  if (phoneMatched) {
+    request.log.warn(
+      {
+        coreUserId,
+        crmUserId: phoneMatched.user_id,
+        phone: resolvedPhone,
+        route: request.url,
+      },
+      'Core user_id mismatches CRM user for same phone; migrating CRM user_id to core user_id',
+    );
+
+    return prisma.users.update({
+      where: { user_id: phoneMatched.user_id },
+      data: {
+        user_id: coreUserId,
+        status: UserStatus.active,
+      },
+    });
+  }
+
+  return prisma.users.create({
+    data: {
+      user_id: coreUserId,
+      phone_number: resolvedPhone,
+      role: UserRole.user,
+      status: UserStatus.active,
+    },
+  });
+}
+
 async function authenticateTopupViaCoreToken(request: FastifyRequest): Promise<boolean> {
   const authHeader = request.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) return false;
@@ -86,43 +138,7 @@ async function authenticateTopupViaCoreToken(request: FastifyRequest): Promise<b
 
   const resolvedPhone = coreUser.phone ?? `tg_${telegramId}`;
 
-  let user = await request.server.prisma.users.findUnique({
-    where: { user_id: coreUser.user_id },
-  });
-
-  if (!user && coreUser.phone) {
-    user = await request.server.prisma.users.findUnique({
-      where: { phone_number: coreUser.phone },
-    });
-  }
-
-  if (user) {
-    if (user.user_id !== coreUser.user_id) {
-      request.log.warn(
-        {
-          coreUserId: coreUser.user_id,
-          crmUserId: user.user_id,
-          phone: coreUser.phone,
-          route: request.url,
-        },
-        'Core user_id mismatches CRM user for same phone; using existing CRM user',
-      );
-    }
-
-    user = await request.server.prisma.users.update({
-      where: { user_id: user.user_id },
-      data: { status: UserStatus.active },
-    });
-  } else {
-    user = await request.server.prisma.users.create({
-      data: {
-        user_id: coreUser.user_id,
-        phone_number: resolvedPhone,
-        role: UserRole.user,
-        status: UserStatus.active,
-      },
-    });
-  }
+  const user = await resolveOrCreateCoreMappedUser(request, coreUser.user_id, resolvedPhone);
 
   request.user = {
     userId: user.user_id,
