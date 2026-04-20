@@ -11,7 +11,7 @@ interface SubmitTopUpBody {
   transfer_ref?: string | null;
 }
 
-const VND_TO_CREDIT_RATE = 26_000; // 26,000 VNĐ = 1 Tada Credit
+const VND_TO_CREDIT_RATE = 2_600; // 2,600 VNĐ = 1 Tada Credit
 
 function calcCreditAmount(amount: number, currency: 'VND' | 'USDT'): number {
   if (currency === 'VND') return Math.floor(amount / VND_TO_CREDIT_RATE);
