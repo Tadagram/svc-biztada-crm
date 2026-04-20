@@ -108,12 +108,12 @@ export const submitTopUpSchema: FastifySchema = {
   security: [{ bearerAuth: [] }],
   body: {
     type: 'object',
-    required: ['user_uuid', 'amount'],
+    required: ['amount'],
     properties: {
       user_uuid: {
         type: 'string',
         format: 'uuid',
-        description: 'UUID của user nạp tiền',
+        description: 'UUID của user nạp tiền (tùy chọn, hệ thống sẽ ưu tiên user đã xác thực)',
       },
       amount: {
         type: 'number',
