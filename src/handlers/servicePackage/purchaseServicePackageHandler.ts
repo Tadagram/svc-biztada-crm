@@ -4,6 +4,8 @@ import { FastifyReply, FastifyRequest } from 'fastify';
 import { issuePortalLicensesBatch } from '@services/corePortalLicenses';
 import { calcBonusLicenseCount } from './servicePackageBonus';
 
+const CREDIT_PER_USD = new Prisma.Decimal(10);
+
 interface PurchaseServicePackageBody {
   service_package_id: string;
   seller_user_id?: string | null;
@@ -48,6 +50,7 @@ export async function handler(
   const expiresAt = addOneMonth(purchasedAt);
   const coreNoteRef = `crm_purchase:${purchaseId}`;
   const totalPriceUsd = new Prisma.Decimal(servicePackage.price_per_month);
+  const totalPriceCredits = totalPriceUsd.mul(CREDIT_PER_USD);
   const baseLicenseCount = Number(servicePackage.license_key_count) || 0;
   const bonusPercent = Number(servicePackage.agent_discount_percent) || 0;
   const bonusLicenseCount = calcBonusLicenseCount(
@@ -59,22 +62,40 @@ export async function handler(
 
   try {
     await prisma.$transaction(async (tx: any) => {
-      const user = await tx.users.findUnique({
+      const creditBalance = await tx.userCreditBalances.findUnique({
         where: { user_id: caller.userId },
-        select: { balance: true },
+        select: { available_credits: true },
       });
 
-      if (!user) {
-        throw new Error('User not found.');
+      const availableCredits = Number(creditBalance?.available_credits?.toString?.() ?? 0);
+      if (availableCredits < Number(totalPriceCredits)) {
+        throw new Error(
+          `Insufficient credits. Need ${totalPriceCredits.toString()} credits, available ${availableCredits.toFixed(2)} credits.`,
+        );
       }
 
-      if (Number(user.balance) < Number(totalPriceUsd)) {
-        throw new Error('Insufficient USD balance. Please top up before purchasing this package.');
-      }
-
-      await tx.users.update({
+      const updatedCreditBalance = await tx.userCreditBalances.update({
         where: { user_id: caller.userId },
-        data: { balance: { decrement: totalPriceUsd } },
+        data: { available_credits: { decrement: totalPriceCredits } },
+        select: { available_credits: true },
+      });
+
+      await tx.creditLedgerEntries.create({
+        data: {
+          user_id: caller.userId,
+          entry_type: 'USAGE',
+          direction: 'DEBIT',
+          amount: totalPriceCredits,
+          balance_after: updatedCreditBalance.available_credits,
+          purpose: `Purchase service package ${servicePackage.product_code}`,
+          source_channel: 'DIRECT',
+          metadata: {
+            purchase_id: purchaseId,
+            service_package_id: servicePackage.service_package_id,
+            total_price_usd: totalPriceUsd.toString(),
+          },
+          created_by: caller.userId,
+        },
       });
 
       await tx.servicePackagePurchases.create({
@@ -111,7 +132,7 @@ export async function handler(
       quantity: issuedLicenseCount,
     });
 
-    const [purchase, user] = await prisma.$transaction([
+    const [purchase, creditBalance] = await prisma.$transaction([
       prisma.servicePackagePurchases.update({
         where: { service_package_purchase_id: purchaseId },
         data: { status: 'completed' },
@@ -119,9 +140,9 @@ export async function handler(
           service_package: true,
         },
       }),
-      prisma.users.findUnique({
+      prisma.userCreditBalances.findUnique({
         where: { user_id: caller.userId },
-        select: { balance: true },
+        select: { available_credits: true },
       }),
     ]);
 
@@ -139,28 +160,48 @@ export async function handler(
         bonus_license_key_count: bonusLicenseCount,
         bonus_percent: bonusPercent,
         total_price_usd: purchase.total_price_usd.toString(),
+        total_price_credits: totalPriceCredits.toString(),
         purchased_at: purchase.purchased_at.toISOString(),
         expires_at: expiresAt.toISOString(),
-        remaining_balance_usd: user?.balance?.toString() ?? '0',
+        remaining_credits: creditBalance?.available_credits?.toString() ?? '0',
       },
     });
   } catch (error) {
     const reason = getErrorMessage(error);
 
     try {
-      await prisma.$transaction([
-        prisma.users.update({
+      await prisma.$transaction(async (tx: any) => {
+        const refundedBalance = await tx.userCreditBalances.update({
           where: { user_id: caller.userId },
-          data: { balance: { increment: totalPriceUsd } },
-        }),
-        prisma.servicePackagePurchases.update({
+          data: { available_credits: { increment: totalPriceCredits } },
+          select: { available_credits: true },
+        });
+
+        await tx.creditLedgerEntries.create({
+          data: {
+            user_id: caller.userId,
+            entry_type: 'REFUND',
+            direction: 'CREDIT',
+            amount: totalPriceCredits,
+            balance_after: refundedBalance.available_credits,
+            purpose: `Refund service package purchase ${purchaseId}`,
+            source_channel: 'DIRECT',
+            metadata: {
+              purchase_id: purchaseId,
+              reason,
+            },
+            created_by: caller.userId,
+          },
+        });
+
+        await tx.servicePackagePurchases.update({
           where: { service_package_purchase_id: purchaseId },
           data: {
             status: 'failed',
             failure_reason: reason,
           },
-        }),
-      ]);
+        });
+      });
     } catch (rollbackError) {
       request.log.error(
         { err: rollbackError, purchaseId, userId: caller.userId },

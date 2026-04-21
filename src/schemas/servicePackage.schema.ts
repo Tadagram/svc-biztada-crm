@@ -138,7 +138,8 @@ export const listServicePackagesSchema: FastifySchema = {
 export const purchaseServicePackageSchema: FastifySchema = {
   tags: ['Service Packages'],
   summary: 'Mua gói dịch vụ',
-  description: 'Trừ số dư USD, gọi svc-core-api phát hành license key, rồi lưu lịch sử mua gói.',
+  description:
+    'Trừ số dư credit (1 USD = 10 credit), gọi svc-core-api phát hành license key, rồi lưu lịch sử mua gói.',
   security: [{ bearerAuth: [] }],
   body: {
     type: 'object',
@@ -167,9 +168,10 @@ export const purchaseServicePackageSchema: FastifySchema = {
             bonus_license_key_count: { type: 'number' },
             bonus_percent: { type: 'number' },
             total_price_usd: { type: 'string' },
+            total_price_credits: { type: 'string' },
             purchased_at: { type: 'string' },
             expires_at: { type: 'string' },
-            remaining_balance_usd: { type: 'string' },
+            remaining_credits: { type: 'string' },
           },
         },
       },

@@ -2,6 +2,8 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { getPortalLicenseById, renewPortalLicense } from '@services/corePortalLicenses';
 
+const CREDIT_PER_USD = new Prisma.Decimal(10);
+
 interface RenewLicenseKeyParams {
   keyId: string;
 }
@@ -104,6 +106,8 @@ export async function handler(
     });
   }
 
+  const priceCredits = (packagePrice as Prisma.Decimal).mul(CREDIT_PER_USD);
+
   // 5. new_expires_at = max(expires_at, now) + 1 thang
   const baseDate =
     currentExpiresAt && currentExpiresAt.getTime() > Date.now() ? currentExpiresAt : new Date();
@@ -112,17 +116,39 @@ export async function handler(
   // 6. Tru balance
   try {
     await prisma.$transaction(async (tx: any) => {
-      const user = await tx.users.findUnique({
+      const creditBalance = await tx.userCreditBalances.findUnique({
         where: { user_id: caller.userId },
-        select: { balance: true },
+        select: { available_credits: true },
       });
-      if (!user) throw new Error('User not found.');
-      if (Number(user.balance) < Number(packagePrice)) {
-        throw new Error(`So du khong du. Can $${packagePrice} USD, hien co $${user.balance} USD.`);
+
+      const availableCredits = Number(creditBalance?.available_credits?.toString?.() ?? 0);
+      if (availableCredits < Number(priceCredits)) {
+        throw new Error(
+          `So du credit khong du. Can ${priceCredits.toString()} credits, hien co ${availableCredits.toFixed(2)} credits.`,
+        );
       }
-      await tx.users.update({
+
+      const updatedCreditBalance = await tx.userCreditBalances.update({
         where: { user_id: caller.userId },
-        data: { balance: { decrement: packagePrice } },
+        data: { available_credits: { decrement: priceCredits } },
+        select: { available_credits: true },
+      });
+
+      await tx.creditLedgerEntries.create({
+        data: {
+          user_id: caller.userId,
+          entry_type: 'USAGE',
+          direction: 'DEBIT',
+          amount: priceCredits,
+          balance_after: updatedCreditBalance.available_credits,
+          purpose: `Renew license key ${keyId}`,
+          source_channel: 'DIRECT',
+          metadata: {
+            core_license_key_id: keyId,
+            price_paid_usd: (packagePrice as Prisma.Decimal).toString(),
+          },
+          created_by: caller.userId,
+        },
       });
     });
   } catch (err) {
@@ -136,9 +162,28 @@ export async function handler(
   } catch (err) {
     // Hoan tien neu gia han that bai
     try {
-      await prisma.users.update({
-        where: { user_id: caller.userId },
-        data: { balance: { increment: packagePrice } },
+      await prisma.$transaction(async (tx: any) => {
+        const refundedBalance = await tx.userCreditBalances.update({
+          where: { user_id: caller.userId },
+          data: { available_credits: { increment: priceCredits } },
+          select: { available_credits: true },
+        });
+
+        await tx.creditLedgerEntries.create({
+          data: {
+            user_id: caller.userId,
+            entry_type: 'REFUND',
+            direction: 'CREDIT',
+            amount: priceCredits,
+            balance_after: refundedBalance.available_credits,
+            purpose: `Refund renew license key ${keyId}`,
+            source_channel: 'DIRECT',
+            metadata: {
+              core_license_key_id: keyId,
+            },
+            created_by: caller.userId,
+          },
+        });
       });
     } catch (rollbackErr) {
       request.log.error(
@@ -149,10 +194,10 @@ export async function handler(
     return reply.status(502).send({ success: false, message: getErrorMessage(err) });
   }
 
-  const updatedUser = await prisma.users
+  const updatedCreditBalance = await prisma.userCreditBalances
     .findUnique({
       where: { user_id: caller.userId },
-      select: { balance: true },
+      select: { available_credits: true },
     })
     .catch(() => null);
 
@@ -163,7 +208,8 @@ export async function handler(
       package_name: packageName,
       new_expires_at: newExpiresAt.toISOString(),
       price_paid_usd: (packagePrice as Prisma.Decimal).toString(),
-      remaining_balance_usd: updatedUser?.balance?.toString() ?? '0',
+      price_paid_credits: priceCredits.toString(),
+      remaining_credits: updatedCreditBalance?.available_credits?.toString() ?? '0',
     },
   });
 }
