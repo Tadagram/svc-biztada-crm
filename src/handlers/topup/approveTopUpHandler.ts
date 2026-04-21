@@ -34,15 +34,9 @@ async function approveTopUpTransaction(
         review_note: reviewNote ?? null,
       },
       include: {
-        user: { select: { user_id: true, phone_number: true, agency_name: true, balance: true } },
+        user: { select: { user_id: true, phone_number: true, agency_name: true } },
         reviewer: { select: { user_id: true, phone_number: true, agency_name: true } },
       },
-    });
-
-    const updatedUser = await tx.users.update({
-      where: { user_id: updatedTopup.user_id },
-      data: { balance: { increment: updatedTopup.amount } },
-      select: { balance: true },
     });
 
     const creditBalance = await tx.userCreditBalances.upsert({
@@ -77,7 +71,7 @@ async function approveTopUpTransaction(
       },
     });
 
-    return { updatedTopup, updatedUser, creditBalance, now };
+    return { updatedTopup, creditBalance, now };
   });
 }
 
@@ -87,7 +81,6 @@ async function sendApprovalNotification(
   topupId: string,
   amount: any,
   creditedAmount: any,
-  newBalance: any,
   newCreditBalance: any,
   reviewerId: string,
 ) {
@@ -111,7 +104,6 @@ async function sendApprovalNotification(
         topup_id: topupId,
         amount: amount.toString(),
         credited_amount: creditedAmount.toString(),
-        new_balance: newBalance.toString(),
         new_credit_balance: newCreditBalance.toString(),
       },
     },
@@ -140,7 +132,7 @@ export async function handler(
     });
   }
 
-  const { updatedTopup, updatedUser, creditBalance, now } = await approveTopUpTransaction(
+  const { updatedTopup, creditBalance, now } = await approveTopUpTransaction(
     prisma,
     topupId,
     caller.userId,
@@ -169,7 +161,6 @@ export async function handler(
     topupId,
     existing.amount,
     updatedTopup.credit_amount,
-    updatedUser.balance,
     creditBalance.available_credits,
     caller.userId,
   );
@@ -177,7 +168,6 @@ export async function handler(
   return reply.send({
     success: true,
     data: updatedTopup,
-    new_balance: updatedUser.balance.toString(),
     new_credit_balance: creditBalance.available_credits.toString(),
   });
 }

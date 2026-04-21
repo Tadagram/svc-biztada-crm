@@ -261,7 +261,7 @@ export const getTopUpSchema: FastifySchema = {
 
 export const approveTopUpSchema: FastifySchema = {
   tags: ['TopUp'],
-  summary: 'Duyệt yêu cầu nạp tiền → cộng balance',
+  summary: 'Duyệt yêu cầu nạp tiền → cộng credit',
   security: [{ bearerAuth: [] }],
   params: {
     type: 'object',
@@ -282,7 +282,6 @@ export const approveTopUpSchema: FastifySchema = {
       properties: {
         success: { type: 'boolean' },
         data: topupDataResponse,
-        new_balance: { type: 'string' },
         new_credit_balance: { type: 'string' },
       },
     },
