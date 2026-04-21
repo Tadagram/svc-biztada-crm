@@ -5,6 +5,7 @@ const userSelect = {
   user_id: true,
   phone_number: true,
   agency_name: true,
+  balance: true,
   role: true,
   status: true,
   parent_user_id: true,
