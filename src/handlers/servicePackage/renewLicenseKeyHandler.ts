@@ -52,7 +52,16 @@ export async function handler(
 
   // 3. Server-side check: key phai het han moi gia han
   const currentExpiresAt = licenseKey.expires_at ? new Date(licenseKey.expires_at) : null;
-  if (currentExpiresAt && currentExpiresAt.getTime() > Date.now()) {
+
+  // Key unlimited (expires_at = NULL) => khong can gia han, chan lai tranh convert thanh time-limited
+  if (!currentExpiresAt) {
+    return reply.status(400).send({
+      success: false,
+      message: 'Key nay la unlimited (khong co thoi han). Khong can gia han.',
+    });
+  }
+
+  if (currentExpiresAt.getTime() > Date.now()) {
     return reply.status(400).send({
       success: false,
       message: `Key van con han den ${currentExpiresAt.toLocaleDateString('vi-VN')}. Chi gia han khi key da het han.`,
@@ -73,7 +82,11 @@ export async function handler(
         include: { service_package: true },
       });
       if (purchase?.service_package) {
-        packagePrice = purchase.service_package.price_per_month;
+        // Tinh gia per-key: package_price / so_luong_key_da_mua
+        // Dung license_key_count_snapshot de tranh thay doi gia neu package update sau nay
+        const keyCount = purchase.license_key_count_snapshot;
+        const rawPrice = new Prisma.Decimal(purchase.service_package.price_per_month);
+        packagePrice = keyCount > 1 ? rawPrice.div(new Prisma.Decimal(keyCount)) : rawPrice;
         packageName = purchase.service_package.product_code ?? packageName;
       }
     }
