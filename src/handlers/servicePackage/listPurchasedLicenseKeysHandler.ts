@@ -7,20 +7,29 @@ interface ListLicenseKeysQuery {
 }
 
 function parsePurchaseId(noteRef?: string | null): string | null {
-  if (!noteRef?.startsWith('crm_purchase:')) return null;
-  const [, purchaseId] = noteRef.split(':');
-  return purchaseId || null;
+  if (!noteRef) return null;
+
+  const match = noteRef.match(/crm_purchase[:#/-]([0-9a-fA-F-]{36})/);
+  if (match?.[1]) {
+    return match[1];
+  }
+
+  if (/^[0-9a-fA-F-]{36}$/.test(noteRef)) {
+    return noteRef;
+  }
+
+  return null;
 }
 
 function deriveStatus(
   expiresAt: string | null,
   usedByPortalId: string | null,
 ): 'unused' | 'used' | 'expired' {
-  if (expiresAt && new Date(expiresAt).getTime() < Date.now()) {
-    return 'expired';
-  }
   if (usedByPortalId) {
     return 'used';
+  }
+  if (expiresAt && new Date(expiresAt).getTime() < Date.now()) {
+    return 'expired';
   }
   return 'unused';
 }

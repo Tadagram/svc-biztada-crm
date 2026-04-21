@@ -8,6 +8,18 @@ interface PurchaseServicePackageBody {
   seller_user_id?: string | null;
 }
 
+function calcBonusLicenseCount(
+  baseCount: number,
+  bonusPercent: number,
+  packageType: 'personal' | 'enterprise',
+): number {
+  if (packageType !== 'enterprise' || bonusPercent <= 0 || baseCount <= 0) {
+    return 0;
+  }
+
+  return Math.ceil((baseCount * bonusPercent) / 100);
+}
+
 function addOneMonth(baseDate: Date): Date {
   const next = new Date(baseDate);
   next.setUTCMonth(next.getUTCMonth() + 1);
@@ -47,6 +59,14 @@ export async function handler(
   const expiresAt = addOneMonth(purchasedAt);
   const coreNoteRef = `crm_purchase:${purchaseId}`;
   const totalPriceUsd = new Prisma.Decimal(servicePackage.price_per_month);
+  const baseLicenseCount = Number(servicePackage.license_key_count) || 0;
+  const bonusPercent = Number(servicePackage.agent_discount_percent) || 0;
+  const bonusLicenseCount = calcBonusLicenseCount(
+    baseLicenseCount,
+    bonusPercent,
+    servicePackage.type,
+  );
+  const issuedLicenseCount = baseLicenseCount + bonusLicenseCount;
 
   try {
     await prisma.$transaction(async (tx: any) => {
@@ -76,7 +96,7 @@ export async function handler(
           status: 'processing',
           channel: sellerUserId ? 'agency' : 'direct',
           seller_user_id: sellerUserId,
-          license_key_count_snapshot: servicePackage.license_key_count,
+          license_key_count_snapshot: issuedLicenseCount,
           unit_price_usd: totalPriceUsd,
           total_price_usd: totalPriceUsd,
           currency: 'USD',
@@ -98,7 +118,7 @@ export async function handler(
       seller_user_id: sellerUserId ?? undefined,
       expires_at: expiresAt.toISOString(),
       issued_for_note: coreNoteRef,
-      quantity: servicePackage.license_key_count,
+      quantity: issuedLicenseCount,
     });
 
     const [purchase, user] = await prisma.$transaction([
@@ -125,6 +145,9 @@ export async function handler(
         service_package_id: purchase.service_package_id,
         product_code: purchase.service_package.product_code,
         license_key_count: purchase.license_key_count_snapshot,
+        base_license_key_count: baseLicenseCount,
+        bonus_license_key_count: bonusLicenseCount,
+        bonus_percent: bonusPercent,
         total_price_usd: purchase.total_price_usd.toString(),
         purchased_at: purchase.purchased_at.toISOString(),
         expires_at: expiresAt.toISOString(),

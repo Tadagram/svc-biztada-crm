@@ -6,6 +6,18 @@ interface ListServicePackagesQuery {
   type?: ServicePackageType;
 }
 
+function calcBonusLicenseCount(
+  baseCount: number,
+  bonusPercent: number,
+  packageType: ServicePackageType,
+): number {
+  if (packageType !== 'enterprise' || bonusPercent <= 0 || baseCount <= 0) {
+    return 0;
+  }
+
+  return Math.ceil((baseCount * bonusPercent) / 100);
+}
+
 const DEFAULT_SERVICE_PACKAGES = [
   {
     product_code: 'PERSONAL_1APP_2ACC',
@@ -147,6 +159,15 @@ export async function handler(
   return reply.send({
     success: true,
     data: packages.map((item: any) => ({
+      bonus_percent: item.agent_discount_percent,
+      bonus_license_key_count: calcBonusLicenseCount(
+        item.license_key_count,
+        item.agent_discount_percent,
+        item.type,
+      ),
+      total_license_key_count:
+        item.license_key_count +
+        calcBonusLicenseCount(item.license_key_count, item.agent_discount_percent, item.type),
       service_package_id: item.service_package_id,
       product_code: item.product_code,
       price_per_month: item.price_per_month.toString(),

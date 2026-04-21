@@ -3,6 +3,9 @@ import { FastifySchema } from 'fastify';
 const servicePackageItem = {
   type: 'object',
   properties: {
+    bonus_percent: { type: 'number' },
+    bonus_license_key_count: { type: 'number' },
+    total_license_key_count: { type: 'number' },
     service_package_id: { type: 'string', format: 'uuid' },
     product_code: { type: 'string' },
     price_per_month: { type: 'string' },
@@ -160,6 +163,9 @@ export const purchaseServicePackageSchema: FastifySchema = {
             service_package_id: { type: 'string', format: 'uuid' },
             product_code: { type: 'string' },
             license_key_count: { type: 'number' },
+            base_license_key_count: { type: 'number' },
+            bonus_license_key_count: { type: 'number' },
+            bonus_percent: { type: 'number' },
             total_price_usd: { type: 'string' },
             purchased_at: { type: 'string' },
             expires_at: { type: 'string' },
