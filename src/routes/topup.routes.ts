@@ -51,7 +51,7 @@ async function topupRoutes(fastify: FastifyInstance) {
     '/submit',
     {
       schema: submitTopUpSchema,
-      preHandler: [fastify.authenticate, fastify.requirePermission('topup:submit')],
+      preHandler: [fastify.authenticate],
     },
     submitTopUpHandler as RouteHandlerMethod,
   );
