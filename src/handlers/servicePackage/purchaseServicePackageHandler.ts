@@ -116,7 +116,8 @@ export async function handler(
     await issuePortalLicensesBatch({
       buyer_user_id: caller.userId,
       seller_user_id: sellerUserId ?? undefined,
-      expires_at: expiresAt.toISOString(),
+      // expires_at KHÔNG truyền — key sinh ra với NULL.
+      // Expire chỉ bắt đầu tính khi Portal kích hoạt key (ActivateLicense trong Go).
       issued_for_note: coreNoteRef,
       quantity: issuedLicenseCount,
     });

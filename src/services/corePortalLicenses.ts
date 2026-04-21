@@ -1,4 +1,4 @@
-const CORE_API_URL =
+﻿const CORE_API_URL =
   process.env.CORE_API_URL ?? 'http://svc-core-api.tadagram.svc.cluster.local:3000';
 const INTERNAL_PORTAL_LICENSES_TOKEN = process.env.INTERNAL_PORTAL_LICENSES_TOKEN ?? '';
 
@@ -27,7 +27,12 @@ interface CorePortalLicenseListResponse {
 interface CorePortalLicenseBatchIssueRequest {
   buyer_user_id: string;
   seller_user_id?: string;
-  expires_at: string;
+  /**
+   * KHONG truyen khi tao moi sau thanh toan.
+   * expires_at chi set tai thoi diem kich hoat (ActivateLicense trong Go).
+   * Key sinh ra voi expires_at = NULL => chua kich hoat thi khong co dong ho dem nguoc.
+   */
+  expires_at?: string | null;
   issued_for_note: string;
   quantity: number;
 }
@@ -96,4 +101,58 @@ export async function listPortalLicensesByBuyer(params: {
   }
 
   return body;
+}
+
+/**
+ * Gia han license key -- cap nhat expires_at tren portal_license_keys.
+ * GetLicenseStatus trong Go luon doc truc tiep tu bang portal_license_keys
+ * nen gia han co hieu luc ngay tai lan heartbeat tiep theo cua Portal.
+ */
+export async function renewPortalLicense(keyId: string, newExpiresAt: string): Promise<void> {
+  const response = await fetch(
+    `${CORE_API_URL}/internal/portal-licenses/${encodeURIComponent(keyId)}/renew`,
+    {
+      method: 'PUT',
+      headers: getInternalHeaders(),
+      body: JSON.stringify({ expires_at: newExpiresAt }),
+      signal: AbortSignal.timeout(30_000),
+    },
+  );
+
+  if (!response.ok) {
+    const body = await parseJsonSafely<{ error?: { message?: string }; message?: string }>(
+      response,
+    );
+    throw new Error(
+      body?.error?.message ??
+        body?.message ??
+        `Renew license failed with status ${response.status}`,
+    );
+  }
+}
+
+/**
+ * Lay thong tin mot license key theo UUID.
+ * Truyen buyerUserId de core-api xac minh ownership (tra 403 neu sai).
+ */
+export async function getPortalLicenseById(
+  keyId: string,
+  buyerUserId: string,
+): Promise<CorePortalLicenseItem> {
+  const url = `${CORE_API_URL}/internal/portal-licenses/${encodeURIComponent(keyId)}?buyer_user_id=${encodeURIComponent(buyerUserId)}`;
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: getInternalHeaders(),
+    signal: AbortSignal.timeout(15_000),
+  });
+
+  const body = await parseJsonSafely<{
+    success?: boolean;
+    data?: CorePortalLicenseItem;
+    message?: string;
+  }>(response);
+  if (!response.ok || !body?.success || !body.data) {
+    throw new Error(body?.message ?? `Get license by ID failed with status ${response.status}`);
+  }
+  return body.data;
 }

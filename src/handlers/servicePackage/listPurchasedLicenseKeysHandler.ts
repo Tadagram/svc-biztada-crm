@@ -26,8 +26,16 @@ function deriveStatus(
   usedByPortalId: string | null,
 ): 'unused' | 'used' | 'expired' {
   if (usedByPortalId) {
-    return 'used';
+    // Key đã kích hoạt — kiểm tra còn hạn không.
+    // expires_at = null → unlimited (admin key) → luôn valid.
+    if (expiresAt && new Date(expiresAt).getTime() < Date.now()) {
+      return 'expired'; // đã kích hoạt nhưng hết hạn → cần gia hạn
+    }
+    return 'used'; // đang hoạt động bình thường
   }
+  // Chưa kích hoạt.
+  // Với thiết kế mới expires_at = NULL ở trạng thái này.
+  // Giữ lại check phòng key cũ được tạo với expires_at sẵn.
   if (expiresAt && new Date(expiresAt).getTime() < Date.now()) {
     return 'expired';
   }

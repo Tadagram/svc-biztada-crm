@@ -1,8 +1,9 @@
-import { FastifyInstance, RouteHandlerMethod } from 'fastify';
+﻿import { FastifyInstance, RouteHandlerMethod } from 'fastify';
 import { handler as listServicePackagesHandler } from '@handlers/servicePackage/listServicePackagesHandler';
 import { handler as purchaseServicePackageHandler } from '@handlers/servicePackage/purchaseServicePackageHandler';
 import { handler as listServicePackagePurchasesHandler } from '@handlers/servicePackage/listServicePackagePurchasesHandler';
 import { handler as listPurchasedLicenseKeysHandler } from '@handlers/servicePackage/listPurchasedLicenseKeysHandler';
+import { handler as renewLicenseKeyHandler } from '@handlers/servicePackage/renewLicenseKeyHandler';
 import {
   listServicePackagesSchema,
   purchaseServicePackageSchema,
@@ -13,38 +14,32 @@ import {
 async function servicePackageRoutes(fastify: FastifyInstance) {
   fastify.get(
     '/',
-    {
-      schema: listServicePackagesSchema,
-      preHandler: [fastify.authenticate],
-    },
+    { schema: listServicePackagesSchema, preHandler: [fastify.authenticate] },
     listServicePackagesHandler as RouteHandlerMethod,
   );
 
   fastify.post(
     '/purchase',
-    {
-      schema: purchaseServicePackageSchema,
-      preHandler: [fastify.authenticate],
-    },
+    { schema: purchaseServicePackageSchema, preHandler: [fastify.authenticate] },
     purchaseServicePackageHandler as RouteHandlerMethod,
   );
 
   fastify.get(
     '/purchases',
-    {
-      schema: listServicePackagePurchasesSchema,
-      preHandler: [fastify.authenticate],
-    },
+    { schema: listServicePackagePurchasesSchema, preHandler: [fastify.authenticate] },
     listServicePackagePurchasesHandler as RouteHandlerMethod,
   );
 
   fastify.get(
     '/license-keys',
-    {
-      schema: listPurchasedLicenseKeysSchema,
-      preHandler: [fastify.authenticate],
-    },
+    { schema: listPurchasedLicenseKeysSchema, preHandler: [fastify.authenticate] },
     listPurchasedLicenseKeysHandler as RouteHandlerMethod,
+  );
+
+  fastify.post(
+    '/license-keys/:keyId/renew',
+    { preHandler: [fastify.authenticate] },
+    renewLicenseKeyHandler as RouteHandlerMethod,
   );
 }
 
