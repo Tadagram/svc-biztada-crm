@@ -2,22 +2,11 @@ import { randomUUID } from 'crypto';
 import { Prisma } from '@prisma/client';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { issuePortalLicensesBatch } from '@services/corePortalLicenses';
+import { calcBonusLicenseCount } from './servicePackageBonus';
 
 interface PurchaseServicePackageBody {
   service_package_id: string;
   seller_user_id?: string | null;
-}
-
-function calcBonusLicenseCount(
-  baseCount: number,
-  bonusPercent: number,
-  packageType: 'personal' | 'enterprise',
-): number {
-  if (packageType !== 'enterprise' || bonusPercent <= 0 || baseCount <= 0) {
-    return 0;
-  }
-
-  return Math.ceil((baseCount * bonusPercent) / 100);
 }
 
 function addOneMonth(baseDate: Date): Date {

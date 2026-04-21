@@ -84,9 +84,14 @@ export async function handler(
       if (purchase?.service_package) {
         // Tinh gia per-key: package_price / so_luong_key_da_mua
         // Dung license_key_count_snapshot de tranh thay doi gia neu package update sau nay
-        const keyCount = purchase.license_key_count_snapshot;
+        const keyCount = Math.max(
+          1,
+          Number(purchase.license_key_count_snapshot) ||
+            Number(purchase.service_package.license_key_count) ||
+            1,
+        );
         const rawPrice = new Prisma.Decimal(purchase.service_package.price_per_month);
-        packagePrice = keyCount > 1 ? rawPrice.div(new Prisma.Decimal(keyCount)) : rawPrice;
+        packagePrice = rawPrice.div(new Prisma.Decimal(keyCount));
         packageName = purchase.service_package.product_code ?? packageName;
       }
     }

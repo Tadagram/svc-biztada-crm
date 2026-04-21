@@ -1,21 +1,12 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-
-type ServicePackageType = 'personal' | 'enterprise';
+import {
+  calcBonusLicenseCount,
+  formatBonusLicenseLabel,
+  type ServicePackageType,
+} from './servicePackageBonus';
 
 interface ListServicePackagesQuery {
   type?: ServicePackageType;
-}
-
-function calcBonusLicenseCount(
-  baseCount: number,
-  bonusPercent: number,
-  packageType: ServicePackageType,
-): number {
-  if (packageType !== 'enterprise' || bonusPercent <= 0 || baseCount <= 0) {
-    return 0;
-  }
-
-  return Math.ceil((baseCount * bonusPercent) / 100);
 }
 
 const DEFAULT_SERVICE_PACKAGES = [
@@ -50,7 +41,7 @@ const DEFAULT_SERVICE_PACKAGES = [
     price_per_month: 400,
     license_key_count: 10,
     account_limit: 50,
-    bonus: '+300',
+    bonus: null,
     agent_discount_percent: 10,
     community_support: true,
     support_24_7: true,
@@ -63,7 +54,7 @@ const DEFAULT_SERVICE_PACKAGES = [
     price_per_month: 4_000,
     license_key_count: 100,
     account_limit: 500,
-    bonus: '+2,000',
+    bonus: null,
     agent_discount_percent: 20,
     community_support: true,
     support_24_7: true,
@@ -76,7 +67,7 @@ const DEFAULT_SERVICE_PACKAGES = [
     price_per_month: 40_000,
     license_key_count: 1_000,
     account_limit: 5_000,
-    bonus: '+15,000',
+    bonus: null,
     agent_discount_percent: 30,
     community_support: true,
     support_24_7: true,
@@ -89,7 +80,7 @@ const DEFAULT_SERVICE_PACKAGES = [
     price_per_month: 400_000,
     license_key_count: 10_000,
     account_limit: 50_000,
-    bonus: '+125,000',
+    bonus: null,
     agent_discount_percent: 40,
     community_support: true,
     support_24_7: true,
@@ -102,7 +93,7 @@ const DEFAULT_SERVICE_PACKAGES = [
     price_per_month: 4_000_000,
     license_key_count: 100_000,
     account_limit: 500_000,
-    bonus: '+1,200,000',
+    bonus: null,
     agent_discount_percent: 50,
     community_support: true,
     support_24_7: true,
@@ -133,7 +124,7 @@ async function ensureDefaultServicePackages(prisma: any) {
         zalo_limit: item.account_limit,
         tiktok_limit: item.account_limit,
         telegram_limit: item.account_limit,
-        bonus: bonusLicenseCount > 0 ? `+${bonusLicenseCount.toLocaleString('en-US')}` : null,
+        bonus: formatBonusLicenseLabel(bonusLicenseCount),
         agent_discount_percent: item.agent_discount_percent,
         community_support: item.community_support,
         support_24_7: item.support_24_7,
@@ -187,7 +178,7 @@ export async function handler(
         zalo_limit: item.zalo_limit,
         tiktok_limit: item.tiktok_limit,
         telegram_limit: item.telegram_limit,
-        bonus: bonusLicenseKeyCount > 0 ? `+${bonusLicenseKeyCount.toLocaleString('en-US')}` : null,
+        bonus: formatBonusLicenseLabel(bonusLicenseKeyCount),
         agent_discount_percent: item.agent_discount_percent,
         community_support: item.community_support,
         support_24_7: item.support_24_7,
