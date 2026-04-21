@@ -72,40 +72,52 @@ export async function handler(request: FastifyRequest, reply: FastifyReply) {
     .filter(Boolean)
     .sort((a: Date, b: Date) => b.getTime() - a.getTime())[0];
 
+  const ledgerEntries = await prisma.creditLedgerEntries.findMany({
+    where: { user_id: { in: userIds } },
+    select: { direction: true, amount: true },
+  });
+
+  const ledgerCredits = ledgerEntries.reduce(
+    (
+      sum: number,
+      entry: { direction: 'CREDIT' | 'DEBIT'; amount: { toString?: () => string } },
+    ) => {
+      const amount = Number(entry.amount?.toString?.() ?? 0);
+      return entry.direction === 'DEBIT' ? sum - amount : sum + amount;
+    },
+    0,
+  );
+
   let resolvedCredits = totalCredits;
 
-  if (resolvedCredits <= 0) {
-    const ledgerEntries = await prisma.creditLedgerEntries.findMany({
-      where: { user_id: { in: userIds } },
-      select: { direction: true, amount: true },
-    });
+  if (ledgerEntries.length > 0) {
+    resolvedCredits = ledgerCredits;
 
-    if (ledgerEntries.length > 0) {
-      resolvedCredits = ledgerEntries.reduce(
-        (
-          sum: number,
-          entry: { direction: 'CREDIT' | 'DEBIT'; amount: { toString?: () => string } },
-        ) => {
-          const amount = Number(entry.amount?.toString?.() ?? 0);
-          return entry.direction === 'DEBIT' ? sum - amount : sum + amount;
+    if (Math.abs(totalCredits - ledgerCredits) > 0.009) {
+      request.log.warn(
+        {
+          callerUserId: caller.userId,
+          aliasUserIds: userIds,
+          tableBalance: totalCredits,
+          ledgerBalance: ledgerCredits,
         },
-        0,
-      );
-    } else {
-      const approvedTopups = await prisma.topUpRequests.findMany({
-        where: {
-          user_id: { in: userIds },
-          status: 'APPROVED',
-        },
-        select: { credit_amount: true },
-      });
-
-      resolvedCredits = approvedTopups.reduce(
-        (sum: number, item: { credit_amount: { toString?: () => string } }) =>
-          sum + Number(item.credit_amount?.toString?.() ?? 0),
-        0,
+        'Credit balance table differs from ledger; returning ledger balance',
       );
     }
+  } else if (resolvedCredits <= 0) {
+    const approvedTopups = await prisma.topUpRequests.findMany({
+      where: {
+        user_id: { in: userIds },
+        status: 'APPROVED',
+      },
+      select: { credit_amount: true },
+    });
+
+    resolvedCredits = approvedTopups.reduce(
+      (sum: number, item: { credit_amount: { toString?: () => string } }) =>
+        sum + Number(item.credit_amount?.toString?.() ?? 0),
+      0,
+    );
 
     if (resolvedCredits > 0) {
       request.log.warn(
@@ -115,7 +127,7 @@ export async function handler(request: FastifyRequest, reply: FastifyReply) {
           tableBalance: totalCredits,
           fallbackResolvedCredits: resolvedCredits,
         },
-        'Credit balance table is stale; returning fallback computed credits',
+        'Credit balance table is stale; returning approved-topup computed credits',
       );
     }
   }
