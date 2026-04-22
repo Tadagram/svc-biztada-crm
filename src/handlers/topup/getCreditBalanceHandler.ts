@@ -32,6 +32,28 @@ function buildPhoneVariants(input?: string | null): string[] {
   return Array.from(variants).filter(Boolean);
 }
 
+function normalizeTopupCredits(
+  amount: { toString?: () => string } | number,
+  currency: string,
+  recordedCreditAmount: { toString?: () => string } | number,
+): number {
+  const amountNum = Number((amount as any)?.toString?.() ?? amount ?? 0);
+  const recorded = Number((recordedCreditAmount as any)?.toString?.() ?? recordedCreditAmount ?? 0);
+
+  if (currency === 'USDT') {
+    const expected = Math.round(amountNum * 10 * 100) / 100;
+    const looksLegacyWrongRate = Math.abs(recorded - amountNum) < 0.0001;
+    return looksLegacyWrongRate ? expected : recorded;
+  }
+
+  if (currency === 'VND') {
+    const expected = Math.floor(amountNum / 2600);
+    return recorded > 0 ? recorded : expected;
+  }
+
+  return recorded;
+}
+
 export async function handler(request: FastifyRequest, reply: FastifyReply) {
   const prisma = request.prisma as any;
   const caller = request.user;
@@ -92,19 +114,71 @@ export async function handler(request: FastifyRequest, reply: FastifyReply) {
       0,
     );
 
-    if (tableCredits > 0) {
+    let bootstrapCredits = tableCredits;
+
+    if (bootstrapCredits <= 0) {
+      const [approvedTopups, completedPurchases] = await Promise.all([
+        prisma.topUpRequests.findMany({
+          where: {
+            user_id: { in: userIds },
+            status: 'APPROVED',
+          },
+          select: {
+            amount: true,
+            currency: true,
+            credit_amount: true,
+          },
+        }),
+        prisma.servicePackagePurchases.findMany({
+          where: {
+            user_id: { in: userIds },
+            status: 'completed',
+          },
+          select: {
+            total_price_usd: true,
+          },
+        }),
+      ]);
+
+      const topupCredits = approvedTopups.reduce(
+        (
+          sum: number,
+          row: {
+            amount: { toString?: () => string };
+            currency: string;
+            credit_amount: { toString?: () => string };
+          },
+        ) => sum + normalizeTopupCredits(row.amount, row.currency, row.credit_amount),
+        0,
+      );
+
+      const purchaseDebits = completedPurchases.reduce(
+        (sum: number, row: { total_price_usd: { toString?: () => string } }) =>
+          sum + Number(row.total_price_usd?.toString?.() ?? 0) * 10,
+        0,
+      );
+
+      bootstrapCredits = Math.max(0, Math.round((topupCredits - purchaseDebits) * 100) / 100);
+    }
+
+    if (bootstrapCredits > 0) {
       await prisma.$transaction(async (tx: any) => {
         await tx.creditLedgerEntries.create({
           data: {
             user_id: caller.userId,
             entry_type: 'ADJUSTMENT',
             direction: 'CREDIT',
-            amount: tableCredits,
-            balance_after: tableCredits,
-            purpose: 'Bootstrap ledger from grouped user credit balance snapshot',
+            amount: bootstrapCredits,
+            balance_after: bootstrapCredits,
+            purpose: 'Bootstrap ledger from deterministic grouped credit source',
             source_channel: 'DIRECT',
             metadata: {
               table_credits_snapshot: tableCredits,
+              bootstrap_credits: bootstrapCredits,
+              source:
+                tableCredits > 0
+                  ? 'user_credit_balances_snapshot'
+                  : 'approved_topups_minus_purchases',
               grouped_user_ids: userIds,
             },
             created_by: caller.userId,
