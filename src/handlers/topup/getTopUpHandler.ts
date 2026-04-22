@@ -7,13 +7,33 @@ interface GetTopUpParams {
 }
 
 async function getTopUp(prisma: PrismaClient, topupId: string) {
-  return prisma.topUpRequests.findUnique({
+  const topup = await prisma.topUpRequests.findUnique({
     where: { topup_id: topupId },
     include: {
-      user: { select: { user_id: true, phone_number: true, agency_name: true } },
+      user: {
+        select: {
+          user_id: true,
+          phone_number: true,
+          agency_name: true,
+          credit_balance: { select: { available_credits: true } },
+        },
+      },
       reviewer: { select: { user_id: true, phone_number: true, agency_name: true } },
     },
   });
+
+  if (!topup) return null;
+
+  return {
+    ...topup,
+    user: topup.user
+      ? {
+          ...topup.user,
+          available_credits: topup.user.credit_balance?.available_credits?.toString?.() ?? '0.00',
+          credit_balance: undefined,
+        }
+      : topup.user,
+  };
 }
 
 export async function handler(

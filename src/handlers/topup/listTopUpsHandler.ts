@@ -32,13 +32,30 @@ async function fetchTopUps(prisma: PrismaClient, where: any, limit: number) {
     orderBy: { submitted_at: 'desc' },
     take: limit + 1,
     include: {
-      user: { select: { user_id: true, phone_number: true, agency_name: true } },
+      user: {
+        select: {
+          user_id: true,
+          phone_number: true,
+          agency_name: true,
+          credit_balance: { select: { available_credits: true } },
+        },
+      },
       reviewer: { select: { user_id: true, phone_number: true, agency_name: true } },
     },
   });
 
   const hasMore = data.length > limit;
-  const items = hasMore ? data.slice(0, limit) : data;
+  const rawItems = hasMore ? data.slice(0, limit) : data;
+  const items = rawItems.map((item: any) => ({
+    ...item,
+    user: item.user
+      ? {
+          ...item.user,
+          available_credits: item.user.credit_balance?.available_credits?.toString?.() ?? '0.00',
+          credit_balance: undefined,
+        }
+      : item.user,
+  }));
   const nextCursor =
     hasMore && items.length > 0 ? items[items.length - 1].submitted_at.toISOString() : null;
 

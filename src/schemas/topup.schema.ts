@@ -29,6 +29,7 @@ const topupDataResponse = {
         user_id: { type: 'string' },
         phone_number: { type: 'string' },
         agency_name: { type: ['string', 'null'] },
+        available_credits: { type: ['string', 'null'] },
       },
     },
     reviewer: {
