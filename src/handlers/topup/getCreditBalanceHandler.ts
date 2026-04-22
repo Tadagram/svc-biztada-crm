@@ -1,5 +1,19 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 
+const VND_TO_CREDIT_RATE = 2_600;
+const USDT_TO_CREDIT_RATE = 10;
+
+function normalizeTopupToCredits(
+  amount: number,
+  currency?: string | null,
+  creditAmount?: number,
+): number {
+  const cur = (currency ?? '').toUpperCase();
+  if (cur === 'VND') return Math.floor(amount / VND_TO_CREDIT_RATE);
+  if (cur === 'USDT' || cur === 'USD') return Math.round(amount * USDT_TO_CREDIT_RATE * 100) / 100;
+  return Number.isFinite(creditAmount) ? (creditAmount as number) : 0;
+}
+
 function normalizePhone(input?: string | null): string {
   if (!input) return '';
   const trimmed = input.trim();
@@ -72,64 +86,91 @@ export async function handler(request: FastifyRequest, reply: FastifyReply) {
     .filter(Boolean)
     .sort((a: Date, b: Date) => b.getTime() - a.getTime())[0];
 
-  const ledgerEntries = await prisma.creditLedgerEntries.findMany({
-    where: { user_id: { in: userIds } },
-    select: { direction: true, amount: true },
-  });
-
-  const ledgerCredits = ledgerEntries.reduce(
-    (
-      sum: number,
-      entry: { direction: 'CREDIT' | 'DEBIT'; amount: { toString?: () => string } },
-    ) => {
-      const amount = Number(entry.amount?.toString?.() ?? 0);
-      return entry.direction === 'DEBIT' ? sum - amount : sum + amount;
-    },
-    0,
-  );
-
-  let resolvedCredits = totalCredits;
-
-  if (ledgerEntries.length > 0) {
-    resolvedCredits = ledgerCredits;
-
-    if (Math.abs(totalCredits - ledgerCredits) > 0.009) {
-      request.log.warn(
-        {
-          callerUserId: caller.userId,
-          aliasUserIds: userIds,
-          tableBalance: totalCredits,
-          ledgerBalance: ledgerCredits,
-        },
-        'Credit balance table differs from ledger; returning ledger balance',
-      );
-    }
-  } else if (resolvedCredits <= 0) {
-    const approvedTopups = await prisma.topUpRequests.findMany({
+  const [approvedTopups, completedPurchases, renewAdjustLedgerEntries] = await Promise.all([
+    prisma.topUpRequests.findMany({
       where: {
         user_id: { in: userIds },
         status: 'APPROVED',
       },
-      select: { credit_amount: true },
-    });
+      select: {
+        amount: true,
+        currency: true,
+        credit_amount: true,
+      },
+    }),
+    prisma.servicePackagePurchases.findMany({
+      where: {
+        user_id: { in: userIds },
+        status: 'completed',
+      },
+      select: {
+        total_price_usd: true,
+      },
+    }),
+    prisma.creditLedgerEntries.findMany({
+      where: {
+        user_id: { in: userIds },
+        OR: [
+          { entry_type: 'ADJUSTMENT' },
+          { purpose: { startsWith: 'Renew license key' } },
+          { purpose: { startsWith: 'Refund renew license key' } },
+        ],
+      },
+      select: {
+        direction: true,
+        amount: true,
+      },
+    }),
+  ]);
 
-    resolvedCredits = approvedTopups.reduce(
-      (sum: number, item: { credit_amount: { toString?: () => string } }) =>
-        sum + Number(item.credit_amount?.toString?.() ?? 0),
-      0,
+  const normalizedTopupCredits = approvedTopups.reduce(
+    (
+      sum: number,
+      item: {
+        amount: { toString?: () => string };
+        currency: string | null;
+        credit_amount: { toString?: () => string };
+      },
+    ) => {
+      const amount = Number(item.amount?.toString?.() ?? 0);
+      const creditAmount = Number(item.credit_amount?.toString?.() ?? 0);
+      return sum + normalizeTopupToCredits(amount, item.currency, creditAmount);
+    },
+    0,
+  );
+
+  const purchaseDebits = completedPurchases.reduce(
+    (sum: number, item: { total_price_usd: { toString?: () => string } }) => {
+      const totalPriceUsd = Number(item.total_price_usd?.toString?.() ?? 0);
+      return sum + Math.round(totalPriceUsd * USDT_TO_CREDIT_RATE * 100) / 100;
+    },
+    0,
+  );
+
+  const renewAdjustDelta = renewAdjustLedgerEntries.reduce(
+    (sum: number, item: { direction: 'CREDIT' | 'DEBIT'; amount: { toString?: () => string } }) => {
+      const amount = Number(item.amount?.toString?.() ?? 0);
+      return item.direction === 'DEBIT' ? sum - amount : sum + amount;
+    },
+    0,
+  );
+
+  const normalizedComputedCredits = normalizedTopupCredits - purchaseDebits + renewAdjustDelta;
+  const resolvedCredits = normalizedComputedCredits;
+
+  if (Math.abs(totalCredits - resolvedCredits) > 0.009) {
+    request.log.warn(
+      {
+        callerUserId: caller.userId,
+        aliasUserIds: userIds,
+        tableBalance: totalCredits,
+        resolvedCredits,
+        normalizedTopupCredits,
+        purchaseDebits,
+        renewAdjustDelta,
+      },
+      'Credit balance differs from normalized transaction-derived balance; returning normalized balance',
     );
-
-    if (resolvedCredits > 0) {
-      request.log.warn(
-        {
-          callerUserId: caller.userId,
-          aliasUserIds: userIds,
-          tableBalance: totalCredits,
-          fallbackResolvedCredits: resolvedCredits,
-        },
-        'Credit balance table is stale; returning approved-topup computed credits',
-      );
-    }
   }
 
   const matchedPrimary = balances.find(
@@ -141,7 +182,7 @@ export async function handler(request: FastifyRequest, reply: FastifyReply) {
     success: true,
     data: {
       user_id: effectiveUserId,
-      available_credits: resolvedCredits.toFixed(2),
+      available_credits: Math.max(0, resolvedCredits).toFixed(2),
       updated_at: latestUpdatedAt?.toISOString?.() ?? null,
     },
   });
