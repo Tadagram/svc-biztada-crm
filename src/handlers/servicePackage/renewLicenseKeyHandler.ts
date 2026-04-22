@@ -145,7 +145,7 @@ export async function handler(
           source_channel: 'DIRECT',
           metadata: {
             core_license_key_id: keyId,
-            price_paid_usd: (packagePrice as Prisma.Decimal).toString(),
+            price_paid_credits: priceCredits.toString(),
           },
           created_by: caller.userId,
         },
@@ -207,7 +207,6 @@ export async function handler(
       core_license_key_id: keyId,
       package_name: packageName,
       new_expires_at: newExpiresAt.toISOString(),
-      price_paid_usd: (packagePrice as Prisma.Decimal).toString(),
       price_paid_credits: priceCredits.toString(),
       remaining_credits: updatedCreditBalance?.available_credits?.toString() ?? '0',
     },

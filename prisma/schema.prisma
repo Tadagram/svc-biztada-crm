@@ -86,7 +86,6 @@ model Users {
   role            UserRole?          // null = full admin access (Telegram login); explicit roles for sub-users
   status          UserStatus         @default(active)
   custom_fields   Json?
-  balance         Decimal            @default(0) @db.Decimal(15, 2)
   last_active_at  DateTime?          @db.DateTime(0)
   created_at      DateTime           @default(now()) @db.DateTime(0)
   updated_at      DateTime           @default(now()) @updatedAt @db.DateTime(0)

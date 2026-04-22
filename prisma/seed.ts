@@ -943,12 +943,16 @@ async function main() {
       ],
     });
 
-    // Calculate total approved amount and update balance
-    const totalApproved =
-      historicalData.reduce((sum, req) => sum + Number(req.amount), 0) + 1000000;
-    await prisma.users.update({
+    // Calculate approved credits and seed the authoritative credit balance table
+    const totalApprovedCredits =
+      historicalData.reduce((sum, req) => sum + Number(req.credit_amount), 0) + 1000000;
+    await prisma.userCreditBalances.upsert({
       where: { user_id: user1Id },
-      data: { balance: { increment: totalApproved } },
+      update: { available_credits: { increment: totalApprovedCredits } },
+      create: {
+        user_id: user1Id,
+        available_credits: totalApprovedCredits,
+      },
     });
     console.log(
       `✅ TopUpRequests seeded: ${historicalData.length + 4} entries (30 days realistic history + current)`,

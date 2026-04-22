@@ -126,7 +126,6 @@ export async function handler(
       status: true,
       parent_user_id: true,
       last_active_at: true,
-      balance: true,
       created_at: true,
       updated_at: true,
       deleted_at: true,
@@ -176,7 +175,7 @@ export async function handler(
 
     const normalizedUsers = users.map((user: any) => ({
       ...user,
-      balance: user.balance?.toString?.() ?? '0.00',
+      credit_balance: undefined,
       available_credits: user.credit_balance?.available_credits?.toString?.() ?? '0.00',
     }));
 

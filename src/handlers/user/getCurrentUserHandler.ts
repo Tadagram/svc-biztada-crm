@@ -5,13 +5,17 @@ const userSelect = {
   user_id: true,
   phone_number: true,
   agency_name: true,
-  balance: true,
   role: true,
   status: true,
   parent_user_id: true,
   last_active_at: true,
   created_at: true,
   updated_at: true,
+  credit_balance: {
+    select: {
+      available_credits: true,
+    },
+  },
 };
 
 async function fetchCurrentUser(prisma: PrismaClient, userId: string) {
@@ -33,9 +37,15 @@ export async function handler(request: FastifyRequest, reply: FastifyReply) {
       });
     }
 
+    const normalizedUser = {
+      ...user,
+      credit_balance: undefined,
+      available_credits: user.credit_balance?.available_credits?.toString?.() ?? '0.00',
+    };
+
     return reply.send({
       success: true,
-      data: user,
+      data: normalizedUser,
     });
   } catch (error) {
     request.log.error(error);

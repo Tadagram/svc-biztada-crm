@@ -32,7 +32,7 @@ async function fetchTopUps(prisma: PrismaClient, where: any, limit: number) {
     orderBy: { submitted_at: 'desc' },
     take: limit + 1,
     include: {
-      user: { select: { user_id: true, phone_number: true, agency_name: true, balance: true } },
+      user: { select: { user_id: true, phone_number: true, agency_name: true } },
       reviewer: { select: { user_id: true, phone_number: true, agency_name: true } },
     },
   });

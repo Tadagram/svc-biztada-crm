@@ -40,7 +40,7 @@ async function createTopUpRequest(
       status: TOPUP_STATUSES.PENDING,
     },
     include: {
-      user: { select: { user_id: true, phone_number: true, agency_name: true, balance: true } },
+      user: { select: { user_id: true, phone_number: true, agency_name: true } },
       reviewer: { select: { user_id: true, phone_number: true, agency_name: true } },
     },
   });

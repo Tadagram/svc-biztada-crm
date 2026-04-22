@@ -10,7 +10,7 @@ async function getTopUp(prisma: PrismaClient, topupId: string) {
   return prisma.topUpRequests.findUnique({
     where: { topup_id: topupId },
     include: {
-      user: { select: { user_id: true, phone_number: true, agency_name: true, balance: true } },
+      user: { select: { user_id: true, phone_number: true, agency_name: true } },
       reviewer: { select: { user_id: true, phone_number: true, agency_name: true } },
     },
   });

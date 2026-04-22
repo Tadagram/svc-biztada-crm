@@ -29,7 +29,6 @@ const topupDataResponse = {
         user_id: { type: 'string' },
         phone_number: { type: 'string' },
         agency_name: { type: ['string', 'null'] },
-        balance: { type: 'string' },
       },
     },
     reviewer: {
