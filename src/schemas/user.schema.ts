@@ -358,6 +358,119 @@ export const getUserSummarySchema: FastifySchema = {
   },
 };
 
+export const getUserInsightSchema: FastifySchema = {
+  tags: ['Users'],
+  summary: 'Get User Insight',
+  description:
+    'Returns full insight for a user including license usage, package purchase history, topup/payment totals, and portal-worker mappings.',
+  params: {
+    type: 'object',
+    required: ['userId'],
+    properties: {
+      userId: { type: 'string', format: 'uuid' },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'object',
+          properties: {
+            user: userDataResponse,
+            financial_summary: {
+              type: 'object',
+              properties: {
+                approved_topups_count: { type: 'integer' },
+                total_topup_amount_usd: { type: 'number' },
+                total_topup_credits: { type: 'number' },
+                completed_purchases_count: { type: 'integer' },
+                total_purchase_amount_usd: { type: 'number' },
+              },
+            },
+            licenses: {
+              type: 'object',
+              properties: {
+                total: { type: 'integer' },
+                active: { type: 'integer' },
+                unused: { type: 'integer' },
+                expired: { type: 'integer' },
+                items: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      key_id: { type: 'string' },
+                      license_key: { type: 'string' },
+                      status: { type: 'string' },
+                      expires_at: { type: ['string', 'null'] },
+                      activated_at: { type: ['string', 'null'] },
+                      used_by_portal_id: { type: ['string', 'null'] },
+                      purchase_id: { type: ['string', 'null'] },
+                      product_code: { type: ['string', 'null'] },
+                      service_package_id: { type: ['string', 'null'] },
+                    },
+                  },
+                },
+              },
+            },
+            purchase_history: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  purchase_id: { type: 'string' },
+                  status: { type: 'string' },
+                  channel: { type: 'string' },
+                  seller_user_id: { type: ['string', 'null'] },
+                  purchased_at: { type: 'string' },
+                  total_price_usd: { type: 'number' },
+                  unit_price_usd: { type: 'number' },
+                  license_key_count: { type: 'integer' },
+                  product_code: { type: 'string' },
+                  service_package_id: { type: 'string' },
+                },
+              },
+            },
+            portal_workers: {
+              type: 'object',
+              properties: {
+                total_rows: { type: 'integer' },
+                items: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      portal_id: { type: 'string' },
+                      device_name: { type: 'string' },
+                      portal_type: { type: 'string' },
+                      portal_status: { type: 'string' },
+                      user_id: { type: 'string' },
+                      worker_row_id: { type: ['string', 'null'] },
+                      worker_uuid: { type: ['string', 'null'] },
+                      worker_type: { type: ['string', 'null'] },
+                      installed_at: { type: ['string', 'null'] },
+                      last_seen_at: { type: ['string', 'null'] },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    404: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+      },
+    },
+  },
+};
+
 export const deleteUserSchema: FastifySchema = {
   tags: ['Users'],
   description: 'Delete a user (soft delete)',

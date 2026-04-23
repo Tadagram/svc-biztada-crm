@@ -8,6 +8,7 @@ import {
   updateProfileHandler,
   deleteUserHandler,
   getUserSummaryHandler,
+  getUserInsightHandler,
   getUserStatsHandler,
   getCustomerStatsHandler,
 } from '@handlers/user';
@@ -18,6 +19,7 @@ import {
   updateUserSchema,
   deleteUserSchema,
   getUserSummarySchema,
+  getUserInsightSchema,
   getUserStatsSchema,
   getCustomerStatsSchema,
 } from '@schemas/user.schema';
@@ -119,6 +121,16 @@ async function userRoutes(fastify: FastifyInstance) {
       preHandler: [fastify.authenticate, fastify.requirePermission('users:read')],
     },
     getUserSummaryHandler as RouteHandlerMethod,
+  );
+
+  // Get full business insight for a user (licenses, purchases, topups, portal-workers)
+  fastify.get(
+    '/:userId/insight',
+    {
+      schema: getUserInsightSchema,
+      preHandler: [fastify.authenticate, fastify.requirePermission('users:read')],
+    },
+    getUserInsightHandler as RouteHandlerMethod,
   );
 }
 

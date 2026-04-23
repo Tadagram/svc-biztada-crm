@@ -8,5 +8,6 @@ export { handler as updateUserHandler } from './updateUserHandler';
 export { handler as updateProfileHandler } from './updateProfileHandler';
 export { handler as deleteUserHandler } from './deleteUserHandler';
 export { handler as getUserSummaryHandler } from './getUserSummaryHandler';
+export { handler as getUserInsightHandler } from './getUserInsightHandler';
 export { handler as getUserStatsHandler } from './getUserStatsHandler';
 export { handler as getCustomerStatsHandler } from './getCustomerStatsHandler';
