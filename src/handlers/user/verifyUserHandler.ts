@@ -57,6 +57,7 @@ export async function handler(
       user.user_id,
       refreshToken,
       expiresAt,
+      undefined,
       request.ip,
       request.headers['user-agent'] as string,
     );

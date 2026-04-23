@@ -3,7 +3,10 @@ import crypto from 'crypto';
 
 const TOKEN_REFRESH_EXPIRY = 7;
 
-async function handler(request: FastifyRequest, reply: FastifyReply) {
+async function handler(
+  request: FastifyRequest<{ Body: { refreshToken?: string } }>,
+  reply: FastifyReply,
+) {
   const { prisma, log: logger } = request;
   const { jwt } = request.server;
 
@@ -38,6 +41,11 @@ async function handler(request: FastifyRequest, reply: FastifyReply) {
 
     if (!session) {
       return reply.status(401).send({ success: false, message: 'Phiên đăng nhập không tồn tại.' });
+    }
+
+    const providedRefreshToken = request.body?.refreshToken;
+    if (providedRefreshToken && providedRefreshToken !== session.refresh_token) {
+      return reply.status(401).send({ success: false, message: 'Refresh token không hợp lệ.' });
     }
 
     // ── 4. Check if refresh token is expired → delete session & logout ──
@@ -76,6 +84,7 @@ async function handler(request: FastifyRequest, reply: FastifyReply) {
       success: true,
       message: 'Làm mới Token thành công.',
       token,
+      refreshToken: newRefreshToken,
     });
   } catch (error) {
     logger.error({ err: error }, '[RefreshTokenHandler] Error');

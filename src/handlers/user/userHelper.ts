@@ -97,11 +97,13 @@ export async function saveUserSession(
   userId: string,
   refreshToken: string,
   expiresAt: Date,
+  sessionId?: string,
   ipAddress?: string,
   userAgent?: string,
 ) {
   return await prisma.userSessions.create({
     data: {
+      ...(sessionId ? { session_id: sessionId } : {}),
       user_id: userId,
       refresh_token: refreshToken,
       expires_at: expiresAt,

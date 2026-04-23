@@ -238,7 +238,7 @@ export async function adminTelegramLoginHandler(
   }
 
   // 5. Issue JWT
-  const sessionId = crypto.randomBytes(16).toString('hex');
+  const sessionId = crypto.randomUUID();
   const token = generateAccessToken(jwt, adminUser, sessionId);
   const { token: refreshToken, expiresAt } = generateRefreshToken();
 
@@ -247,6 +247,7 @@ export async function adminTelegramLoginHandler(
     adminUser.user_id,
     refreshToken,
     expiresAt,
+    sessionId,
     request.ip,
     request.headers['user-agent'] as string,
   );
