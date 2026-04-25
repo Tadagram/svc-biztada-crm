@@ -473,7 +473,7 @@ export const getUserInsightSchema: FastifySchema = {
 
 export const deleteUserSchema: FastifySchema = {
   tags: ['Users'],
-  description: 'Delete a user (soft delete)',
+  description: 'Delete a user (soft delete by default, hard delete with ?hard=true)',
   summary: 'Delete User',
   params: {
     type: 'object',
@@ -485,6 +485,15 @@ export const deleteUserSchema: FastifySchema = {
       },
     },
   },
+  querystring: {
+    type: 'object',
+    properties: {
+      hard: {
+        type: 'string',
+        description: 'Set true/1 to perform hard delete with cross-service purge',
+      },
+    },
+  },
   response: {
     200: {
       description: 'User deleted successfully',
@@ -492,6 +501,25 @@ export const deleteUserSchema: FastifySchema = {
       properties: {
         success: { type: 'boolean' },
         data: userDataResponse,
+        purge_report: {
+          type: 'object',
+          properties: {
+            allSucceeded: { type: 'boolean' },
+            results: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  service: { type: 'string' },
+                  attempted: { type: 'boolean' },
+                  success: { type: 'boolean' },
+                  status: { type: ['number', 'null'] },
+                  message: { type: ['string', 'null'] },
+                },
+              },
+            },
+          },
+        },
         message: { type: 'string' },
       },
     },
