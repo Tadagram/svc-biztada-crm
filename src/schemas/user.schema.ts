@@ -433,6 +433,60 @@ export const getUserInsightSchema: FastifySchema = {
                 },
               },
             },
+            topup_history: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  topup_id: { type: 'string' },
+                  status: { type: 'string' },
+                  amount: { type: 'number' },
+                  currency: { type: 'string' },
+                  credit_amount: { type: 'number' },
+                  source_channel: { type: 'string' },
+                  sales_agency_uuid: { type: ['string', 'null'] },
+                  submitted_at: { type: 'string' },
+                  reviewed_at: { type: ['string', 'null'] },
+                  review_note: { type: ['string', 'null'] },
+                },
+              },
+            },
+            credit_ledger: {
+              type: 'object',
+              properties: {
+                available_credits: { type: 'number' },
+                updated_at: { type: ['string', 'null'] },
+                total_credit: { type: 'number' },
+                total_debit: { type: 'number' },
+                items: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      credit_entry_id: { type: 'string' },
+                      entry_type: { type: 'string' },
+                      direction: { type: 'string' },
+                      amount: { type: 'number' },
+                      balance_after: { type: 'number' },
+                      purpose: { type: ['string', 'null'] },
+                      source_channel: { type: 'string' },
+                      sales_agency_uuid: { type: ['string', 'null'] },
+                      created_at: { type: 'string' },
+                      topup: {
+                        type: ['object', 'null'],
+                        properties: {
+                          topup_id: { type: 'string' },
+                          status: { type: 'string' },
+                          amount: { type: 'number' },
+                          currency: { type: 'string' },
+                          credit_amount: { type: 'number' },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
             portal_workers: {
               type: 'object',
               properties: {

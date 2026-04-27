@@ -100,6 +100,51 @@ export async function handler(
     }),
   ]);
 
+  const [
+    topupHistoryRows,
+    creditLedgerRows,
+    creditBalanceRow,
+    creditLedgerCreditAgg,
+    creditLedgerDebitAgg,
+  ] = await Promise.all([
+    prisma.topUpRequests.findMany({
+      where: { user_id: userId },
+      orderBy: { submitted_at: 'desc' },
+      take: 100,
+    }),
+    prisma.creditLedgerEntries.findMany({
+      where: { user_id: userId },
+      orderBy: { created_at: 'desc' },
+      take: 100,
+      include: {
+        topup: {
+          select: {
+            topup_id: true,
+            status: true,
+            amount: true,
+            currency: true,
+            credit_amount: true,
+          },
+        },
+      },
+    }),
+    prisma.userCreditBalances.findUnique({
+      where: { user_id: userId },
+      select: {
+        available_credits: true,
+        updated_at: true,
+      },
+    }),
+    prisma.creditLedgerEntries.aggregate({
+      where: { user_id: userId, direction: 'CREDIT' },
+      _sum: { amount: true },
+    }),
+    prisma.creditLedgerEntries.aggregate({
+      where: { user_id: userId, direction: 'DEBIT' },
+      _sum: { amount: true },
+    }),
+  ]);
+
   let portalLicenses: Awaited<ReturnType<typeof listPortalLicensesByBuyer>>['data'] = [];
   try {
     const licensesPayload = await listPortalLicensesByBuyer({
@@ -145,6 +190,15 @@ export async function handler(
   const unusedLicenseCount = licenseItems.filter((item) => item.status === 'unused').length;
   const expiredLicenseCount = licenseItems.filter((item) => item.status === 'expired').length;
 
+  const totalCredit = Number(creditLedgerCreditAgg._sum.amount ?? 0);
+  const totalDebit = Number(creditLedgerDebitAgg._sum.amount ?? 0);
+
+  const computedBalance = Math.max(0, totalCredit - totalDebit);
+  const availableCredits =
+    creditBalanceRow?.available_credits != null
+      ? Number(creditBalanceRow.available_credits)
+      : computedBalance;
+
   return reply.send({
     success: true,
     data: {
@@ -175,6 +229,44 @@ export async function handler(
         product_code: purchase.service_package.product_code,
         service_package_id: purchase.service_package_id,
       })),
+      topup_history: topupHistoryRows.map((topup: any) => ({
+        topup_id: topup.topup_id,
+        status: topup.status,
+        amount: Number(topup.amount),
+        currency: topup.currency,
+        credit_amount: Number(topup.credit_amount),
+        source_channel: topup.source_channel,
+        sales_agency_uuid: topup.sales_agency_uuid,
+        submitted_at: topup.submitted_at,
+        reviewed_at: topup.reviewed_at,
+        review_note: topup.review_note,
+      })),
+      credit_ledger: {
+        available_credits: availableCredits,
+        updated_at: creditBalanceRow?.updated_at ?? null,
+        total_credit: totalCredit,
+        total_debit: totalDebit,
+        items: creditLedgerRows.map((entry: any) => ({
+          credit_entry_id: entry.credit_entry_id,
+          entry_type: entry.entry_type,
+          direction: entry.direction,
+          amount: Number(entry.amount),
+          balance_after: Number(entry.balance_after),
+          purpose: entry.purpose,
+          source_channel: entry.source_channel,
+          sales_agency_uuid: entry.sales_agency_uuid,
+          created_at: entry.created_at,
+          topup: entry.topup
+            ? {
+                topup_id: entry.topup.topup_id,
+                status: entry.topup.status,
+                amount: Number(entry.topup.amount),
+                currency: entry.topup.currency,
+                credit_amount: Number(entry.topup.credit_amount),
+              }
+            : null,
+        })),
+      },
       portal_workers: {
         total_rows: portalWorkers.length,
         items: portalWorkers,
