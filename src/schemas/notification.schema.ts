@@ -211,3 +211,15 @@ export const createNotificationSchema: FastifySchema = {
     404: errorResponse,
   },
 };
+
+export const streamNotificationsSchema: FastifySchema = {
+  tags: ['Notifications'],
+  summary: 'Realtime notifications stream (SSE)',
+  description:
+    'SSE stream for authenticated user notifications. Event type: `notification_event`; heartbeat: `keep-alive`.',
+  security: [{ bearerAuth: [] }],
+  response: {
+    200: { type: 'string', description: 'text/event-stream' },
+    401: errorResponse,
+  },
+};

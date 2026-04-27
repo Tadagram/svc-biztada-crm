@@ -2,6 +2,7 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { PrismaClient } from '@prisma/client';
 import { TOPUP_STATUSES } from '@/utils/constants';
 import topupEmitter from '@plugins/topupEmitter';
+import notificationEmitter from '@plugins/notificationEmitter';
 
 interface ApproveTopUpParams {
   topupId: string;
@@ -92,7 +93,7 @@ async function sendApprovalNotification(
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-  await prisma.notifications.create({
+  const notification = await prisma.notifications.create({
     data: {
       recipient_id: userId,
       sender_id: reviewerId,
@@ -102,11 +103,28 @@ async function sendApprovalNotification(
       action_url: '/topup/me',
       custom_fields: {
         topup_id: topupId,
+        topup_status: TOPUP_STATUSES.APPROVED,
         amount: amount.toString(),
         credited_amount: creditedAmount.toString(),
         new_credit_balance: newCreditBalance.toString(),
       },
     },
+  });
+
+  notificationEmitter.emit('notification_event', {
+    event: 'notification_event',
+    notification_id: notification.notification_id,
+    recipient_id: notification.recipient_id,
+    sender_id: notification.sender_id,
+    type: notification.type,
+    title: notification.title,
+    body: notification.body,
+    action_url: notification.action_url,
+    custom_fields:
+      notification.custom_fields && typeof notification.custom_fields === 'object'
+        ? (notification.custom_fields as Record<string, unknown>)
+        : null,
+    created_at: notification.created_at.toISOString(),
   });
 }
 
@@ -155,15 +173,22 @@ export async function handler(
     review_note: review_note,
   });
 
-  await sendApprovalNotification(
-    prisma,
-    existing.user_id,
-    topupId,
-    existing.amount,
-    updatedTopup.credit_amount,
-    creditBalance.available_credits,
-    caller.userId,
-  );
+  try {
+    await sendApprovalNotification(
+      prisma,
+      existing.user_id,
+      topupId,
+      existing.amount,
+      updatedTopup.credit_amount,
+      creditBalance.available_credits,
+      caller.userId,
+    );
+  } catch (error) {
+    request.log.error(
+      { error, topupId, userId: existing.user_id },
+      'Failed to create/emit approval notification',
+    );
+  }
 
   return reply.send({
     success: true,

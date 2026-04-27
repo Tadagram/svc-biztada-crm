@@ -5,6 +5,7 @@ import {
   markReadHandler,
   markAllReadHandler,
   createNotificationHandler,
+  streamNotificationsHandler,
 } from '@handlers/notification';
 import {
   getNotificationsSchema,
@@ -12,9 +13,28 @@ import {
   markReadSchema,
   markAllReadSchema,
   createNotificationSchema,
+  streamNotificationsSchema,
 } from '@schemas/notification.schema';
 
 async function notificationRoutes(fastify: FastifyInstance) {
+  // GET /notifications/stream — realtime notifications for current user
+  fastify.get(
+    '/stream',
+    {
+      schema: streamNotificationsSchema,
+      preHandler: [
+        async (request, reply) => {
+          const query = request.query as { token?: string };
+          if (query.token && !request.headers.authorization) {
+            request.headers.authorization = `Bearer ${query.token}`;
+          }
+          await fastify.authenticate(request, reply);
+        },
+      ],
+    },
+    streamNotificationsHandler as RouteHandlerMethod,
+  );
+
   // GET /notifications — list my notifications (paginated, filterable)
   fastify.get(
     '/',

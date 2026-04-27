@@ -1,5 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { PrismaClient, NotificationType, Prisma } from '@prisma/client';
+import notificationEmitter from '@plugins/notificationEmitter';
 
 interface CreateNotificationBody {
   recipient_id: string;
@@ -79,6 +80,22 @@ export async function handler(
     custom_fields,
     expires_at,
   );
+
+  notificationEmitter.emit('notification_event', {
+    event: 'notification_event',
+    notification_id: notification.notification_id,
+    recipient_id: notification.recipient_id,
+    sender_id: notification.sender_id,
+    type: notification.type,
+    title: notification.title,
+    body: notification.body,
+    action_url: notification.action_url,
+    custom_fields:
+      notification.custom_fields && typeof notification.custom_fields === 'object'
+        ? (notification.custom_fields as Record<string, unknown>)
+        : null,
+    created_at: notification.created_at.toISOString(),
+  });
 
   return reply.status(201).send({
     success: true,
