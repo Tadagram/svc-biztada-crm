@@ -22,6 +22,7 @@ const servicePackageItem = {
     type: { type: 'string', enum: ['personal', 'enterprise'] },
     is_popular: { type: 'boolean' },
     sort_order: { type: 'number' },
+    is_active: { type: 'boolean' },
   },
 };
 
@@ -112,6 +113,10 @@ export const listServicePackagesSchema: FastifySchema = {
         type: 'string',
         enum: ['personal', 'enterprise'],
       },
+      include_inactive: {
+        type: 'boolean',
+        description: 'Include inactive packages for admin management view',
+      },
     },
   },
   response: {
@@ -130,6 +135,115 @@ export const listServicePackagesSchema: FastifySchema = {
       properties: {
         success: { type: 'boolean' },
         message: { type: 'string' },
+      },
+    },
+  },
+};
+
+const servicePackageMutationBody = {
+  type: 'object',
+  properties: {
+    product_code: { type: 'string', minLength: 1 },
+    price_per_month: { type: 'number', minimum: 0 },
+    license_key_count: { type: 'integer', minimum: 0 },
+    facebook_personal_limit: { type: 'integer', minimum: 0 },
+    facebook_fanpage_limit: { type: 'integer', minimum: 0 },
+    zalo_limit: { type: 'integer', minimum: 0 },
+    tiktok_limit: { type: 'integer', minimum: 0 },
+    telegram_limit: { type: 'integer', minimum: 0 },
+    bonus: { type: ['string', 'null'] },
+    agent_discount_percent: { type: 'integer', minimum: 0, maximum: 100 },
+    community_support: { type: 'boolean' },
+    support_24_7: { type: 'boolean' },
+    type: { type: 'string', enum: ['personal', 'enterprise'] },
+    is_popular: { type: 'boolean' },
+    sort_order: { type: 'integer', minimum: 0 },
+    is_active: { type: 'boolean' },
+  },
+};
+
+export const createServicePackageSchema: FastifySchema = {
+  tags: ['Service Packages'],
+  summary: 'Create service package',
+  security: [{ bearerAuth: [] }],
+  body: {
+    ...servicePackageMutationBody,
+    required: [
+      'product_code',
+      'price_per_month',
+      'license_key_count',
+      'facebook_personal_limit',
+      'facebook_fanpage_limit',
+      'zalo_limit',
+      'tiktok_limit',
+      'telegram_limit',
+      'agent_discount_percent',
+      'community_support',
+      'support_24_7',
+      'type',
+      'is_popular',
+      'sort_order',
+    ],
+  },
+  response: {
+    201: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+        data: servicePackageItem,
+      },
+    },
+  },
+};
+
+export const updateServicePackageSchema: FastifySchema = {
+  tags: ['Service Packages'],
+  summary: 'Update service package',
+  security: [{ bearerAuth: [] }],
+  params: {
+    type: 'object',
+    required: ['servicePackageId'],
+    properties: {
+      servicePackageId: { type: 'string', format: 'uuid' },
+    },
+  },
+  body: servicePackageMutationBody,
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+        data: servicePackageItem,
+      },
+    },
+  },
+};
+
+export const deleteServicePackageSchema: FastifySchema = {
+  tags: ['Service Packages'],
+  summary: 'Delete service package',
+  security: [{ bearerAuth: [] }],
+  params: {
+    type: 'object',
+    required: ['servicePackageId'],
+    properties: {
+      servicePackageId: { type: 'string', format: 'uuid' },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: {
+            archived: { type: 'boolean' },
+          },
+        },
       },
     },
   },

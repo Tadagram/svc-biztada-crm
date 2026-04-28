@@ -7,6 +7,7 @@ import {
 
 interface ListServicePackagesQuery {
   type?: ServicePackageType;
+  include_inactive?: boolean;
 }
 
 const DEFAULT_SERVICE_PACKAGES = [
@@ -143,13 +144,13 @@ export async function handler(
   reply: FastifyReply,
 ) {
   const prisma = request.prisma as any;
-  const { type } = request.query;
+  const { type, include_inactive } = request.query;
 
   await ensureDefaultServicePackages(prisma);
 
   const packages = await prisma.servicePackages.findMany({
     where: {
-      is_active: true,
+      ...(include_inactive ? {} : { is_active: true }),
       ...(type ? { type } : {}),
     },
     orderBy: [{ sort_order: 'asc' }, { price_per_month: 'asc' }],
@@ -178,13 +179,14 @@ export async function handler(
         zalo_limit: item.zalo_limit,
         tiktok_limit: item.tiktok_limit,
         telegram_limit: item.telegram_limit,
-        bonus: formatBonusLicenseLabel(bonusLicenseKeyCount),
+        bonus: item.bonus ?? formatBonusLicenseLabel(bonusLicenseKeyCount),
         agent_discount_percent: item.agent_discount_percent,
         community_support: item.community_support,
         support_24_7: item.support_24_7,
         type: item.type,
         is_popular: item.is_popular,
         sort_order: item.sort_order,
+        is_active: item.is_active,
       };
     }),
   });
