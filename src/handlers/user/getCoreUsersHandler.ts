@@ -10,6 +10,7 @@ interface CoreUserItem {
   first_name?: string | null;
   last_name?: string | null;
   telegram_phone?: string | null;
+  email?: string | null;
   is_premium: boolean;
   business_count: number;
   portal_count: number;
@@ -67,6 +68,7 @@ export const handler = async (
       first_name: u.first_name,
       last_name: u.last_name,
       username: u.username,
+      email: u.email ?? null,
       is_premium: u.is_premium,
       business_count: u.business_count,
       portal_count: u.portal_count,
