@@ -110,6 +110,13 @@ export async function handler(
     partnerContext,
     seller_agency_uuid,
   );
+  if (partnerContext.partnerId === 'soloai' && !resolvedSellerAgencyUuid) {
+    return reply.status(400).send({
+      success: false,
+      message:
+        'Missing seller_user_id mapping for soloai. Set x-seller-user-id or configure SOLOAI_SELLER_USER_ID/PARTNER_SELLER_MAP with seller UUID.',
+    });
+  }
   const sourceChannel = partnerContext.sourceChannel;
   const partnerLabel = partnerContext.partnerDomain || partnerContext.partnerId;
   const normalizedTransferRef = transfer_ref?.trim() || generateTopUpCode(partnerContext.partnerId);
