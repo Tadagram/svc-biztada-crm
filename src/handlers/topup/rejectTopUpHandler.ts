@@ -101,6 +101,13 @@ export async function handler(
     return reply.status(404).send({ success: false, message: 'Yêu cầu nạp tiền không tồn tại' });
   }
 
+  if (caller.role === 'agency' && existing.sales_agency_uuid !== caller.userId) {
+    return reply.status(403).send({
+      success: false,
+      message: 'Bạn không có quyền từ chối yêu cầu nạp này',
+    });
+  }
+
   if (existing.status !== TOPUP_STATUSES.PENDING) {
     return reply.status(400).send({
       success: false,

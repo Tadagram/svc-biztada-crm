@@ -30,6 +30,7 @@ function setSSEHeaders(res: any): void {
 
 export async function handler(request: FastifyRequest, reply: FastifyReply) {
   const res = reply.raw;
+  const caller = request.user as { userId: string; role: string | null };
 
   setCORSHeaders(res, request.headers.origin);
   setSSEHeaders(res);
@@ -42,6 +43,11 @@ export async function handler(request: FastifyRequest, reply: FastifyReply) {
   }, 25_000);
 
   const handler = (data: ITopUpEvent) => {
+    if (caller.role === 'agency') {
+      if (data.sales_agency_uuid !== caller.userId) {
+        return;
+      }
+    }
     res.write(`event: topup_event\ndata: ${JSON.stringify(data)}\n\n`);
   };
 

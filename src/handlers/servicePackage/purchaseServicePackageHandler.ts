@@ -3,6 +3,8 @@ import { Prisma } from '@prisma/client';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { issuePortalLicensesBatch } from '@services/corePortalLicenses';
 import { calcBonusLicenseCount } from './servicePackageBonus';
+import { resolvePartnerContext } from '@/utils/partnerContext';
+import { resolvePartnerSellerUserId } from '@/utils/resolvePartnerSeller';
 
 const CREDIT_PER_USD = new Prisma.Decimal(10);
 
@@ -29,7 +31,11 @@ export async function handler(
   const prisma = request.prisma as any;
   const caller = request.user;
   const { service_package_id: servicePackageId, seller_user_id: sellerUserIdInput } = request.body;
-  const sellerUserId = sellerUserIdInput?.trim() || null;
+  const partnerContext = resolvePartnerContext(
+    request.headers as Record<string, string | string[] | undefined>,
+  );
+  const sellerUserId = await resolvePartnerSellerUserId(prisma, partnerContext, sellerUserIdInput);
+  const sourceChannel = partnerContext.sourceChannel;
 
   const servicePackage = await prisma.servicePackages.findFirst({
     where: {
@@ -88,11 +94,12 @@ export async function handler(
           amount: totalPriceCredits,
           balance_after: updatedCreditBalance.available_credits,
           purpose: `Purchase service package ${servicePackage.product_code}`,
-          source_channel: 'DIRECT',
+          source_channel: sourceChannel,
           metadata: {
             purchase_id: purchaseId,
             service_package_id: servicePackage.service_package_id,
             total_price_usd: totalPriceUsd.toString(),
+            partner_id: partnerContext.partnerId,
           },
           created_by: caller.userId,
         },
@@ -185,10 +192,11 @@ export async function handler(
             amount: totalPriceCredits,
             balance_after: refundedBalance.available_credits,
             purpose: `Refund service package purchase ${purchaseId}`,
-            source_channel: 'DIRECT',
+            source_channel: sourceChannel,
             metadata: {
               purchase_id: purchaseId,
               reason,
+              partner_id: partnerContext.partnerId,
             },
             created_by: caller.userId,
           },

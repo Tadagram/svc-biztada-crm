@@ -2,6 +2,8 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { PrismaClient } from '@prisma/client';
 import { USER_ROLES, USER_STATUSES, TOPUP_STATUSES } from '@/utils/constants';
 import topupEmitter from '@plugins/topupEmitter';
+import { resolvePartnerContext } from '@/utils/partnerContext';
+import { resolvePartnerSellerUserId } from '@/utils/resolvePartnerSeller';
 
 interface SubmitTopUpBody {
   user_uuid: string;
@@ -14,6 +16,13 @@ interface SubmitTopUpBody {
 const VND_TO_CREDIT_RATE = 2_600; // 2,600 VNĐ = 1 Tada Credit
 const USDT_TO_CREDIT_RATE = 10; // 1 USDT = 10 Tada Credits
 
+function generateTopUpCode(partnerId: string): string {
+  const prefix = partnerId === 'soloai' ? 'SLA' : 'BTD';
+  const ts = Date.now().toString(36).toUpperCase();
+  const rand = Math.random().toString(36).slice(2, 7).toUpperCase();
+  return `${prefix}-${ts}-${rand}`;
+}
+
 function calcCreditAmount(amount: number, currency: 'VND' | 'USDT'): number {
   if (currency === 'VND') return Math.floor(amount / VND_TO_CREDIT_RATE);
   return Math.round(amount * USDT_TO_CREDIT_RATE * 100) / 100;
@@ -24,6 +33,7 @@ async function createTopUpRequest(
   userId: string,
   amount: number,
   currency: 'VND' | 'USDT',
+  sourceChannel: 'DIRECT' | 'WHITELABEL',
   sellerAgencyUuid?: string | null,
   transferRef?: string | null,
 ) {
@@ -33,7 +43,7 @@ async function createTopUpRequest(
       amount,
       currency,
       credit_amount: calcCreditAmount(amount, currency),
-      source_channel: 'DIRECT',
+      source_channel: sourceChannel,
       sales_agency_uuid: sellerAgencyUuid ?? null,
       transfer_ref: transferRef ?? null,
       proof_note: null,
@@ -52,6 +62,7 @@ async function notifyModerators(
   amount: number,
   currency: 'VND' | 'USDT',
   userPhone: string,
+  partnerLabel: string,
   sellerAgencyUuid?: string | null,
 ) {
   const mods = await prisma.users.findMany({
@@ -67,7 +78,9 @@ async function notifyModerators(
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
     }).format(credits);
-    const sourceText = sellerAgencyUuid ? `Agency ${sellerAgencyUuid}` : 'biztada.com';
+    const sourceText = sellerAgencyUuid
+      ? `${partnerLabel} · Seller ${sellerAgencyUuid}`
+      : partnerLabel;
     await prisma.notifications.createMany({
       data: mods.map((mod) => ({
         recipient_id: mod.user_id,
@@ -89,14 +102,26 @@ export async function handler(
   const { amount, currency = 'USDT', seller_agency_uuid, transfer_ref } = request.body;
   const caller = request.user;
   const userId = caller.userId; // CRM user ID (FK-safe)
+  const partnerContext = resolvePartnerContext(
+    request.headers as Record<string, string | string[] | undefined>,
+  );
+  const resolvedSellerAgencyUuid = await resolvePartnerSellerUserId(
+    prisma,
+    partnerContext,
+    seller_agency_uuid,
+  );
+  const sourceChannel = partnerContext.sourceChannel;
+  const partnerLabel = partnerContext.partnerDomain || partnerContext.partnerId;
+  const normalizedTransferRef = transfer_ref?.trim() || generateTopUpCode(partnerContext.partnerId);
 
   const topup = await createTopUpRequest(
     prisma,
     userId,
     amount,
     currency,
-    seller_agency_uuid,
-    transfer_ref,
+    sourceChannel,
+    resolvedSellerAgencyUuid,
+    normalizedTransferRef,
   );
   await notifyModerators(
     prisma,
@@ -104,7 +129,8 @@ export async function handler(
     amount,
     currency,
     topup.user.phone_number,
-    seller_agency_uuid,
+    partnerLabel,
+    resolvedSellerAgencyUuid,
   );
 
   topupEmitter.emit('topup_event', {

@@ -67,6 +67,7 @@ export async function handler(
   reply: FastifyReply,
 ) {
   const { prisma } = request;
+  const caller = request.user as { userId: string; role: string | null };
   const {
     status,
     user_id,
@@ -77,7 +78,15 @@ export async function handler(
   } = request.query;
 
   const limit = Math.min(Number(queryLimit), 100);
-  const where = buildTopUpWhere(status, user_id, source_channel, sales_agency_uuid, before);
+  const scopedSalesAgencyUuid = caller.role === 'agency' ? caller.userId : sales_agency_uuid;
+  const scopedSourceChannel = caller.role === 'agency' ? 'WHITELABEL' : source_channel;
+  const where = buildTopUpWhere(
+    status,
+    user_id,
+    scopedSourceChannel,
+    scopedSalesAgencyUuid,
+    before,
+  );
   const { items, hasMore, nextCursor } = await fetchTopUps(prisma, where, limit);
 
   return reply.send({
