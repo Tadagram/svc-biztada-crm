@@ -29,6 +29,23 @@ interface CoreUserListResponse {
   };
 }
 
+function normalizeUserSearch(raw: string): string {
+  const value = raw.trim();
+  if (!value) return '';
+
+  const phoneLike = value.replace(/[^\d+]/g, '');
+  const digitsOnly = phoneLike.replace(/\D/g, '');
+
+  // Phone search normalization:
+  // - keep alphanumeric queries as-is (username/name/email)
+  // - for phone-like input, use trailing digits so local (0...) and intl (+84...) formats both match
+  if (digitsOnly.length >= 9) {
+    return digitsOnly.slice(-9);
+  }
+
+  return phoneLike || value;
+}
+
 export const handler = async (
   request: FastifyRequest<{
     Querystring: {
@@ -41,7 +58,7 @@ export const handler = async (
 ) => {
   const limit = parseInt(request.query.limit ?? '10', 10) || 10;
   const offset = parseInt(request.query.offset ?? '0', 10) || 0;
-  const search = request.query.search ?? '';
+  const search = normalizeUserSearch(request.query.search ?? '');
 
   const page = Math.floor(offset / limit) + 1;
 
