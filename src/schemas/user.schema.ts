@@ -546,6 +546,10 @@ export const deleteUserSchema: FastifySchema = {
         type: 'string',
         description: 'Set true/1 to perform hard delete with cross-service purge',
       },
+      dry_run: {
+        type: 'string',
+        description: 'Set true/1 to run pre-delete audit only (no delete)',
+      },
     },
   },
   response: {
@@ -574,7 +578,51 @@ export const deleteUserSchema: FastifySchema = {
             },
           },
         },
+        audit_report: {
+          type: 'object',
+          properties: {
+            user_id: { type: 'string' },
+            hard_delete_requested: { type: 'boolean' },
+            local_crm: { type: 'object', additionalProperties: { type: 'number' } },
+            core: {
+              type: 'object',
+              properties: {
+                attempted: { type: 'boolean' },
+                success: { type: 'boolean' },
+                status: { type: ['number', 'null'] },
+                message: { type: ['string', 'null'] },
+                data: { type: ['object', 'null'], additionalProperties: true },
+              },
+            },
+            guard: {
+              type: 'object',
+              properties: {
+                blocked_by_shared_business: { type: 'boolean' },
+                shared_businesses: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      business_id: { type: 'string' },
+                      other_members_count: { type: 'number' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        dry_run: { type: 'boolean' },
         message: { type: 'string' },
+      },
+    },
+    409: {
+      description: 'Hard delete blocked by shared business guard',
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+        audit_report: { type: 'object', additionalProperties: true },
       },
     },
     404: {
