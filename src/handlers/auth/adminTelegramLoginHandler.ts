@@ -15,7 +15,7 @@
  */
 
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { UserStatus } from '@prisma/client';
+import { UserRole, UserStatus } from '@prisma/client';
 import crypto from 'crypto';
 import {
   generateAccessToken,
@@ -44,6 +44,31 @@ interface CoreApiAdminCheckResponse {
   user_id?: string;
   phone?: string;
   telegram_id?: number;
+}
+
+function parseForcedAgencyUserIds(): Set<string> {
+  const ids = new Set<string>();
+
+  const soloaiSellerUserId = process.env.SOLOAI_SELLER_USER_ID?.trim();
+  if (soloaiSellerUserId) {
+    ids.add(soloaiSellerUserId);
+  }
+
+  const rawMap = process.env.PARTNER_SELLER_MAP;
+  if (!rawMap) return ids;
+
+  try {
+    const parsed = JSON.parse(rawMap) as Record<string, unknown>;
+    for (const value of Object.values(parsed)) {
+      if (typeof value === 'string' && value.trim()) {
+        ids.add(value.trim());
+      }
+    }
+  } catch {
+    // ignore malformed map
+  }
+
+  return ids;
 }
 
 function normalizePhone(input?: string | null): string {
@@ -174,6 +199,11 @@ export async function adminTelegramLoginHandler(
     });
   }
 
+  const forcedAgencyUserIds = parseForcedAgencyUserIds();
+  const targetRole: UserRole | null = forcedAgencyUserIds.has(coreCheck.user_id)
+    ? UserRole.agency
+    : null;
+
   // 4. Upsert user in biztada-crm DB
   // phone from svc-core-api; fall back to telegram_id string if not available
   const phone = coreCheck.phone ?? `tg_${data.id}`;
@@ -206,7 +236,7 @@ export async function adminTelegramLoginHandler(
         data: {
           user_id: coreCheck.user_id,
           phone_number: phone,
-          role: null,
+          role: targetRole,
           status: UserStatus.active,
         },
       });
@@ -215,7 +245,7 @@ export async function adminTelegramLoginHandler(
         data: {
           user_id: coreCheck.user_id,
           phone_number: phone,
-          role: null,
+          role: targetRole,
           status: UserStatus.active,
         },
       });
@@ -224,7 +254,7 @@ export async function adminTelegramLoginHandler(
     adminUser = await prisma.users.update({
       where: { user_id: adminUser.user_id },
       data: {
-        role: null,
+        role: targetRole,
         status: UserStatus.active,
       },
     });
