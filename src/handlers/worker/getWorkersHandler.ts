@@ -1,5 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { UserRole } from '@prisma/client';
 import { listPortalWorkers } from '@services/corePortalWorkers';
+import { USER_ROLES } from '@/utils/constants';
 
 interface GetWorkersQuerystring {
   limit?: number;
@@ -60,6 +62,22 @@ export async function handler(
   } = request.query;
   const limit = Number(queryLimit);
   const offset = Number(queryOffset);
+  const caller = request.user as { userId: string; role: UserRole | null };
+
+  // --- Agency isolation: pre-fetch sub-user IDs ---
+  let agencySubUserIds: Set<string> | null = null;
+  if (caller.role === USER_ROLES.AGENCY) {
+    const prisma = request.prisma as any;
+    const subUsers = await prisma.users.findMany({
+      where: { parent_user_id: caller.userId },
+      select: { user_id: true },
+    });
+    agencySubUserIds = new Set(subUsers.map((u: any) => u.user_id as string));
+    // Validate explicit user_id filter if provided
+    if (user_id && !agencySubUserIds.has(user_id)) {
+      return reply.status(403).send({ success: false, message: 'Access denied to this user' });
+    }
+  }
 
   const orchestratorUrl = process.env.ORCHESTRATOR_URL ?? '';
 
@@ -122,6 +140,12 @@ export async function handler(
     if (portal_user_id)
       enrichedWorkers = enrichedWorkers.filter((w) => w.portal_owner_user_id === portal_user_id);
     if (portal_id) enrichedWorkers = enrichedWorkers.filter((w) => w.portal_id === portal_id);
+    // Enforce agency isolation: only show workers for portals owned by sub-users
+    if (agencySubUserIds) {
+      enrichedWorkers = enrichedWorkers.filter(
+        (w) => w.portal_owner_user_id !== null && agencySubUserIds!.has(w.portal_owner_user_id),
+      );
+    }
 
     if (search) {
       const q = search.toLowerCase();

@@ -1,4 +1,6 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
+import { UserRole } from '@prisma/client';
+import { USER_ROLES } from '@/utils/constants';
 
 interface ListPurchasesQuery {
   page?: number;
@@ -10,23 +12,28 @@ export async function handler(
   reply: FastifyReply,
 ) {
   const prisma = request.prisma as any;
-  const caller = request.user;
+  const caller = request.user as { userId: string; role: UserRole | null };
   const page = Math.max(1, Number(request.query.page) || 1);
   const pageSize = Math.min(100, Math.max(1, Number(request.query.page_size) || 20));
   const skip = (page - 1) * pageSize;
 
+  // Agency (seller) sees all purchases where they are the seller
+  // Other roles (admin/mod) see all; regular user sees own purchases
+  const isAgency = caller.role === USER_ROLES.AGENCY;
+  const isAdminOrMod = caller.role === null || caller.role === USER_ROLES.MOD;
+
+  const whereClause = isAgency
+    ? { seller_user_id: caller.userId, status: 'completed' }
+    : isAdminOrMod
+      ? { status: 'completed' }
+      : { user_id: caller.userId, status: 'completed' };
+
   const [total, purchases] = await Promise.all([
     prisma.servicePackagePurchases.count({
-      where: {
-        user_id: caller.userId,
-        status: 'completed',
-      },
+      where: whereClause,
     }),
     prisma.servicePackagePurchases.findMany({
-      where: {
-        user_id: caller.userId,
-        status: 'completed',
-      },
+      where: whereClause,
       include: {
         service_package: true,
       },
