@@ -35,13 +35,8 @@ export async function handler(
     request.headers as Record<string, string | string[] | undefined>,
   );
   const sellerUserId = await resolvePartnerSellerUserId(prisma, partnerContext, sellerUserIdInput);
-  if (partnerContext.partnerId === 'soloai' && !sellerUserId) {
-    return reply.status(400).send({
-      success: false,
-      message:
-        'Missing seller_user_id mapping for soloai. Set x-seller-user-id or configure SOLOAI_SELLER_USER_ID/PARTNER_SELLER_MAP with seller UUID.',
-    });
-  }
+  // Seller is resolved with fallback to platform admin
+  // No blocking — partners can operate without explicit seller mapping
   const sourceChannel = partnerContext.sourceChannel;
 
   const servicePackage = await prisma.servicePackages.findFirst({
