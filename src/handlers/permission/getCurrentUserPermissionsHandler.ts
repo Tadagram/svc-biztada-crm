@@ -7,24 +7,20 @@ export async function handler(request: FastifyRequest, reply: FastifyReply) {
     const caller = request.user as { userId: string; role: string | null };
 
     // null role = full admin (no role restriction)
-    if (caller.role === null || caller.role === UserRole.mod) {
+    if (caller.role === null) {
       const allPermissions = await request.server.prisma.permissions.findMany({
         select: { code: true },
       });
       const allCodes = allPermissions.map((p) => p.code);
-      const grantedCodes =
-        caller.role === UserRole.mod
-          ? allCodes.filter((code) => code !== 'topup:review')
-          : allCodes;
 
       return reply.status(200).send({
         success: true,
         data: {
-          permissions: grantedCodes,
-          roleDefaults: grantedCodes,
+          permissions: allCodes,
+          roleDefaults: allCodes,
           overrides: [],
-          isMod: caller.role === UserRole.mod,
-          isAdmin: caller.role === null,
+          isMod: false,
+          isAdmin: true,
         },
       });
     }
@@ -54,7 +50,7 @@ export async function handler(request: FastifyRequest, reply: FastifyReply) {
         permissions: effectivePermissions.map((p) => p.code),
         roleDefaults: roleDefaultCodes,
         overrides,
-        isMod: false,
+        isMod: caller.role === UserRole.mod,
         isAdmin: false,
       },
     });
