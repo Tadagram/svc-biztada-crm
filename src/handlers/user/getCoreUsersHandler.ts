@@ -93,7 +93,7 @@ async function listPurchaseBasedCustomers(
       ? {
           OR: [
             { phone_number: { contains: search } },
-            { agency_name: { contains: search, mode: 'insensitive' } },
+            { agency_name: { contains: search } },
           ],
         }
       : {}),
