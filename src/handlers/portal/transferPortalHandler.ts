@@ -1,10 +1,8 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { UserRole } from '@prisma/client';
 import {
   adminTransferPortalDevice,
   type TransferPortalDeviceRequest,
 } from '@services/corePortalDevices';
-import { USER_ROLES } from '@/utils/constants';
 
 interface TransferPortalBody {
   portal_id: string;
@@ -17,11 +15,6 @@ export async function handler(
   request: FastifyRequest<{ Body: TransferPortalBody }>,
   reply: FastifyReply,
 ) {
-  const caller = request.user as { userId: string; role: UserRole | null };
-  if (caller.role === USER_ROLES.AGENCY) {
-    return reply.status(403).send({ success: false, message: 'Permission denied' });
-  }
-
   const { portal_id, new_mac_address, new_device_name, clear_installed_workers } = request.body;
 
   if (!portal_id || !new_mac_address) {
