@@ -1,14 +1,34 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { UserRole } from '@prisma/client';
+import { ServicePackagePurchaseStatus, UserRole } from '@prisma/client';
 
 export async function handler(request: FastifyRequest, reply: FastifyReply) {
   try {
     const prisma = request.server.prisma;
+    const caller = request.user as {
+      userId: string;
+      role: UserRole | null;
+    };
     const now = new Date();
     const fourteenDaysAgo = new Date(now.getTime() - 14 * 86_400_000);
     const sevenDaysAgo = new Date(now.getTime() - 7 * 86_400_000);
 
-    const baseWhere = { role: UserRole.user, deleted_at: null };
+    const isAdminOrMod = caller.role === null || caller.role === UserRole.mod;
+    const isAgency = caller.role === UserRole.agency;
+
+    if (!isAdminOrMod && !isAgency && caller.role !== UserRole.user) {
+      return reply.status(403).send({ success: false, message: 'Forbidden' });
+    }
+
+    const baseWhere = {
+      deleted_at: null,
+      ...(caller.role === UserRole.user ? { user_id: caller.userId } : {}),
+      service_package_purchases: {
+        some: {
+          status: ServicePackagePurchaseStatus.completed,
+          ...(isAgency ? { seller_user_id: caller.userId } : {}),
+        },
+      },
+    };
 
     const [total, active, newCount, dormant] = await Promise.all([
       prisma.users.count({ where: baseWhere }),

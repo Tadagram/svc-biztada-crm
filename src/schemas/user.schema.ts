@@ -67,6 +67,8 @@ const userDataResponse = {
     business_count: { type: 'integer' },
     portal_count: { type: 'integer' },
     worker_count: { type: 'integer' },
+    completed_purchase_count: { type: ['integer', 'null'] },
+    last_purchase_at: { type: ['string', 'null'] },
   },
 };
 
@@ -178,6 +180,11 @@ export const getUsersSchema: FastifySchema = {
         type: 'string',
         enum: ['active', 'new', 'dormant'],
         description: 'Filter by lifecycle stage (for customers)',
+      },
+      customer_mode: {
+        type: 'boolean',
+        description:
+          'When true, return purchase-based customers from CRM DB instead of core users',
       },
     },
   },
