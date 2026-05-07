@@ -2,6 +2,9 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { UserRole, UserStatus, PrismaClient } from '@prisma/client';
 import { CAN_UPDATE_USER, USER_ROLES } from '@/utils/constants';
 
+const CORE_API_URL =
+  process.env.CORE_API_URL ?? 'http://svc-core-api.tadagram.svc.cluster.local:3000';
+
 const userSelect = {
   user_id: true,
   phone_number: true,
@@ -17,7 +20,7 @@ const userSelect = {
 function validateUpdatePermission(callerRole: UserRole | null): { valid: boolean; error?: string } {
   if (callerRole === null) return { valid: true }; // admin → full access
   if (!CAN_UPDATE_USER.includes(callerRole)) {
-    return { valid: false, error: 'Only mod and agency can update users' };
+    return { valid: false, error: 'Only admin and mod can update users' };
   }
   return { valid: true };
 }
@@ -29,7 +32,7 @@ async function getUser(prisma: PrismaClient, userId: string) {
 }
 
 function validateAgencyAccess(
-  callerRole: UserRole,
+  callerRole: UserRole | null,
   callerId: string,
   userParentId?: string | null,
 ): { valid: boolean; error?: string } {
@@ -37,6 +40,46 @@ function validateAgencyAccess(
     return { valid: false, error: 'You can only update users in your agency' };
   }
   return { valid: true };
+}
+
+function validateRoleUpdate(
+  callerRole: UserRole | null,
+  targetRole: UserRole | undefined,
+): { valid: boolean; error?: string } {
+  if (!targetRole) return { valid: true };
+
+  if (targetRole === UserRole.customer) {
+    return { valid: false, error: 'Customer role cannot be set from CRM user manager' };
+  }
+
+  if (callerRole === UserRole.mod && targetRole === UserRole.mod) {
+    return { valid: false, error: 'Mod cannot assign mod role' };
+  }
+
+  return { valid: true };
+}
+
+function shouldGrantCoreAdmin(role: UserRole | null | undefined): boolean {
+  return role === null || role === UserRole.mod || role === UserRole.agency || role === UserRole.accountant;
+}
+
+async function syncCoreAdminStatus(phone: string, role: UserRole | null): Promise<void> {
+  const response = await fetch(`${CORE_API_URL}/internal/users/admin-grant`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      phone,
+      is_admin: shouldGrantCoreAdmin(role),
+    }),
+    signal: AbortSignal.timeout(10000),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`core-api admin-grant failed ${response.status}: ${text}`);
+  }
 }
 
 async function validatePhoneNumber(
@@ -97,7 +140,7 @@ export async function handler(request: FastifyRequest, reply: FastifyReply) {
       parent_user_id?: string;
       restore?: boolean;
     };
-    const caller = request.user as { userId: string; role: UserRole };
+    const caller = request.user as { userId: string; role: UserRole | null };
 
     const permissionValidation = validateUpdatePermission(caller.role);
     if (!permissionValidation.valid) {
@@ -142,6 +185,18 @@ export async function handler(request: FastifyRequest, reply: FastifyReply) {
         });
       }
     }
+
+    const roleValidation = validateRoleUpdate(caller.role, role);
+    if (!roleValidation.valid) {
+      return reply.status(400).send({
+        success: false,
+        message: roleValidation.error,
+      });
+    }
+
+    const targetRole = role ?? existingUser.role;
+    const targetPhone = phone_number ?? existingUser.phone_number;
+    await syncCoreAdminStatus(targetPhone, targetRole);
 
     const updatedUser = await updateUser(request.server.prisma, userId, {
       phone_number,

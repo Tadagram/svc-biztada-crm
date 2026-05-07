@@ -20,10 +20,10 @@ const agencyNameProperty = {
 
 const roleProperty = {
   type: 'string',
-  enum: ['mod', 'agency', 'user', 'customer'],
+  enum: ['mod', 'agency', 'accountant', 'user', 'customer'],
   errorMessage: {
     type: 'Vai trò phải là một chuỗi (string).',
-    enum: 'Vai trò phải là: mod, agency, user hoặc customer.',
+    enum: 'Vai trò phải là: mod, agency, accountant, user hoặc customer.',
   },
 };
 
@@ -160,7 +160,7 @@ export const getUsersSchema: FastifySchema = {
       },
       role: {
         type: 'string',
-        enum: ['mod', 'agency', 'user', 'customer'],
+        enum: ['mod', 'agency', 'accountant', 'user', 'customer'],
         description: 'Filter by role',
       },
       status: {

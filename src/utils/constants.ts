@@ -9,14 +9,15 @@ import {
 export const USER_ROLES = {
   MOD: UserRole.mod,
   AGENCY: UserRole.agency,
+  ACCOUNTANT: UserRole.accountant,
   USER: UserRole.user,
   CUSTOMER: UserRole.customer,
 } as const;
 
-export const ADMIN_ROLES: UserRole[] = [UserRole.mod, UserRole.agency];
-export const CAN_CREATE_USER: UserRole[] = [UserRole.mod, UserRole.agency];
-export const CAN_DELETE_USER: UserRole[] = [UserRole.mod, UserRole.agency];
-export const CAN_UPDATE_USER: UserRole[] = [UserRole.mod, UserRole.agency];
+export const ADMIN_ROLES: UserRole[] = [UserRole.mod, UserRole.agency, UserRole.accountant];
+export const CAN_CREATE_USER: UserRole[] = [UserRole.mod];
+export const CAN_DELETE_USER: UserRole[] = [UserRole.mod];
+export const CAN_UPDATE_USER: UserRole[] = [UserRole.mod];
 
 export const USER_STATUSES = {
   ACTIVE: UserStatus.active,
@@ -62,15 +63,11 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<UserRole, string[]> = {
   [UserRole.mod]: [],
   [UserRole.agency]: [
     'users:read',
-    'users:create',
-    'users:update',
-    'workers:read',
-    'agency_workers:read',
-    'agency_workers:assign_user',
-    'agency_workers:release',
-    'permissions:read',
-    'topup:submit',
+    'topup:review',
+    'portals:read',
+    'portals:manage',
   ],
-  [UserRole.user]: ['users:read', 'workers:read', 'agency_workers:read', 'topup:submit'],
+  [UserRole.accountant]: ['topup:review'],
+  [UserRole.user]: [],
   [UserRole.customer]: [],
 };

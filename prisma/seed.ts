@@ -28,21 +28,19 @@ const PERMISSIONS = [
   { code: 'permissions:manage_overrides', name: 'Quản lý Override User' },
   { code: 'topup:submit', name: 'Gửi yêu cầu nạp tiền' },
   { code: 'topup:review', name: 'Duyệt yêu cầu nạp tiền' },
+  { code: 'portals:read', name: 'Xem danh sách Portal' },
+  { code: 'portals:manage', name: 'Quản lý thiết bị Portal' },
 ];
 
 const ROLE_DEFAULTS: Record<UserRole, string[]> = {
   [UserRole.agency]: [
     'users:read',
-    'users:create',
-    'users:update',
-    'workers:read',
-    'agency_workers:read',
-    'agency_workers:assign_user',
-    'agency_workers:release',
-    'permissions:read',
-    'topup:submit',
+    'topup:review',
+    'portals:read',
+    'portals:manage',
   ],
-  [UserRole.user]: ['users:read', 'workers:read', 'agency_workers:read', 'topup:submit'],
+  [UserRole.accountant]: ['topup:review'],
+  [UserRole.user]: [],
   [UserRole.mod]: [], // mod has no defaults, bypasses all checks
   [UserRole.customer]: [], // customer has no defaults
 };

@@ -3,24 +3,27 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { createUserInDatabase, checkUserExists, CreateUserBody, UserPayload } from './userHelper';
 import { CAN_CREATE_USER, USER_ROLES } from '@/utils/constants';
 
+const CORE_API_URL =
+  process.env.CORE_API_URL ?? 'http://svc-core-api.tadagram.svc.cluster.local:3000';
+
 function validateCallerRole(callerRole: UserRole | null): { valid: boolean; error?: string } {
   if (callerRole === null) return { valid: true }; // admin → full access
   if (!CAN_CREATE_USER.includes(callerRole)) {
-    return { valid: false, error: 'Only mod and agency can create users' };
+    return { valid: false, error: 'Only admin and mod can create users' };
   }
   return { valid: true };
 }
 
 function validateUserRoleCreation(
-  callerRole: UserRole,
+  callerRole: UserRole | null,
   targetRole: UserRole,
 ): { valid: boolean; error?: string } {
-  if (callerRole === USER_ROLES.MOD && targetRole !== USER_ROLES.AGENCY) {
-    return { valid: false, error: 'Mod can only create agency' };
+  if (targetRole === USER_ROLES.CUSTOMER) {
+    return { valid: false, error: 'Customer role cannot be created from CRM user manager' };
   }
 
-  if (callerRole === USER_ROLES.AGENCY && targetRole === USER_ROLES.AGENCY) {
-    return { valid: false, error: 'Agency cannot create agency' };
+  if (callerRole === USER_ROLES.MOD && targetRole === USER_ROLES.MOD) {
+    return { valid: false, error: 'Mod cannot create another mod' };
   }
 
   return { valid: true };
@@ -30,7 +33,7 @@ function buildUserPayload(
   phoneNumber: string,
   role: UserRole,
   status: UserStatus,
-  callerRole: UserRole,
+  callerRole: UserRole | null,
   callerId: string,
   agencyName?: string,
 ): UserPayload {
@@ -44,11 +47,32 @@ function buildUserPayload(
 
   if (callerRole === USER_ROLES.MOD && role === USER_ROLES.AGENCY) {
     payload.parent_user_id = callerId;
-  } else if (callerRole === USER_ROLES.AGENCY) {
-    payload.parent_user_id = callerId;
   }
 
   return payload;
+}
+
+function shouldGrantCoreAdmin(role: UserRole | null | undefined): boolean {
+  return role === null || role === UserRole.mod || role === UserRole.agency || role === UserRole.accountant;
+}
+
+async function syncCoreAdminStatus(phone: string, role: UserRole | null): Promise<void> {
+  const response = await fetch(`${CORE_API_URL}/internal/users/admin-grant`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      phone,
+      is_admin: shouldGrantCoreAdmin(role),
+    }),
+    signal: AbortSignal.timeout(10000),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`core-api admin-grant failed ${response.status}: ${text}`);
+  }
 }
 
 export async function handler(
@@ -64,7 +88,7 @@ export async function handler(
     role = UserRole.user,
     status = UserStatus.active,
   } = request.body;
-  const caller = request.user as { userId: string; role: UserRole };
+  const caller = request.user as { userId: string; role: UserRole | null };
 
   try {
     const roleValidation = validateCallerRole(caller.role);
@@ -93,6 +117,8 @@ export async function handler(
         message: roleValidationResult.error,
       });
     }
+
+    await syncCoreAdminStatus(phone_number, role);
 
     const userPayload = buildUserPayload(
       phone_number,

@@ -18,8 +18,19 @@ async function rbacPlugin(fastify: FastifyInstance, _options: FastifyPluginOptio
       async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
         const caller = request.user;
 
-        // null role = full admin; mod also bypasses RBAC
-        if (caller.role === null || caller.role === UserRole.mod) {
+        // null role = full admin
+        if (caller.role === null) {
+          return;
+        }
+
+        // mod has admin-like access except topup review
+        if (caller.role === UserRole.mod) {
+          if (code === 'topup:review') {
+            reply.status(403).send({
+              success: false,
+              message: 'Forbidden: mod không được truy cập duyệt nạp tiền.',
+            });
+          }
           return;
         }
 

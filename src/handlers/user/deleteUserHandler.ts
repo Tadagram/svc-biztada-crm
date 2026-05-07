@@ -65,7 +65,7 @@ const userSelect = {
 function validateDeletePermission(callerRole: UserRole | null): { valid: boolean; error?: string } {
   if (callerRole === null) return { valid: true }; // admin → full access
   if (!CAN_DELETE_USER.includes(callerRole)) {
-    return { valid: false, error: 'Only mod and agency can delete users' };
+    return { valid: false, error: 'Only admin and mod can delete users' };
   }
   return { valid: true };
 }
@@ -77,7 +77,7 @@ async function getUser(prisma: PrismaClient, userId: string) {
 }
 
 function validateAgencyAccess(
-  callerRole: UserRole,
+  callerRole: UserRole | null,
   callerId: string,
   userParentId?: string | null,
 ): { valid: boolean; error?: string } {
@@ -299,7 +299,7 @@ export async function handler(request: FastifyRequest, reply: FastifyReply) {
     };
     const hardDelete = hard === true || hard === 'true' || hard === '1';
     const dryRun = dry_run === true || dry_run === 'true' || dry_run === '1';
-    const caller = request.user as { userId: string; role: UserRole };
+    const caller = request.user as { userId: string; role: UserRole | null };
 
     const permissionValidation = validateDeletePermission(caller.role);
     if (!permissionValidation.valid) {
