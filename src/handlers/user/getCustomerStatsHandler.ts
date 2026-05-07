@@ -19,14 +19,36 @@ export async function handler(request: FastifyRequest, reply: FastifyReply) {
       return reply.status(403).send({ success: false, message: 'Forbidden' });
     }
 
+    const purchasedUserRows = await prisma.servicePackagePurchases.findMany({
+      where: {
+        status: ServicePackagePurchaseStatus.completed,
+        ...(isAgency ? { seller_user_id: caller.userId } : {}),
+        ...(caller.role === UserRole.user ? { user_id: caller.userId } : {}),
+      },
+      select: {
+        user_id: true,
+      },
+      distinct: ['user_id'],
+    });
+
+    const purchasedUserIds = purchasedUserRows.map((row) => row.user_id);
+
+    if (purchasedUserIds.length === 0) {
+      return reply.send({
+        success: true,
+        data: {
+          total: 0,
+          active: 0,
+          new: 0,
+          dormant: 0,
+        },
+      });
+    }
+
     const baseWhere = {
       deleted_at: null,
-      ...(caller.role === UserRole.user ? { user_id: caller.userId } : {}),
-      service_package_purchases: {
-        some: {
-          status: ServicePackagePurchaseStatus.completed,
-          ...(isAgency ? { seller_user_id: caller.userId } : {}),
-        },
+      user_id: {
+        in: purchasedUserIds,
       },
     };
 

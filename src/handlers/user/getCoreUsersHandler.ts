@@ -99,16 +99,41 @@ async function listPurchaseBasedCustomers(
       : {}),
     ...(!isDeletedFilter && status ? { status } : {}),
     ...lifecycleFilter,
-    ...(caller.role === UserRole.user ? { user_id: caller.userId } : {}),
-    service_package_purchases: {
-      some: {
-        status: ServicePackagePurchaseStatus.completed,
-        ...(isAgency ? { seller_user_id: caller.userId } : {}),
-      },
+    user_id: {
+      in: [],
     },
   };
 
   const prisma = request.server.prisma;
+
+  const purchasedUserRows = await prisma.servicePackagePurchases.findMany({
+    where: {
+      status: ServicePackagePurchaseStatus.completed,
+      ...(isAgency ? { seller_user_id: caller.userId } : {}),
+      ...(caller.role === UserRole.user ? { user_id: caller.userId } : {}),
+    },
+    select: {
+      user_id: true,
+    },
+    distinct: ['user_id'],
+  });
+
+  const purchasedUserIds = purchasedUserRows.map((row) => row.user_id);
+
+  if (purchasedUserIds.length === 0) {
+    return reply.send({
+      data: [],
+      pagination: {
+        total: 0,
+        limit,
+        offset,
+        pages: 0,
+        totalPages: 0,
+      },
+    });
+  }
+
+  where.user_id = { in: purchasedUserIds };
 
   const [users, total] = await Promise.all([
     prisma.users.findMany({
