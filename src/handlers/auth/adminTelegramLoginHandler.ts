@@ -46,6 +46,25 @@ interface CoreApiAdminCheckResponse {
   telegram_id?: number;
 }
 
+function resolveAdminLoginRole(
+  existingRole: UserRole | null | undefined,
+  coreUserId: string,
+  forcedAgencyUserIds: Set<string>,
+): UserRole | null {
+  if (forcedAgencyUserIds.has(coreUserId)) {
+    return UserRole.agency;
+  }
+
+  // Keep role already assigned in CRM. This prevents core is_admin users
+  // from being auto-promoted to full admin role (null) on every login.
+  if (existingRole !== undefined) {
+    return existingRole;
+  }
+
+  // New core-admin users get limited admin role by default.
+  return UserRole.mod;
+}
+
 function parseForcedAgencyUserIds(): Set<string> {
   const ids = new Set<string>();
 
@@ -200,9 +219,6 @@ export async function adminTelegramLoginHandler(
   }
 
   const forcedAgencyUserIds = parseForcedAgencyUserIds();
-  const targetRole: UserRole | null = forcedAgencyUserIds.has(coreCheck.user_id)
-    ? UserRole.agency
-    : null;
 
   // 4. Upsert user in biztada-crm DB
   // phone from svc-core-api; fall back to telegram_id string if not available
@@ -236,7 +252,7 @@ export async function adminTelegramLoginHandler(
         data: {
           user_id: coreCheck.user_id,
           phone_number: phone,
-          role: targetRole,
+          role: resolveAdminLoginRole(phoneMatched.role, coreCheck.user_id, forcedAgencyUserIds),
           status: UserStatus.active,
         },
       });
@@ -245,7 +261,7 @@ export async function adminTelegramLoginHandler(
         data: {
           user_id: coreCheck.user_id,
           phone_number: phone,
-          role: targetRole,
+          role: resolveAdminLoginRole(undefined, coreCheck.user_id, forcedAgencyUserIds),
           status: UserStatus.active,
         },
       });
@@ -254,7 +270,7 @@ export async function adminTelegramLoginHandler(
     adminUser = await prisma.users.update({
       where: { user_id: adminUser.user_id },
       data: {
-        role: targetRole,
+        role: resolveAdminLoginRole(adminUser.role, coreCheck.user_id, forcedAgencyUserIds),
         status: UserStatus.active,
       },
     });
