@@ -1,6 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { getUserEffectivePermissions, getUserPermissionOverrides } from './permissionHelper';
-import { UserRole } from '@prisma/client';
 
 export async function handler(request: FastifyRequest, reply: FastifyReply) {
   try {
@@ -19,7 +18,6 @@ export async function handler(request: FastifyRequest, reply: FastifyReply) {
           permissions: allCodes,
           roleDefaults: allCodes,
           overrides: [],
-          isMod: false,
           isAdmin: true,
         },
       });
@@ -50,7 +48,6 @@ export async function handler(request: FastifyRequest, reply: FastifyReply) {
         permissions: effectivePermissions.map((p) => p.code),
         roleDefaults: roleDefaultCodes,
         overrides,
-        isMod: caller.role === UserRole.mod,
         isAdmin: false,
       },
     });
