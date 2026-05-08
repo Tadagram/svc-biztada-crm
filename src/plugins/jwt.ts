@@ -201,6 +201,41 @@ async function authenticateTopupViaCoreToken(request: FastifyRequest): Promise<b
   return true;
 }
 
+async function syncRequestUserFromDatabase(request: FastifyRequest): Promise<boolean> {
+  const payload = request.user as {
+    userId?: string;
+    sessionId?: string;
+  };
+
+  if (!payload?.userId) return false;
+
+  const dbUser = await request.server.prisma.users.findUnique({
+    where: { user_id: payload.userId },
+    select: {
+      user_id: true,
+      role: true,
+      agency_name: true,
+      parent_user_id: true,
+      status: true,
+      deleted_at: true,
+    },
+  });
+
+  if (!dbUser) return false;
+  if (dbUser.deleted_at) return false;
+  if (dbUser.status !== UserStatus.active) return false;
+
+  request.user = {
+    userId: dbUser.user_id,
+    role: dbUser.role,
+    agencyName: dbUser.agency_name,
+    parentUserId: dbUser.parent_user_id,
+    sessionId: payload.sessionId ?? `jwt:${dbUser.user_id}`,
+  };
+
+  return true;
+}
+
 declare module '@fastify/jwt' {
   interface FastifyJWT {
     payload: {
@@ -239,6 +274,14 @@ async function jwtPlugin(fastify: FastifyInstance, _options: FastifyPluginOption
     fastify.decorate('authenticate', async (request: FastifyRequest, reply: FastifyReply) => {
       try {
         await request.jwtVerify();
+
+        const synced = await syncRequestUserFromDatabase(request);
+        if (!synced) {
+          return reply.status(401).send({
+            success: false,
+            message: 'Unauthorized',
+          });
+        }
       } catch (err) {
         request.log.warn({ err, route: request.url }, 'JWT verification failed');
 
