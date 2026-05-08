@@ -18,8 +18,8 @@ async function rbacPlugin(fastify: FastifyInstance, _options: FastifyPluginOptio
       async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
         const caller = request.user;
 
-        // null role = full admin
-        if (caller.role === null) {
+        // explicit admin role = full access
+        if (caller.role === UserRole.admin) {
           return;
         }
 

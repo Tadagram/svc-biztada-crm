@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma, UserRole } from '@prisma/client';
 
 export interface PermissionInfo {
   permission_id: string;
@@ -70,7 +70,7 @@ export async function getRolePermissions(
   prisma: PrismaClient,
   role: string | null,
 ): Promise<PermissionInfo[]> {
-  if (role === null) return []; // admin has no role-based restrictions
+  if (role === null) return [];
   const rolePermissions = await prisma.rolePermissions.findMany({
     where: {
       role,
@@ -194,7 +194,7 @@ export async function hasPermission(
   userRole: string | null,
   permissionCode: string,
 ): Promise<boolean> {
-  if (userRole === null) return true; // admin: full access
+  if (userRole === UserRole.admin) return true;
   const effectivePermissions = await getUserEffectivePermissions(prisma, userId, userRole);
 
   return effectivePermissions.some((p) => p.code === permissionCode);
@@ -206,7 +206,7 @@ export async function hasAllPermissions(
   userRole: string | null,
   permissionCodes: string[],
 ): Promise<boolean> {
-  if (userRole === null) return true; // admin: full access
+  if (userRole === UserRole.admin) return true;
   const effectivePermissions = await getUserEffectivePermissions(prisma, userId, userRole);
   const effectivePermissionCodes = new Set(effectivePermissions.map((p) => p.code));
 
@@ -219,7 +219,7 @@ export async function hasAnyPermission(
   userRole: string | null,
   permissionCodes: string[],
 ): Promise<boolean> {
-  if (userRole === null) return true; // admin: full access
+  if (userRole === UserRole.admin) return true;
   const effectivePermissions = await getUserEffectivePermissions(prisma, userId, userRole);
   const effectivePermissionCodes = new Set(effectivePermissions.map((p) => p.code));
 

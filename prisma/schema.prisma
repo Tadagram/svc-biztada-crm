@@ -12,6 +12,7 @@ datasource db {
 }
 
 enum UserRole {
+  admin
   mod
   agency
   accountant
@@ -84,7 +85,7 @@ model Users {
   parent_user_id  String?            @db.Char(36)
   agency_name     String?
   phone_number    String             @unique
-  role            UserRole?          // null = full admin access (Telegram login); explicit roles for sub-users
+  role            UserRole?
   status          UserStatus         @default(active)
   custom_fields   Json?
   last_active_at  DateTime?          @db.DateTime(0)

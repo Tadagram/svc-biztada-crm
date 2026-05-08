@@ -18,7 +18,7 @@ const userSelect = {
 };
 
 function validateUpdatePermission(callerRole: UserRole | null): { valid: boolean; error?: string } {
-  if (callerRole === null) return { valid: true }; // admin → full access
+  if (callerRole === UserRole.admin) return { valid: true };
   if (!CAN_UPDATE_USER.includes(callerRole)) {
     return { valid: false, error: 'Only admin and mod can update users' };
   }
@@ -48,6 +48,10 @@ function validateRoleUpdate(
 ): { valid: boolean; error?: string } {
   if (!targetRole) return { valid: true };
 
+  if (targetRole === UserRole.admin && callerRole !== UserRole.admin) {
+    return { valid: false, error: 'Only admin can assign admin role' };
+  }
+
   if (targetRole === UserRole.customer) {
     return { valid: false, error: 'Customer role cannot be set from CRM user manager' };
   }
@@ -60,7 +64,7 @@ function validateRoleUpdate(
 }
 
 function shouldGrantCoreAdmin(role: UserRole | null | undefined): boolean {
-  return role === null || role === UserRole.mod || role === UserRole.agency || role === UserRole.accountant;
+  return role === UserRole.admin || role === UserRole.mod || role === UserRole.agency || role === UserRole.accountant;
 }
 
 async function syncCoreAdminStatus(phone: string, role: UserRole | null): Promise<void> {

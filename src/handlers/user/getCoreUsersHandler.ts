@@ -56,7 +56,7 @@ async function listPurchaseBasedCustomers(
     role: UserRole | null;
   };
 
-  const isAdminOrMod = caller.role === null || caller.role === UserRole.mod;
+  const isAdminOrMod = caller.role === UserRole.admin || caller.role === UserRole.mod;
   const isAgency = caller.role === UserRole.agency;
 
   if (!isAdminOrMod && !isAgency && caller.role !== UserRole.user) {

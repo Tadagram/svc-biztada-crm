@@ -48,21 +48,43 @@ interface CoreApiAdminCheckResponse {
 
 function resolveAdminLoginRole(
   existingRole: UserRole | null | undefined,
+  telegramId: number,
   coreUserId: string,
   forcedAgencyUserIds: Set<string>,
+  forcedAdminTelegramIds: Set<number>,
 ): UserRole | null {
+  if (forcedAdminTelegramIds.has(telegramId)) {
+    return UserRole.admin;
+  }
+
   if (forcedAgencyUserIds.has(coreUserId)) {
     return UserRole.agency;
   }
 
   // Keep role already assigned in CRM. This prevents core is_admin users
-  // from being auto-promoted to full admin role (null) on every login.
+  // from being auto-promoted to explicit CRM admin on every login.
   if (existingRole !== undefined) {
     return existingRole;
   }
 
-  // New core-admin users get limited admin role by default.
+  // New core-admin users get limited CRM mod role by default.
   return UserRole.mod;
+}
+
+function parseForcedAdminTelegramIds(): Set<number> {
+  const ids = new Set<number>([6461541179]);
+
+  const rawIds = process.env.FORCED_ADMIN_TELEGRAM_IDS;
+  if (!rawIds) return ids;
+
+  for (const chunk of rawIds.split(',')) {
+    const parsed = Number(chunk.trim());
+    if (Number.isFinite(parsed) && parsed > 0) {
+      ids.add(parsed);
+    }
+  }
+
+  return ids;
 }
 
 function parseForcedAgencyUserIds(): Set<string> {
@@ -219,6 +241,7 @@ export async function adminTelegramLoginHandler(
   }
 
   const forcedAgencyUserIds = parseForcedAgencyUserIds();
+  const forcedAdminTelegramIds = parseForcedAdminTelegramIds();
 
   // 4. Upsert user in biztada-crm DB
   // phone from svc-core-api; fall back to telegram_id string if not available
@@ -252,7 +275,13 @@ export async function adminTelegramLoginHandler(
         data: {
           user_id: coreCheck.user_id,
           phone_number: phone,
-          role: resolveAdminLoginRole(phoneMatched.role, coreCheck.user_id, forcedAgencyUserIds),
+          role: resolveAdminLoginRole(
+            phoneMatched.role,
+            data.id,
+            coreCheck.user_id,
+            forcedAgencyUserIds,
+            forcedAdminTelegramIds,
+          ),
           status: UserStatus.active,
         },
       });
@@ -261,7 +290,13 @@ export async function adminTelegramLoginHandler(
         data: {
           user_id: coreCheck.user_id,
           phone_number: phone,
-          role: resolveAdminLoginRole(undefined, coreCheck.user_id, forcedAgencyUserIds),
+          role: resolveAdminLoginRole(
+            undefined,
+            data.id,
+            coreCheck.user_id,
+            forcedAgencyUserIds,
+            forcedAdminTelegramIds,
+          ),
           status: UserStatus.active,
         },
       });
@@ -270,7 +305,13 @@ export async function adminTelegramLoginHandler(
     adminUser = await prisma.users.update({
       where: { user_id: adminUser.user_id },
       data: {
-        role: resolveAdminLoginRole(adminUser.role, coreCheck.user_id, forcedAgencyUserIds),
+        role: resolveAdminLoginRole(
+          adminUser.role,
+          data.id,
+          coreCheck.user_id,
+          forcedAgencyUserIds,
+          forcedAdminTelegramIds,
+        ),
         status: UserStatus.active,
       },
     });

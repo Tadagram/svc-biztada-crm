@@ -12,7 +12,7 @@ export async function handler(request: FastifyRequest, reply: FastifyReply) {
     const fourteenDaysAgo = new Date(now.getTime() - 14 * 86_400_000);
     const sevenDaysAgo = new Date(now.getTime() - 7 * 86_400_000);
 
-    const isAdminOrMod = caller.role === null || caller.role === UserRole.mod;
+    const isAdminOrMod = caller.role === UserRole.admin || caller.role === UserRole.mod;
     const isAgency = caller.role === UserRole.agency;
 
     if (!isAdminOrMod && !isAgency && caller.role !== UserRole.user) {

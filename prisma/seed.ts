@@ -33,6 +33,7 @@ const PERMISSIONS = [
 ];
 
 const ROLE_DEFAULTS: Record<UserRole, string[]> = {
+  [UserRole.admin]: [], // admin uses full-access bypass logic
   [UserRole.agency]: [
     'users:read',
     'topup:review',
@@ -41,7 +42,7 @@ const ROLE_DEFAULTS: Record<UserRole, string[]> = {
   ],
   [UserRole.accountant]: ['topup:review'],
   [UserRole.user]: [],
-  [UserRole.mod]: [], // mod has no defaults, bypasses all checks
+  [UserRole.mod]: [],
   [UserRole.customer]: [], // customer has no defaults
 };
 
@@ -81,18 +82,18 @@ async function main() {
     ')',
   );
 
-  // ── 4. Mod User ──────────────────────────────────────────────────────────
+  // ── 4. Admin User ────────────────────────────────────────────────────────
   const modUser = await prisma.users.upsert({
     where: { phone_number: '0347503886' },
     update: { status: UserStatus.active, deleted_at: null },
     create: {
       phone_number: '0347503886',
-      role: UserRole.mod,
+      role: UserRole.admin,
       status: UserStatus.active,
       agency_name: 'System Admin',
     },
   });
-  console.log('✅ Mod user:', modUser.phone_number);
+  console.log('✅ Admin user:', modUser.phone_number);
 
   // ── 5. Agency Users ───────────────────────────────────────────────────────
   const agenciesData = [

@@ -34,8 +34,7 @@ export async function handler(
     reviewed_at: { gte: startDate, lte: endDate },
   };
 
-  // MOD + admin (null role) see all; AGENCY sees sub-users'; USER sees own
-  if (caller.role !== null && caller.role !== USER_ROLES.MOD) {
+  if (caller.role !== USER_ROLES.ADMIN && caller.role !== USER_ROLES.MOD) {
     if (caller.role === USER_ROLES.AGENCY) {
       where.user = { parent_user_id: caller.userId };
     } else {

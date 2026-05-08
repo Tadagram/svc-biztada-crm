@@ -63,7 +63,7 @@ const userSelect = {
 };
 
 function validateDeletePermission(callerRole: UserRole | null): { valid: boolean; error?: string } {
-  if (callerRole === null) return { valid: true }; // admin → full access
+  if (callerRole === UserRole.admin) return { valid: true };
   if (!CAN_DELETE_USER.includes(callerRole)) {
     return { valid: false, error: 'Only admin and mod can delete users' };
   }
@@ -331,7 +331,7 @@ export async function handler(request: FastifyRequest, reply: FastifyReply) {
       });
     }
 
-    if (hardDelete && caller.role !== null && caller.role !== USER_ROLES.MOD) {
+    if (hardDelete && caller.role !== USER_ROLES.ADMIN && caller.role !== USER_ROLES.MOD) {
       return reply.status(403).send({
         success: false,
         message: 'Hard delete requires mod/admin privileges',

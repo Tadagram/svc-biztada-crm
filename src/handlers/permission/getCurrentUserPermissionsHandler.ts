@@ -1,12 +1,12 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { getUserEffectivePermissions, getUserPermissionOverrides } from './permissionHelper';
+import { UserRole } from '@prisma/client';
 
 export async function handler(request: FastifyRequest, reply: FastifyReply) {
   try {
     const caller = request.user as { userId: string; role: string | null };
 
-    // null role = full admin (no role restriction)
-    if (caller.role === null) {
+    if (caller.role === UserRole.admin) {
       const allPermissions = await request.server.prisma.permissions.findMany({
         select: { code: true },
       });

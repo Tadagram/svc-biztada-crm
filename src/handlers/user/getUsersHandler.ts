@@ -19,8 +19,7 @@ function buildUserIsolation(caller: {
   role: string | null;
   parentUserId?: string | null;
 }): Record<string, any> | null {
-  // null role = admin, full access
-  if (caller.role === null || caller.role === UserRole.mod) {
+  if (caller.role === UserRole.admin || caller.role === UserRole.mod) {
     return {};
   }
 
@@ -143,7 +142,7 @@ export async function handler(
       not_role,
       status,
       parent_user_id,
-      caller.role === null || caller.role === USER_ROLES.MOD,
+      caller.role === UserRole.admin || caller.role === USER_ROLES.MOD,
     );
 
     if (lifecycle) {

@@ -78,7 +78,7 @@ export async function handler(
 
   const caller = request.user as { userId: string; role: UserRole };
 
-  if (caller.role !== USER_ROLES.MOD && caller.role !== null) {
+  if (caller.role !== USER_ROLES.MOD && caller.role !== USER_ROLES.ADMIN) {
     return reply.status(403).send({
       success: false,
       message: 'Only administrators can access detailed usage logs',

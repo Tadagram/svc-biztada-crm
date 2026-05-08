@@ -7,6 +7,7 @@ import {
 } from '@prisma/client';
 
 export const USER_ROLES = {
+  ADMIN: UserRole.admin,
   MOD: UserRole.mod,
   AGENCY: UserRole.agency,
   ACCOUNTANT: UserRole.accountant,
@@ -14,10 +15,10 @@ export const USER_ROLES = {
   CUSTOMER: UserRole.customer,
 } as const;
 
-export const ADMIN_ROLES: UserRole[] = [UserRole.mod, UserRole.agency, UserRole.accountant];
-export const CAN_CREATE_USER: UserRole[] = [UserRole.mod];
-export const CAN_DELETE_USER: UserRole[] = [UserRole.mod];
-export const CAN_UPDATE_USER: UserRole[] = [UserRole.mod];
+export const ADMIN_ROLES: UserRole[] = [UserRole.admin];
+export const CAN_CREATE_USER: UserRole[] = [UserRole.admin, UserRole.mod];
+export const CAN_DELETE_USER: UserRole[] = [UserRole.admin, UserRole.mod];
+export const CAN_UPDATE_USER: UserRole[] = [UserRole.admin, UserRole.mod];
 
 export const USER_STATUSES = {
   ACTIVE: UserStatus.active,
@@ -60,6 +61,7 @@ export const WORKER_STATUSES = {
 export type WorkerStatus = (typeof WORKER_STATUSES)[keyof typeof WORKER_STATUSES];
 
 export const ROLE_DEFAULT_PERMISSIONS: Record<UserRole, string[]> = {
+  [UserRole.admin]: [],
   [UserRole.mod]: [],
   [UserRole.agency]: [
     'users:read',

@@ -9,7 +9,7 @@ interface GetWorkerStatsQuerystring {
 function buildWorkerIsolation(
   caller: { userId: string; role: UserRole | null },
 ): Record<string, unknown> | null {
-  if (caller.role === null) return {}; // admin (role=null) → full access
+  if (caller.role === USER_ROLES.ADMIN) return {};
   if (caller.role === USER_ROLES.MOD) return {};
   if (caller.role === USER_ROLES.AGENCY) {
     return { agency_workers: { some: { agency_user_id: caller.userId, deleted_at: null } } };

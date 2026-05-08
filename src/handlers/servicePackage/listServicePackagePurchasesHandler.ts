@@ -20,7 +20,7 @@ export async function handler(
   // Agency (seller) sees all purchases where they are the seller
   // Other roles (admin/mod) see all; regular user sees own purchases
   const isAgency = caller.role === USER_ROLES.AGENCY;
-  const isAdminOrMod = caller.role === null || caller.role === USER_ROLES.MOD;
+  const isAdminOrMod = caller.role === USER_ROLES.ADMIN || caller.role === USER_ROLES.MOD;
 
   const whereClause = isAgency
     ? { seller_user_id: caller.userId, status: 'completed' }

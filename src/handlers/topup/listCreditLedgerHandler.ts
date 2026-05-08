@@ -22,7 +22,7 @@ function buildWhere(query: IListCreditLedgerQuery, resolvedUserId?: string) {
 }
 
 async function canReviewAll(prisma: PrismaClient, callerUserId: string, callerRole: string | null) {
-  if (callerRole === null || callerRole === UserRole.mod) return true;
+  if (callerRole === UserRole.admin || callerRole === UserRole.mod) return true;
   return hasPermission(prisma, callerUserId, callerRole, 'topup:review');
 }
 
