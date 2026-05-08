@@ -8,7 +8,7 @@ const CORE_API_URL =
 
 function validateCallerRole(callerRole: UserRole | null): { valid: boolean; error?: string } {
   if (callerRole === UserRole.admin) return { valid: true };
-  if (!CAN_CREATE_USER.includes(callerRole)) {
+  if (callerRole === null || !CAN_CREATE_USER.includes(callerRole)) {
     return { valid: false, error: 'Only admin and mod can create users' };
   }
   return { valid: true };

@@ -29,16 +29,14 @@ export async function handler(request: FastifyRequest, reply: FastifyReply) {
       caller.role,
     );
 
-    const roleDefaults = await request.server.prisma.rolePermissions.findMany({
-      where: { role: caller.role },
-      select: {
-        permission: {
-          select: { code: true },
-        },
-      },
-    });
-
-    const roleDefaultCodes = roleDefaults.map((rp) => rp.permission.code);
+    const roleDefaultCodes: string[] = [];
+    if (caller.role !== null) {
+      const roleDefaultPerms = await request.server.prisma.permissions.findMany({
+        where: { role_permissions: { some: { role: caller.role } } },
+        select: { code: true },
+      });
+      roleDefaultCodes.push(...roleDefaultPerms.map((p) => p.code));
+    }
 
     const overrides = await getUserPermissionOverrides(request.server.prisma, caller.userId);
 

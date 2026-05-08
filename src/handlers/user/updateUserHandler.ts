@@ -19,7 +19,7 @@ const userSelect = {
 
 function validateUpdatePermission(callerRole: UserRole | null): { valid: boolean; error?: string } {
   if (callerRole === UserRole.admin) return { valid: true };
-  if (!CAN_UPDATE_USER.includes(callerRole)) {
+  if (callerRole === null || !CAN_UPDATE_USER.includes(callerRole)) {
     return { valid: false, error: 'Only admin and mod can update users' };
   }
   return { valid: true };

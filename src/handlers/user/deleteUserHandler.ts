@@ -64,7 +64,7 @@ const userSelect = {
 
 function validateDeletePermission(callerRole: UserRole | null): { valid: boolean; error?: string } {
   if (callerRole === UserRole.admin) return { valid: true };
-  if (!CAN_DELETE_USER.includes(callerRole)) {
+  if (callerRole === null || !CAN_DELETE_USER.includes(callerRole)) {
     return { valid: false, error: 'Only admin and mod can delete users' };
   }
   return { valid: true };
