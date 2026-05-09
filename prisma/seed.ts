@@ -42,7 +42,25 @@ const ROLE_DEFAULTS: Record<UserRole, string[]> = {
   ],
   [UserRole.accountant]: ['topup:review'],
   [UserRole.user]: [],
-  [UserRole.mod]: [],
+  [UserRole.mod]: [
+    'users:read',
+    'users:create',
+    'users:update',
+    'users:delete',
+    'workers:read',
+    'workers:create',
+    'workers:update',
+    'workers:delete',
+    'agency_workers:read',
+    'agency_workers:assign',
+    'agency_workers:revoke',
+    'agency_workers:assign_user',
+    'agency_workers:release',
+    'permissions:read',
+    'permissions:manage_overrides',
+    'portals:read',
+    'portals:manage',
+  ],
   [UserRole.customer]: [], // customer has no defaults
 };
 
