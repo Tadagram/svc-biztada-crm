@@ -48,13 +48,14 @@ export async function handler(
         deletedWorkerUuids.map(async (workerUuid) => {
           if (!workerUuid) return;
           try {
-            const response = await fetch(`${orchestratorUrl}/api/worker/unregister`, {
-              method: 'POST',
-              headers: {
-                'X-Worker-Id': workerUuid,
+            // Hard-delete: removes worker from Redis + MongoDB persistent store
+            const response = await fetch(
+              `${orchestratorUrl}/api/worker/${encodeURIComponent(workerUuid)}/permanent`,
+              {
+                method: 'DELETE',
+                signal: AbortSignal.timeout(5_000),
               },
-              signal: AbortSignal.timeout(5_000),
-            });
+            );
 
             if (!response.ok) {
               const text = await response.text();
@@ -64,13 +65,13 @@ export async function handler(
                   status: response.status,
                   body: text,
                 },
-                'Failed to unregister worker from orchestrator after portal delete',
+                'Failed to permanently delete worker from orchestrator after portal delete',
               );
             }
           } catch (error) {
             request.log.warn(
               { workerUuid, err: error },
-              'Error when unregistering worker from orchestrator after portal delete',
+              'Error when permanently deleting worker from orchestrator after portal delete',
             );
           }
         }),
