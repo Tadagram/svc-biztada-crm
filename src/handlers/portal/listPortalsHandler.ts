@@ -6,6 +6,19 @@ import {
 } from '@services/corePortalDevices';
 import { USER_ROLES } from '@/utils/constants';
 
+function resolveOwnerName(user: any): string {
+  const customFields =
+    user?.custom_fields && typeof user.custom_fields === 'object' ? user.custom_fields : null;
+
+  const customName =
+    (typeof customFields?.display_name === 'string' && customFields.display_name.trim()) ||
+    (typeof customFields?.full_name === 'string' && customFields.full_name.trim()) ||
+    (typeof customFields?.name === 'string' && customFields.name.trim()) ||
+    null;
+
+  return customName || user?.agency_name || user?.phone_number || user?.user_id;
+}
+
 interface ListPortalsQuerystring {
   page?: number;
   limit?: number;
@@ -62,15 +75,20 @@ export async function handler(
   try {
     const result = await adminListPortalDevices(params);
 
-    // Enrich portals with owner_name from prisma users
+    // Enrich portals with owner_name from CRM users table using existing columns only.
     const userIds = [...new Set(result.data.map((p: any) => p.user_id))];
-    const users = await prisma.users.findMany({
-      where: { user_id: { in: userIds } },
-      select: { user_id: true, username: true, display_name: true },
-    });
-    const userMap = new Map(
-      users.map((u: any) => [u.user_id, u.display_name || u.username || u.user_id]),
-    );
+    const users = userIds.length
+      ? await prisma.users.findMany({
+          where: { user_id: { in: userIds } },
+          select: {
+            user_id: true,
+            agency_name: true,
+            phone_number: true,
+            custom_fields: true,
+          },
+        })
+      : [];
+    const userMap = new Map(users.map((u: any) => [u.user_id, resolveOwnerName(u)]));
 
     const enrichedData = result.data.map((p: any) => ({
       ...p,
