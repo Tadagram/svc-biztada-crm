@@ -5,6 +5,12 @@ interface DeletePortalParams {
   id: string;
 }
 
+interface WorkerCleanupFailure {
+  workerUuid: string;
+  service: string;
+  reason: string;
+}
+
 /**
  * deletePortalHandler — Remove a portal device.
  *
@@ -32,11 +38,14 @@ export async function handler(
 
   try {
     const result = await adminDeletePortalDevice(id);
+    const deletedWorkerUuids = Array.isArray(result.deleted_worker_uuids)
+      ? result.deleted_worker_uuids.filter(Boolean)
+      : [];
 
     const orchestratorUrl = process.env.ORCHESTRATOR_URL ?? '';
-    if (orchestratorUrl && Array.isArray(result.deleted_worker_uuids)) {
+    if (orchestratorUrl && deletedWorkerUuids.length > 0) {
       await Promise.all(
-        result.deleted_worker_uuids.map(async (workerUuid) => {
+        deletedWorkerUuids.map(async (workerUuid) => {
           if (!workerUuid) return;
           try {
             const response = await fetch(`${orchestratorUrl}/api/worker/unregister`, {
@@ -68,12 +77,94 @@ export async function handler(
       );
     }
 
+    const cleanupToken =
+      (process.env.INTERNAL_PURGE_TOKEN ?? '').trim() || (process.env.INTERNAL_TOKEN ?? '').trim();
+    const cleanupTargets = [
+      {
+        service: 'svc-business-marketing',
+        baseUrl: (process.env.SVC_BUSINESS_MARKETING_URL ?? '').trim(),
+      },
+      {
+        service: 'svc-business-chatbot',
+        baseUrl: (process.env.SVC_BUSINESS_CHATBOT_URL ?? '').trim(),
+      },
+    ];
+
+    const cleanupFailures: WorkerCleanupFailure[] = [];
+    if (deletedWorkerUuids.length > 0) {
+      for (const workerUuid of deletedWorkerUuids) {
+        for (const target of cleanupTargets) {
+          const normalizedBase = target.baseUrl.replace(/\/$/, '');
+          if (!normalizedBase) {
+            cleanupFailures.push({
+              workerUuid,
+              service: target.service,
+              reason: 'base URL is not configured',
+            });
+            continue;
+          }
+
+          try {
+            const headers: Record<string, string> = {
+              'Content-Type': 'application/json',
+            };
+            if (cleanupToken) {
+              headers['X-Internal-Token'] = cleanupToken;
+            }
+
+            const response = await fetch(
+              `${normalizedBase}/api/v1/internal/workers/${encodeURIComponent(workerUuid)}/purge`,
+              {
+                method: 'DELETE',
+                headers,
+                signal: AbortSignal.timeout(10_000),
+              },
+            );
+
+            if (!response.ok) {
+              const text = await response.text();
+              cleanupFailures.push({
+                workerUuid,
+                service: target.service,
+                reason: `HTTP ${response.status}: ${text}`,
+              });
+            }
+          } catch (error) {
+            cleanupFailures.push({
+              workerUuid,
+              service: target.service,
+              reason: error instanceof Error ? error.message : 'request failed',
+            });
+          }
+        }
+      }
+    }
+
+    if (cleanupFailures.length > 0) {
+      request.log.error(
+        {
+          portalId: id,
+          cleanupFailures,
+        },
+        'Portal deleted but downstream worker cleanup failed',
+      );
+
+      return reply.status(502).send({
+        success: false,
+        message: 'Portal deleted but downstream worker cleanup failed',
+        data: {
+          portalDelete: result,
+          cleanupFailures,
+        },
+      });
+    }
+
     request.log.info(
       {
         portalId: id,
         userId: caller.userId,
         deletedWorkers: result.deleted_workers,
-        deletedWorkerUuids: result.deleted_worker_uuids ?? [],
+        deletedWorkerUuids,
         detachedLicenseKeyId: result.detached_license_key_id ?? null,
       },
       'Portal hard-deleted with cleanup successfully',
