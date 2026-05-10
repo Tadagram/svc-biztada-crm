@@ -54,6 +54,13 @@ export interface TransferPortalDeviceResult {
   workers_cleared: boolean;
 }
 
+export interface DeletePortalDeviceResult {
+  portal_id: string;
+  deleted_workers: number;
+  deleted_worker_uuids?: string[];
+  detached_license_key_id?: string | null;
+}
+
 export interface CoreAdminPortalListParams {
   page?: number;
   limit?: number;
@@ -142,6 +149,38 @@ export async function adminTransferPortalDevice(
   if (!response.ok || !body?.success || !body.data) {
     throw new Error(
       body?.message ?? body?.error ?? `Transfer device failed with status ${response.status}`,
+    );
+  }
+
+  return body.data;
+}
+
+/**
+ * DELETE /internal/worker-portal/admin/portals/:portal_id
+ * Hard-deletes a portal record and performs cleanup:
+ * - delete installed workers of that portal
+ * - detach bound license key from the portal (key remains reusable)
+ */
+export async function adminDeletePortalDevice(portalId: string): Promise<DeletePortalDeviceResult> {
+  const response = await fetch(
+    `${CORE_API_URL}/internal/worker-portal/admin/portals/${encodeURIComponent(portalId)}`,
+    {
+      method: 'DELETE',
+      headers: getInternalHeaders(),
+      signal: AbortSignal.timeout(30_000),
+    },
+  );
+
+  const body = await parseJsonSafely<{
+    success: boolean;
+    data?: DeletePortalDeviceResult;
+    message?: string;
+    error?: string;
+  }>(response);
+
+  if (!response.ok || !body?.success || !body.data) {
+    throw new Error(
+      body?.message ?? body?.error ?? `Delete portal failed with status ${response.status}`,
     );
   }
 

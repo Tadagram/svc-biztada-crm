@@ -1,6 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { UserRole } from '@prisma/client';
-import { USER_ROLES } from '@/utils/constants';
+import { adminDeletePortalDevice } from '@services/corePortalDevices';
 
 interface DeletePortalParams {
   id: string;
@@ -22,8 +21,7 @@ export async function handler(
   reply: FastifyReply,
 ) {
   const { id } = request.params;
-  const caller = request.user as { userId: string; role: UserRole | null };
-  const prisma = request.prisma as any;
+  const caller = request.user as { userId: string };
 
   if (!id || !id.trim()) {
     return reply.status(400).send({
@@ -33,82 +31,58 @@ export async function handler(
   }
 
   try {
-    // Fetch portal to verify ownership
-    const portalResponse = await fetch(
-      `${process.env.CORE_API_URL || 'http://svc-core-api.tadagram.svc.cluster.local:3000'}/internal/worker-portal/admin/portals?page=1&limit=1&search=${encodeURIComponent(id)}`,
-      {
-        headers: {
-          Authorization: `Bearer ${request.headers.authorization?.replace('Bearer ', '') || ''}`,
-        },
-      },
-    );
+    const result = await adminDeletePortalDevice(id);
 
-    if (!portalResponse.ok) {
-      return reply.status(404).send({
-        success: false,
-        message: 'Portal not found',
-      });
-    }
+    const orchestratorUrl = process.env.ORCHESTRATOR_URL ?? '';
+    if (orchestratorUrl && Array.isArray(result.deleted_worker_uuids)) {
+      await Promise.all(
+        result.deleted_worker_uuids.map(async (workerUuid) => {
+          if (!workerUuid) return;
+          try {
+            const response = await fetch(`${orchestratorUrl}/api/worker/unregister`, {
+              method: 'POST',
+              headers: {
+                'X-Worker-Id': workerUuid,
+              },
+              signal: AbortSignal.timeout(5_000),
+            });
 
-    const portalData = await portalResponse.json();
-    const portalItem = portalData.data?.[0];
-
-    if (!portalItem) {
-      return reply.status(404).send({
-        success: false,
-        message: 'Portal not found',
-      });
-    }
-
-    // Permission check: Agency can only delete portals of their sub-users
-    if (caller.role === USER_ROLES.AGENCY) {
-      const subUser = await prisma.users.findUnique({
-        where: { user_id: portalItem.user_id },
-        select: { parent_user_id: true },
-      });
-
-      if (subUser?.parent_user_id !== caller.userId) {
-        return reply.status(403).send({
-          success: false,
-          message: 'Access denied: Portal belongs to another agency',
-        });
-      }
-    }
-
-    // Call core-api to delete portal (assuming there's a delete endpoint)
-    // For now, we mark it as revoked instead of hard delete (safer)
-    const deleteResponse = await fetch(
-      `${process.env.CORE_API_URL || 'http://svc-core-api.tadagram.svc.cluster.local:3000'}/internal/worker-portal/${id}/revoke`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${request.headers.authorization?.replace('Bearer ', '') || ''}`,
-        },
-        body: JSON.stringify({}),
-      },
-    );
-
-    if (!deleteResponse.ok) {
-      const error = await deleteResponse.text();
-      request.log.error(
-        { portalId: id, status: deleteResponse.status, error },
-        'Failed to delete portal via core-api',
+            if (!response.ok) {
+              const text = await response.text();
+              request.log.warn(
+                {
+                  workerUuid,
+                  status: response.status,
+                  body: text,
+                },
+                'Failed to unregister worker from orchestrator after portal delete',
+              );
+            }
+          } catch (error) {
+            request.log.warn(
+              { workerUuid, err: error },
+              'Error when unregistering worker from orchestrator after portal delete',
+            );
+          }
+        }),
       );
-      return reply.status(deleteResponse.status).send({
-        success: false,
-        message: 'Failed to delete portal',
-      });
     }
 
     request.log.info(
-      { portalId: id, userId: caller.userId },
-      'Portal deleted/revoked successfully',
+      {
+        portalId: id,
+        userId: caller.userId,
+        deletedWorkers: result.deleted_workers,
+        deletedWorkerUuids: result.deleted_worker_uuids ?? [],
+        detachedLicenseKeyId: result.detached_license_key_id ?? null,
+      },
+      'Portal hard-deleted with cleanup successfully',
     );
 
     return reply.send({
       success: true,
       message: 'Portal deleted successfully',
+      data: result,
     });
   } catch (error) {
     request.log.error(error, 'deletePortalHandler: error');
