@@ -24,6 +24,13 @@ interface CorePortalLicenseListResponse {
   page_size: number;
 }
 
+interface ListPortalLicensesParams {
+  page: number;
+  pageSize: number;
+  buyerUserId?: string;
+  sellerUserId?: string;
+}
+
 interface CorePortalLicenseBatchIssueRequest {
   buyer_user_id: string;
   seller_user_id?: string;
@@ -81,11 +88,22 @@ export async function listPortalLicensesByBuyer(params: {
   page: number;
   pageSize: number;
 }): Promise<CorePortalLicenseListResponse> {
+  return listPortalLicenses({
+    buyerUserId: params.buyerUserId,
+    page: params.page,
+    pageSize: params.pageSize,
+  });
+}
+
+export async function listPortalLicenses(
+  params: ListPortalLicensesParams,
+): Promise<CorePortalLicenseListResponse> {
   const search = new URLSearchParams({
-    buyer_user_id: params.buyerUserId,
     page: String(params.page),
     page_size: String(params.pageSize),
   });
+  if (params.buyerUserId) search.set('buyer_user_id', params.buyerUserId);
+  if (params.sellerUserId) search.set('seller_user_id', params.sellerUserId);
 
   const response = await fetch(`${CORE_API_URL}/internal/portal-licenses?${search.toString()}`, {
     method: 'GET',
@@ -131,15 +149,39 @@ export async function renewPortalLicense(keyId: string, newExpiresAt: string): P
   }
 }
 
+export async function deletePortalLicenseKey(keyId: string): Promise<void> {
+  const response = await fetch(
+    `${CORE_API_URL}/internal/portal-licenses/${encodeURIComponent(keyId)}`,
+    {
+      method: 'DELETE',
+      headers: getInternalHeaders(),
+      signal: AbortSignal.timeout(30_000),
+    },
+  );
+
+  if (!response.ok) {
+    const body = await parseJsonSafely<{ error?: { message?: string }; message?: string }>(
+      response,
+    );
+    throw new Error(
+      body?.error?.message ??
+        body?.message ??
+        `Delete license failed with status ${response.status}`,
+    );
+  }
+}
+
 /**
  * Lay thong tin mot license key theo UUID.
  * Truyen buyerUserId de core-api xac minh ownership (tra 403 neu sai).
  */
 export async function getPortalLicenseById(
   keyId: string,
-  buyerUserId: string,
+  buyerUserId?: string,
 ): Promise<CorePortalLicenseItem> {
-  const url = `${CORE_API_URL}/internal/portal-licenses/${encodeURIComponent(keyId)}?buyer_user_id=${encodeURIComponent(buyerUserId)}`;
+  const query = new URLSearchParams();
+  if (buyerUserId) query.set('buyer_user_id', buyerUserId);
+  const url = `${CORE_API_URL}/internal/portal-licenses/${encodeURIComponent(keyId)}${query.toString() ? `?${query.toString()}` : ''}`;
   const response = await fetch(url, {
     method: 'GET',
     headers: getInternalHeaders(),
