@@ -14,19 +14,30 @@ interface ListPortalsQuerystring {
   status?: string;
   portal_type?: string;
   search?: string;
+  owner_name?: string;
 }
 
 export async function handler(
   request: FastifyRequest<{ Querystring: ListPortalsQuerystring }>,
   reply: FastifyReply,
 ) {
-  const { page = 1, limit = 20, user_id, telegram_id, status, portal_type, search } = request.query;
+  const {
+    page = 1,
+    limit = 20,
+    user_id,
+    telegram_id,
+    status,
+    portal_type,
+    search,
+    owner_name,
+  } = request.query;
   const caller = request.user as { userId: string; role: UserRole | null };
 
   // --- Agency isolation: only show portals belonging to the agency's sub-users ---
   let agencySubUserIds: Set<string> | null = null;
+  const prisma = request.prisma as any;
+
   if (caller.role === USER_ROLES.AGENCY) {
-    const prisma = request.prisma as any;
     const subUsers = await prisma.users.findMany({
       where: { parent_user_id: caller.userId },
       select: { user_id: true },
@@ -40,7 +51,7 @@ export async function handler(
 
   const params: CoreAdminPortalListParams = {
     page,
-    limit: agencySubUserIds ? 500 : limit, // fetch wider for post-filter when agency
+    limit: agencySubUserIds || owner_name ? 500 : limit, // fetch wider for post-filter when agency or owner_name filter
     ...(user_id && { user_id }),
     ...(telegram_id && { telegram_id }),
     ...(status && { status }),
@@ -51,17 +62,43 @@ export async function handler(
   try {
     const result = await adminListPortalDevices(params);
 
-    // Post-filter and paginate portals if agency role
-    let finalData = result.data;
+    // Enrich portals with owner_name from prisma users
+    const userIds = [...new Set(result.data.map((p: any) => p.user_id))];
+    const users = await prisma.users.findMany({
+      where: { user_id: { in: userIds } },
+      select: { user_id: true, username: true, display_name: true },
+    });
+    const userMap = new Map(
+      users.map((u: any) => [u.user_id, u.display_name || u.username || u.user_id]),
+    );
+
+    const enrichedData = result.data.map((p: any) => ({
+      ...p,
+      owner_name: userMap.get(p.user_id) || p.user_id,
+    }));
+
+    // Post-filter and paginate portals
+    let finalData = enrichedData;
     let finalTotal = result.total;
     let finalPage = result.page;
+
     if (agencySubUserIds) {
-      const filtered = result.data.filter((p: any) => agencySubUserIds!.has(p.user_id));
-      finalTotal = filtered.length;
+      finalData = finalData.filter((p: any) => agencySubUserIds!.has(p.user_id));
+      finalTotal = finalData.length;
       finalPage = page;
-      const skip = (page - 1) * limit;
-      finalData = filtered.slice(skip, skip + limit);
     }
+
+    // Filter by owner_name if provided
+    if (owner_name) {
+      const lowerOwnerName = owner_name.toLowerCase();
+      finalData = finalData.filter((p: any) => p.owner_name.toLowerCase().includes(lowerOwnerName));
+      finalTotal = finalData.length;
+      finalPage = page;
+    }
+
+    // Apply pagination after all filtering
+    const skip = (page - 1) * limit;
+    finalData = finalData.slice(skip, skip + limit);
 
     return reply.send({
       success: true,

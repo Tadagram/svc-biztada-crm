@@ -1,5 +1,5 @@
 import { FastifyInstance, RouteHandlerMethod } from 'fastify';
-import { listPortalsHandler, transferPortalHandler } from '@handlers/portal';
+import { listPortalsHandler, transferPortalHandler, deletePortalHandler } from '@handlers/portal';
 
 /**
  * portalRoutes — Admin portal device management.
@@ -30,6 +30,17 @@ async function portalRoutes(fastify: FastifyInstance) {
       preHandler: [fastify.authenticate, fastify.requirePermission('portals:manage')],
     },
     transferPortalHandler as RouteHandlerMethod,
+  );
+
+  // DELETE /portals/:id
+  // Delete/revoke a portal device.
+  // Params: id (portal UUID)
+  fastify.delete(
+    '/:id',
+    {
+      preHandler: [fastify.authenticate, fastify.requirePermission('portals:manage')],
+    },
+    deletePortalHandler as RouteHandlerMethod,
   );
 }
 
