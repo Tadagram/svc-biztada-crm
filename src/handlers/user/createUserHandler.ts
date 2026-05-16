@@ -6,6 +6,20 @@ import { CAN_CREATE_USER, USER_ROLES } from '@/utils/constants';
 const CORE_API_URL =
   process.env.CORE_API_URL ?? 'http://svc-core-api.tadagram.svc.cluster.local:3000';
 
+async function getCoreUserUUID(phone: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `${CORE_API_URL}/internal/users/admin-check?phone=${encodeURIComponent(phone)}`,
+      { signal: AbortSignal.timeout(5000) },
+    );
+    if (!res.ok) return null;
+    const json = (await res.json()) as { exists: boolean; user_id?: string };
+    return json.exists && json.user_id ? json.user_id : null;
+  } catch {
+    return null;
+  }
+}
+
 function validateCallerRole(callerRole: UserRole | null): { valid: boolean; error?: string } {
   if (callerRole === UserRole.admin) return { valid: true };
   if (callerRole === null || !CAN_CREATE_USER.includes(callerRole)) {
@@ -57,7 +71,12 @@ function buildUserPayload(
 }
 
 function shouldGrantCoreAdmin(role: UserRole | null | undefined): boolean {
-  return role === UserRole.admin || role === UserRole.mod || role === UserRole.agency || role === UserRole.accountant;
+  return (
+    role === UserRole.admin ||
+    role === UserRole.mod ||
+    role === UserRole.agency ||
+    role === UserRole.accountant
+  );
 }
 
 async function syncCoreAdminStatus(phone: string, role: UserRole | null): Promise<void> {
@@ -124,6 +143,9 @@ export async function handler(
 
     await syncCoreAdminStatus(phone_number, role);
 
+    // Fetch core-api UUID to use as CRM user_id (single source of truth)
+    const coreUUID = await getCoreUserUUID(phone_number);
+
     const userPayload = buildUserPayload(
       phone_number,
       role,
@@ -132,6 +154,7 @@ export async function handler(
       caller.userId,
       agency_name,
     );
+    if (coreUUID) userPayload.user_id = coreUUID;
     const newUser = await createUserInDatabase(prisma, userPayload);
 
     return reply.status(201).send({

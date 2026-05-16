@@ -73,23 +73,17 @@ function shouldGrantCoreAdmin(role: UserRole | null | undefined): boolean {
 }
 
 async function syncCoreAdminStatus(
-  phone: string,
+  userId: string,
   role: UserRole | null,
   isAdminOverride?: boolean,
 ): Promise<void> {
   const is_admin = isAdminOverride !== undefined ? isAdminOverride : shouldGrantCoreAdmin(role);
   const response = await fetch(`${CORE_API_URL}/internal/users/admin-grant`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      phone,
-      is_admin,
-    }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: userId, is_admin }),
     signal: AbortSignal.timeout(10000),
   });
-
   if (!response.ok) {
     const text = await response.text();
     throw new Error(`core-api admin-grant failed ${response.status}: ${text}`);
@@ -211,9 +205,8 @@ export async function handler(request: FastifyRequest, reply: FastifyReply) {
     }
 
     const targetRole = role ?? existingUser.role;
-    const targetPhone = phone_number ?? existingUser.phone_number;
     try {
-      await syncCoreAdminStatus(targetPhone, targetRole, is_admin);
+      await syncCoreAdminStatus(userId, targetRole, is_admin);
     } catch (syncErr) {
       // Non-fatal: log warning but don't block the DB update
       request.log.warn({ err: syncErr }, 'syncCoreAdminStatus failed, continuing anyway');

@@ -13,6 +13,7 @@ export interface CreateUserBody {
 }
 
 export interface UserPayload {
+  user_id?: string; // core-api UUID — must be provided for new users
   phone_number: string;
   role: UserRole;
   status: UserStatus;
@@ -43,7 +44,14 @@ export async function createUserInDatabase(
   payload: UserPayload,
 ): Promise<UserResponse> {
   const newUser = await prisma.users.create({
-    data: payload,
+    data: {
+      ...(payload.user_id ? { user_id: payload.user_id } : {}),
+      phone_number: payload.phone_number,
+      role: payload.role,
+      status: payload.status,
+      ...(payload.agency_name ? { agency_name: payload.agency_name } : {}),
+      ...(payload.parent_user_id ? { parent_user_id: payload.parent_user_id } : {}),
+    },
     select: {
       user_id: true,
       phone_number: true,

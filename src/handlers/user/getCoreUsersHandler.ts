@@ -284,25 +284,21 @@ export const handler = async (
     const d = json.data;
     const rawUsers = d.users ?? [];
 
-    // Cross-reference Prisma for CRM role/status/user_id by phone number
-    const phones = rawUsers
-      .map((u: CoreUserItem) => u.telegram_phone)
-      .filter((p): p is string => !!p);
-
+    // Cross-reference CRM role/status by UUID (core UUID = CRM user_id by design)
+    const ids = rawUsers.map((u: CoreUserItem) => u.id);
     const crmRecords =
-      phones.length > 0
+      ids.length > 0
         ? await request.server.prisma.users.findMany({
-            where: { phone_number: { in: phones }, deleted_at: null },
-            select: { phone_number: true, user_id: true, role: true, status: true },
+            where: { user_id: { in: ids }, deleted_at: null },
+            select: { user_id: true, role: true, status: true },
           })
         : [];
-
-    const crmByPhone = new Map(crmRecords.map((u) => [u.phone_number, u]));
+    const crmByUUID = new Map(crmRecords.map((u) => [u.user_id, u]));
 
     const users = rawUsers.map((u: CoreUserItem) => {
-      const crm = crmByPhone.get(u.telegram_phone ?? '');
+      const crm = crmByUUID.get(u.id);
       return {
-        user_id: crm?.user_id ?? u.id,
+        user_id: u.id, // always core-api UUID — single source of truth
         telegram_id: u.telegram_id,
         phone_number: u.telegram_phone ?? '',
         first_name: u.first_name,
