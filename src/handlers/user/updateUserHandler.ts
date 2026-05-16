@@ -212,7 +212,12 @@ export async function handler(request: FastifyRequest, reply: FastifyReply) {
 
     const targetRole = role ?? existingUser.role;
     const targetPhone = phone_number ?? existingUser.phone_number;
-    await syncCoreAdminStatus(targetPhone, targetRole, is_admin);
+    try {
+      await syncCoreAdminStatus(targetPhone, targetRole, is_admin);
+    } catch (syncErr) {
+      // Non-fatal: log warning but don't block the DB update
+      request.log.warn({ err: syncErr }, 'syncCoreAdminStatus failed, continuing anyway');
+    }
 
     const updatedUser = await updateUser(request.server.prisma, userId, {
       phone_number,
