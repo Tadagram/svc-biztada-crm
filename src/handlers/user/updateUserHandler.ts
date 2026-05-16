@@ -64,10 +64,20 @@ function validateRoleUpdate(
 }
 
 function shouldGrantCoreAdmin(role: UserRole | null | undefined): boolean {
-  return role === UserRole.admin || role === UserRole.mod || role === UserRole.agency || role === UserRole.accountant;
+  return (
+    role === UserRole.admin ||
+    role === UserRole.mod ||
+    role === UserRole.agency ||
+    role === UserRole.accountant
+  );
 }
 
-async function syncCoreAdminStatus(phone: string, role: UserRole | null): Promise<void> {
+async function syncCoreAdminStatus(
+  phone: string,
+  role: UserRole | null,
+  isAdminOverride?: boolean,
+): Promise<void> {
+  const is_admin = isAdminOverride !== undefined ? isAdminOverride : shouldGrantCoreAdmin(role);
   const response = await fetch(`${CORE_API_URL}/internal/users/admin-grant`, {
     method: 'POST',
     headers: {
@@ -75,7 +85,7 @@ async function syncCoreAdminStatus(phone: string, role: UserRole | null): Promis
     },
     body: JSON.stringify({
       phone,
-      is_admin: shouldGrantCoreAdmin(role),
+      is_admin,
     }),
     signal: AbortSignal.timeout(10000),
   });
@@ -136,14 +146,16 @@ async function updateUser(
 export async function handler(request: FastifyRequest, reply: FastifyReply) {
   try {
     const { userId } = request.params as { userId: string };
-    const { phone_number, agency_name, role, status, parent_user_id, restore } = request.body as {
-      phone_number?: string;
-      agency_name?: string;
-      role?: UserRole;
-      status?: UserStatus;
-      parent_user_id?: string;
-      restore?: boolean;
-    };
+    const { phone_number, agency_name, role, status, parent_user_id, restore, is_admin } =
+      request.body as {
+        phone_number?: string;
+        agency_name?: string;
+        role?: UserRole;
+        status?: UserStatus;
+        parent_user_id?: string;
+        restore?: boolean;
+        is_admin?: boolean;
+      };
     const caller = request.user as { userId: string; role: UserRole | null };
 
     const permissionValidation = validateUpdatePermission(caller.role);
@@ -200,7 +212,7 @@ export async function handler(request: FastifyRequest, reply: FastifyReply) {
 
     const targetRole = role ?? existingUser.role;
     const targetPhone = phone_number ?? existingUser.phone_number;
-    await syncCoreAdminStatus(targetPhone, targetRole);
+    await syncCoreAdminStatus(targetPhone, targetRole, is_admin);
 
     const updatedUser = await updateUser(request.server.prisma, userId, {
       phone_number,

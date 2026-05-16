@@ -183,8 +183,7 @@ export const getUsersSchema: FastifySchema = {
       },
       customer_mode: {
         type: 'boolean',
-        description:
-          'When true, return purchase-based customers from CRM DB instead of core users',
+        description: 'When true, return purchase-based customers from CRM DB instead of core users',
       },
     },
   },
@@ -275,9 +274,16 @@ export const updateUserSchema: FastifySchema = {
   body: {
     type: 'object',
     properties: {
-      agency_name: agencyNameProperty,
+      agency_name: {
+        type: 'string',
+        description: 'Agency name (can be empty to clear)',
+      },
       role: roleProperty,
       status: statusProperty,
+      is_admin: {
+        type: 'boolean',
+        description: 'Set admin status directly in core-api (admin callers only)',
+      },
       parent_user_id: parentUserIdProperty,
       restore: {
         type: 'boolean',
