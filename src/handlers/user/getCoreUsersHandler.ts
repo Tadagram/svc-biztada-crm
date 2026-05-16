@@ -1,9 +1,5 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import {
-  ServicePackagePurchaseStatus,
-  UserRole,
-  type Prisma,
-} from '@prisma/client';
+import { ServicePackagePurchaseStatus, UserRole, type Prisma } from '@prisma/client';
 
 const CORE_API_URL =
   process.env.CORE_API_URL ?? 'http://svc-core-api.tadagram.svc.cluster.local:3000';
@@ -91,10 +87,7 @@ async function listPurchaseBasedCustomers(
     ...deletedFilter,
     ...(search
       ? {
-          OR: [
-            { phone_number: { contains: search } },
-            { agency_name: { contains: search } },
-          ],
+          OR: [{ phone_number: { contains: search } }, { agency_name: { contains: search } }],
         }
       : {}),
     ...(!isDeletedFilter && status ? { status } : {}),
@@ -182,7 +175,7 @@ async function listPurchaseBasedCustomers(
           where: {
             user_id: { in: userIds },
             status: ServicePackagePurchaseStatus.completed,
-          ...(isAgency ? { seller_user_id: caller.userId } : {}),
+            ...(isAgency ? { seller_user_id: caller.userId } : {}),
           },
           select: {
             user_id: true,
@@ -289,23 +282,43 @@ export const handler = async (
     const json = (await res.json()) as CoreUserListResponse;
 
     const d = json.data;
-    const users = (d.users ?? []).map((u: CoreUserItem) => ({
-      user_id: u.id,
-      telegram_id: u.telegram_id,
-      phone_number: u.telegram_phone ?? '',
-      first_name: u.first_name,
-      last_name: u.last_name,
-      username: u.username,
-      email: u.email ?? null,
-      is_premium: u.is_premium,
-      business_count: u.business_count,
-      portal_count: u.portal_count,
-      worker_count: u.worker_count,
-      role: null,
-      status: 'active',
-      created_at: u.created_at,
-      updated_at: u.created_at,
-    }));
+    const rawUsers = d.users ?? [];
+
+    // Cross-reference Prisma for CRM role/status/user_id by phone number
+    const phones = rawUsers
+      .map((u: CoreUserItem) => u.telegram_phone)
+      .filter((p): p is string => !!p);
+
+    const crmRecords =
+      phones.length > 0
+        ? await request.server.prisma.users.findMany({
+            where: { phone_number: { in: phones }, deleted_at: null },
+            select: { phone_number: true, user_id: true, role: true, status: true },
+          })
+        : [];
+
+    const crmByPhone = new Map(crmRecords.map((u) => [u.phone_number, u]));
+
+    const users = rawUsers.map((u: CoreUserItem) => {
+      const crm = crmByPhone.get(u.telegram_phone ?? '');
+      return {
+        user_id: crm?.user_id ?? u.id,
+        telegram_id: u.telegram_id,
+        phone_number: u.telegram_phone ?? '',
+        first_name: u.first_name,
+        last_name: u.last_name,
+        username: u.username,
+        email: u.email ?? null,
+        is_premium: u.is_premium,
+        business_count: u.business_count,
+        portal_count: u.portal_count,
+        worker_count: u.worker_count,
+        role: crm?.role ?? null,
+        status: crm?.status ?? 'active',
+        created_at: u.created_at,
+        updated_at: u.created_at,
+      };
+    });
 
     return reply.send({
       data: users,
