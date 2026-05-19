@@ -22,7 +22,7 @@ export async function handler(
 
   const existing = await prisma.promotions.findUnique({
     where: { promotion_id: promotionId },
-    select: { status: true },
+    select: { status: true, target_type: true },
   });
 
   if (!existing) {
