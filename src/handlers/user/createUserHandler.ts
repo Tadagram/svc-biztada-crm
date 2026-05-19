@@ -157,38 +157,6 @@ export async function handler(
     if (coreUUID) userPayload.user_id = coreUUID;
     const newUser = await createUserInDatabase(prisma, userPayload);
 
-    // Grant new-user bonus credits if configured
-    try {
-      const bonusSetting = await prisma.systemSettings.findUnique({
-        where: { key: 'new_user_bonus_credits' },
-      });
-      const bonusAmount = bonusSetting ? Number(bonusSetting.value) : 0;
-      if (bonusAmount > 0) {
-        await prisma.$transaction(async (tx) => {
-          const balance = await tx.userCreditBalances.upsert({
-            where: { user_id: newUser.user_id },
-            update: { available_credits: { increment: bonusAmount } },
-            create: { user_id: newUser.user_id, available_credits: bonusAmount },
-            select: { available_credits: true },
-          });
-          await tx.creditLedgerEntries.create({
-            data: {
-              user_id: newUser.user_id,
-              entry_type: 'ADJUSTMENT',
-              direction: 'CREDIT',
-              amount: bonusAmount,
-              balance_after: balance.available_credits,
-              purpose: 'New user welcome bonus',
-              created_by: caller.userId,
-              metadata: { source: 'new_user_bonus' },
-            },
-          });
-        });
-      }
-    } catch (bonusErr) {
-      logger.warn({ err: bonusErr }, '[CreateUser] Failed to grant new-user bonus');
-    }
-
     return reply.status(201).send({
       statusCode: 201,
       message: 'User created successfully',
