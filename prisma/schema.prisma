@@ -80,6 +80,17 @@ enum ServicePackagePurchaseChannel {
   agency
 }
 
+enum PromotionTargetType {
+  all
+  custom
+}
+
+enum PromotionStatus {
+  draft
+  executed
+  cancelled
+}
+
 model Users {
   user_id         String             @id @default(uuid()) @db.Char(36)
   parent_user_id  String?            @db.Char(36)
@@ -108,6 +119,10 @@ model Users {
   credit_balance         UserCreditBalances?
   credit_ledger_entries  CreditLedgerEntries[]
   service_package_purchases ServicePackagePurchases[] @relation("ServicePackagePurchasesUser")
+  promotions_created        Promotions[]              @relation("PromotionCreator")
+  promotions_executed       Promotions[]              @relation("PromotionExecutor")
+  promotion_targets         PromotionUserTargets[]
+  promotion_exec_logs       PromotionExecutionLogs[]
 
   @@map("users")
 }
@@ -353,4 +368,54 @@ model ServicePackagePurchases {
   @@index([service_package_id, purchased_at(sort: Desc)])
   @@index([status, purchased_at(sort: Desc)])
   @@map("service_package_purchases")
+}
+
+model Promotions {
+  promotion_id   String               @id @default(uuid()) @db.Char(36)
+  name           String               @db.VarChar(255)
+  message        String               @db.Text
+  credit_amount  Decimal              @db.Decimal(15, 2)
+  target_type    PromotionTargetType  @default(all)
+  status         PromotionStatus      @default(draft)
+  created_by     String               @db.Char(36)
+  executed_by    String?              @db.Char(36)
+  executed_at    DateTime?            @db.DateTime(0)
+  created_at     DateTime             @default(now()) @db.DateTime(0)
+  updated_at     DateTime             @default(now()) @updatedAt @db.DateTime(0)
+
+  creator        Users                @relation("PromotionCreator",  fields: [created_by],   references: [user_id])
+  executor       Users?               @relation("PromotionExecutor", fields: [executed_by],  references: [user_id])
+  user_targets   PromotionUserTargets[]
+  execution_logs PromotionExecutionLogs[]
+
+  @@index([status, created_at(sort: Desc)])
+  @@map("promotions")
+}
+
+model PromotionUserTargets {
+  id             String     @id @default(uuid()) @db.Char(36)
+  promotion_id   String     @db.Char(36)
+  user_id        String     @db.Char(36)
+
+  promotion      Promotions @relation(fields: [promotion_id], references: [promotion_id])
+  user           Users      @relation(fields: [user_id],      references: [user_id])
+
+  @@unique([promotion_id, user_id])
+  @@map("promotion_user_targets")
+}
+
+model PromotionExecutionLogs {
+  log_id         String     @id @default(uuid()) @db.Char(36)
+  promotion_id   String     @db.Char(36)
+  user_id        String     @db.Char(36)
+  credit_amount  Decimal    @db.Decimal(15, 2)
+  notified       Boolean    @default(false)
+  created_at     DateTime   @default(now()) @db.DateTime(0)
+
+  promotion      Promotions @relation(fields: [promotion_id], references: [promotion_id])
+  user           Users      @relation(fields: [user_id],      references: [user_id])
+
+  @@index([promotion_id])
+  @@index([user_id])
+  @@map("promotion_execution_logs")
 }
