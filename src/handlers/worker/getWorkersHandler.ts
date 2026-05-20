@@ -15,6 +15,20 @@ interface GetWorkersQuerystring {
   search?: string;
 }
 
+// Raw shape returned by orchestrator GET /api/workers/stats
+interface RawOrchestratorWorker {
+  uuid: string;
+  worker_type: string;
+  mode: string;
+  ip_type: string;
+  registered_user?: string | null;
+  expires_at?: string | null;
+  registered_at: string;
+  status: string | null;
+  last_heartbeat?: string | null;
+  url?: string | null;
+}
+
 interface OrchestratorWorker {
   worker_uuid: string;
   worker_type: string;
@@ -27,6 +41,22 @@ interface OrchestratorWorker {
   status: string | null;
   last_heartbeat: string | null;
   url: string | null;
+}
+
+function normalizeWorker(w: RawOrchestratorWorker): OrchestratorWorker {
+  return {
+    worker_uuid: w.uuid,
+    worker_type: w.worker_type,
+    worker_mode: w.mode,
+    ip_type: w.ip_type,
+    user_id: w.registered_user ?? null,
+    expires_at: w.expires_at ?? null,
+    created_at: w.registered_at,
+    updated_at: w.registered_at,
+    status: w.status,
+    last_heartbeat: w.last_heartbeat ?? null,
+    url: w.url ?? null,
+  };
 }
 
 interface EnrichedWorker extends OrchestratorWorker {
@@ -82,21 +112,24 @@ export async function handler(
   const orchestratorUrl = process.env.ORCHESTRATOR_URL ?? '';
 
   try {
-    const orchRes = await fetch(`${orchestratorUrl}/api/admin/workers`);
+    const orchRes = await fetch(`${orchestratorUrl}/api/workers/stats`);
 
     if (!orchRes.ok) {
       const text = await orchRes.text();
       request.log.error(
         { status: orchRes.status, body: text },
-        'orchestrator /api/admin/workers failed',
+        'orchestrator /api/workers/stats failed',
       );
       return reply
         .status(502)
         .send({ success: false, message: 'Failed to fetch worker data from orchestrator' });
     }
 
-    const orchBody = (await orchRes.json()) as { data: OrchestratorWorker[]; total: number };
-    const workers: OrchestratorWorker[] = orchBody.data ?? [];
+    const orchBody = (await orchRes.json()) as {
+      workers: RawOrchestratorWorker[];
+      total_workers: number;
+    };
+    const workers: OrchestratorWorker[] = (orchBody.workers ?? []).map(normalizeWorker);
 
     let portalRows = [] as Awaited<ReturnType<typeof listPortalWorkers>>;
     try {
