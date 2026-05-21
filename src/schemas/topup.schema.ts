@@ -399,3 +399,40 @@ export const listCreditLedgerSchema: FastifySchema = {
     401: errorResponse,
   },
 };
+
+// --- POST /topup/credits/deduct ---
+
+export const deductCreditSchema: FastifySchema = {
+  tags: ['TopUp'],
+  summary: 'Tru credit sau khi su dung AI',
+  security: [{ bearerAuth: [] }],
+  body: {
+    type: 'object',
+    required: ['amount', 'purpose'],
+    properties: {
+      amount: { type: 'number', minimum: 0.01 },
+      purpose: { type: 'string', maxLength: 200 },
+      task_id: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+      service: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        amount_deducted: { type: 'number' },
+        balance_after: { type: 'number' },
+      },
+    },
+    402: {
+      type: 'object',
+      properties: {
+        error: { type: 'string' },
+        available: { type: 'number' },
+        required: { type: 'number' },
+      },
+    },
+    401: errorResponse,
+  },
+};

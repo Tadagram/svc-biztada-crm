@@ -9,6 +9,7 @@ import {
   streamTopUpHandler,
   getCreditBalanceHandler,
   listCreditLedgerHandler,
+  deductCreditHandler,
 } from '@handlers/topup';
 import {
   submitTopUpSchema,
@@ -20,6 +21,7 @@ import {
   streamTopUpSchema,
   getCreditBalanceSchema,
   listCreditLedgerSchema,
+  deductCreditSchema,
 } from '@schemas/topup.schema';
 
 async function topupRoutes(fastify: FastifyInstance) {
@@ -84,6 +86,16 @@ async function topupRoutes(fastify: FastifyInstance) {
       preHandler: [fastify.authenticate],
     },
     listCreditLedgerHandler as RouteHandlerMethod,
+  );
+
+  // POST /topup/credits/deduct — deduct credits after AI generation
+  fastify.post(
+    '/credits/deduct',
+    {
+      schema: deductCreditSchema,
+      preHandler: [fastify.authenticate],
+    },
+    deductCreditHandler as RouteHandlerMethod,
   );
 
   // ── Reviewer routes ──────────────────────────────────────────────────────────

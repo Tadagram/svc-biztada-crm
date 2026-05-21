@@ -7,3 +7,4 @@ export { handler as getTopUpHandler } from './getTopUpHandler';
 export { handler as streamTopUpHandler } from './streamTopUpHandler';
 export { handler as getCreditBalanceHandler } from './getCreditBalanceHandler';
 export { handler as listCreditLedgerHandler } from './listCreditLedgerHandler';
+export { handler as deductCreditHandler } from './deductCreditHandler';
