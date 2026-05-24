@@ -8,3 +8,5 @@ export { handler as streamTopUpHandler } from './streamTopUpHandler';
 export { handler as getCreditBalanceHandler } from './getCreditBalanceHandler';
 export { handler as listCreditLedgerHandler } from './listCreditLedgerHandler';
 export { handler as deductCreditHandler } from './deductCreditHandler';
+export { handler as internalDeductCreditHandler } from './internalDeductCreditHandler';
+export { handler as internalRefundCreditHandler } from './internalRefundCreditHandler';

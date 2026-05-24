@@ -436,3 +436,69 @@ export const deductCreditSchema: FastifySchema = {
     401: errorResponse,
   },
 };
+
+// --- POST /topup/credits/internal/deduct ---
+
+export const internalDeductCreditSchema: FastifySchema = {
+  tags: ['TopUp'],
+  summary: 'Internal debit credits (service-to-service)',
+  body: {
+    type: 'object',
+    required: ['user_id', 'amount', 'purpose'],
+    properties: {
+      user_id: { type: 'string' },
+      amount: { type: 'number', minimum: 0.01 },
+      purpose: { type: 'string', maxLength: 200 },
+      task_id: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+      service: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+      created_by: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        amount_deducted: { type: 'number' },
+        balance_after: { type: 'number' },
+      },
+    },
+    402: {
+      type: 'object',
+      properties: {
+        error: { type: 'string' },
+        available: { type: 'number' },
+        required: { type: 'number' },
+      },
+    },
+  },
+};
+
+// --- POST /topup/credits/internal/refund ---
+
+export const internalRefundCreditSchema: FastifySchema = {
+  tags: ['TopUp'],
+  summary: 'Internal refund credits (service-to-service)',
+  body: {
+    type: 'object',
+    required: ['user_id', 'amount', 'purpose'],
+    properties: {
+      user_id: { type: 'string' },
+      amount: { type: 'number', minimum: 0.01 },
+      purpose: { type: 'string', maxLength: 200 },
+      task_id: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+      service: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+      created_by: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        amount_refunded: { type: 'number' },
+        balance_after: { type: 'number' },
+      },
+    },
+  },
+};

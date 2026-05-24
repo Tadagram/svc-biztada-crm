@@ -10,6 +10,8 @@ import {
   getCreditBalanceHandler,
   listCreditLedgerHandler,
   deductCreditHandler,
+  internalDeductCreditHandler,
+  internalRefundCreditHandler,
 } from '@handlers/topup';
 import {
   submitTopUpSchema,
@@ -22,9 +24,22 @@ import {
   getCreditBalanceSchema,
   listCreditLedgerSchema,
   deductCreditSchema,
+  internalDeductCreditSchema,
+  internalRefundCreditSchema,
 } from '@schemas/topup.schema';
 
 async function topupRoutes(fastify: FastifyInstance) {
+  const verifyInternalToken = async (request: FastifyRequest, reply: FastifyReply) => {
+    const expected = process.env.INTERNAL_TOKEN ?? '';
+    if (!expected) {
+      return;
+    }
+    const incoming = (request.headers['x-internal-token'] ?? '').toString();
+    if (!incoming || incoming !== expected) {
+      return reply.status(401).send({ error: 'internal_unauthorized' });
+    }
+  };
+
   // ── SSE stream — must be before /:topupId to avoid route conflict ───────────
   // GET /topup/stream — realtime events for reviewers
   fastify.get(
@@ -96,6 +111,26 @@ async function topupRoutes(fastify: FastifyInstance) {
       preHandler: [fastify.authenticate],
     },
     deductCreditHandler as RouteHandlerMethod,
+  );
+
+  // POST /topup/credits/internal/deduct — internal service-to-service debit
+  fastify.post(
+    '/credits/internal/deduct',
+    {
+      schema: internalDeductCreditSchema,
+      preHandler: [verifyInternalToken],
+    },
+    internalDeductCreditHandler as RouteHandlerMethod,
+  );
+
+  // POST /topup/credits/internal/refund — internal service-to-service refund
+  fastify.post(
+    '/credits/internal/refund',
+    {
+      schema: internalRefundCreditSchema,
+      preHandler: [verifyInternalToken],
+    },
+    internalRefundCreditHandler as RouteHandlerMethod,
   );
 
   // ── Reviewer routes ──────────────────────────────────────────────────────────
