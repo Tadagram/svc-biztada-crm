@@ -31,13 +31,40 @@ export const handler = async (
         select: { available_credits: true },
       });
 
-      const available = Number(
+      const tableAvailable = Number(
         (balance?.available_credits as any)?.toString?.() ?? balance?.available_credits ?? 0,
       );
+
+      const ledgerEntries = await tx.creditLedgerEntries.findMany({
+        where: { user_id: userId },
+        select: { direction: true, amount: true },
+      });
+
+      const ledgerAvailable = Math.max(
+        0,
+        ledgerEntries.reduce(
+          (
+            sum: number,
+            item: { direction: 'CREDIT' | 'DEBIT'; amount: { toString?: () => string } },
+          ) => {
+            const n = Number(item.amount?.toString?.() ?? 0);
+            return item.direction === 'DEBIT' ? sum - n : sum + n;
+          },
+          0,
+        ),
+      );
+
+      const available = Math.max(tableAvailable, ledgerAvailable);
 
       if (available < amount) {
         return { insufficient: true, available };
       }
+
+      await tx.userCreditBalances.upsert({
+        where: { user_id: userId },
+        create: { user_id: userId, available_credits: available },
+        update: { available_credits: available },
+      });
 
       const updated = await tx.userCreditBalances.update({
         where: { user_id: userId },
