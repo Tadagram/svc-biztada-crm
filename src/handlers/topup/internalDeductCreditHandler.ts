@@ -59,19 +59,15 @@ export const handler = async (
         return { insufficient: true, available };
       }
 
+      const finalBalance = available - amount;
+
       await tx.userCreditBalances.upsert({
         where: { user_id },
-        create: { user_id, available_credits: available },
-        update: { available_credits: available },
+        create: { user_id, available_credits: finalBalance },
+        update: { available_credits: finalBalance },
       });
 
-      const updated = await tx.userCreditBalances.update({
-        where: { user_id },
-        data: { available_credits: { decrement: amount } },
-        select: { available_credits: true },
-      });
-
-      const balanceAfter = Number((updated.available_credits as any)?.toString?.() ?? 0);
+      const balanceAfter = finalBalance;
 
       await tx.creditLedgerEntries.create({
         data: {
