@@ -3,6 +3,12 @@ import { getMarketProfileHandler } from '@handlers/strategyMarket';
 import { getMarketProfileSchema } from '@schemas/strategyMarket.schema';
 import { getActionPlanHandler } from '@handlers/strategyPlan';
 import { getActionPlanSchema } from '@schemas/strategyPlan.schema';
+import { getFeaturesHandler } from '@handlers/strategyFeatures';
+import { getFeaturesSchema } from '@schemas/strategyFeatures.schema';
+import { getMatrixHandler } from '@handlers/strategyMatrix';
+import { getMatrixSchema } from '@schemas/strategyMatrix.schema';
+import { getFactoryHandler } from '@handlers/strategyFactory';
+import { getFactorySchema } from '@schemas/strategyFactory.schema';
 
 async function strategyRoutes(fastify: FastifyInstance) {
   // Public endpoint: no auth required.
@@ -22,6 +28,29 @@ async function strategyRoutes(fastify: FastifyInstance) {
     },
     getActionPlanHandler as RouteHandlerMethod,
   );
-}
 
+  fastify.get(
+    '/features',
+    {
+      schema: getFeaturesSchema,
+    },
+    getFeaturesHandler as RouteHandlerMethod,
+  );
+
+  fastify.get(
+    '/matrix',
+    {
+      schema: getMatrixSchema,
+    },
+    getMatrixHandler as RouteHandlerMethod,
+  );
+
+  fastify.get(
+    '/factory',
+    {
+      schema: getFactorySchema,
+    },
+    getFactoryHandler as RouteHandlerMethod,
+  );
+}
 export default strategyRoutes;

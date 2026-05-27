@@ -284,6 +284,51 @@ model StrategyActionPlans {
   @@map("strategy_action_plans")
 }
 
+model StrategyFeatures {
+  strategy_features_id String    @id @default(uuid()) @db.Char(36)
+  business_id          String    @default("demo") @db.VarChar(64)
+  user_id              String?   @db.Char(36)
+  payload              Json
+  is_demo              Boolean   @default(false)
+  created_at           DateTime  @default(now()) @db.DateTime(0)
+  updated_at           DateTime  @default(now()) @updatedAt @db.DateTime(0)
+  deleted_at           DateTime? @db.DateTime(0)
+
+  @@index([business_id, updated_at(sort: Desc)])
+  @@index([business_id, user_id, updated_at(sort: Desc)])
+  @@map("strategy_features")
+}
+
+model StrategyMatrix {
+  strategy_matrix_id String    @id @default(uuid()) @db.Char(36)
+  business_id        String    @default("demo") @db.VarChar(64)
+  user_id            String?   @db.Char(36)
+  payload            Json
+  is_demo            Boolean   @default(false)
+  created_at         DateTime  @default(now()) @db.DateTime(0)
+  updated_at         DateTime  @default(now()) @updatedAt @db.DateTime(0)
+  deleted_at         DateTime? @db.DateTime(0)
+
+  @@index([business_id, updated_at(sort: Desc)])
+  @@index([business_id, user_id, updated_at(sort: Desc)])
+  @@map("strategy_matrix")
+}
+
+model StrategyFactory {
+  strategy_factory_id String    @id @default(uuid()) @db.Char(36)
+  business_id         String    @default("demo") @db.VarChar(64)
+  user_id             String?   @db.Char(36)
+  payload             Json
+  is_demo             Boolean   @default(false)
+  created_at          DateTime  @default(now()) @db.DateTime(0)
+  updated_at          DateTime  @default(now()) @updatedAt @db.DateTime(0)
+  deleted_at          DateTime? @db.DateTime(0)
+
+  @@index([business_id, updated_at(sort: Desc)])
+  @@index([business_id, user_id, updated_at(sort: Desc)])
+  @@map("strategy_factory")
+}
+
 model TopUpRequests {
   topup_id      String       @id @default(uuid()) @db.Char(36)
   user_id       String       @db.Char(36)
