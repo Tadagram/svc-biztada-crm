@@ -1,5 +1,41 @@
 import { FastifySchema } from 'fastify';
 
+const upsertResponseShape = {
+  type: 'object',
+  properties: {
+    success: { type: 'boolean' },
+    data: { type: 'object', additionalProperties: true },
+    meta: {
+      type: 'object',
+      properties: {
+        created: { type: 'boolean' },
+        id: { type: 'string' },
+        businessId: { type: 'string' },
+        userId: { type: ['string', 'null'] },
+      },
+    },
+  },
+} as const;
+
+const upsertBodyShape = {
+  type: 'object',
+  required: ['payload'],
+  properties: {
+    businessId: { type: 'string', maxLength: 64 },
+    userId: { type: 'string', maxLength: 64 },
+    payload: { type: 'object', additionalProperties: true },
+  },
+  additionalProperties: false,
+} as const;
+
+export const upsertFactorySchema: FastifySchema = {
+  tags: ['Strategy Factory'],
+  summary: 'Create or update factory slide data',
+  description: 'Public upsert endpoint. If businessId/userId not provided, defaults to demo row.',
+  body: upsertBodyShape,
+  response: { 200: upsertResponseShape },
+};
+
 export const getFactorySchema: FastifySchema = {
   tags: ['Strategy Factory'],
   summary: 'Get content factory/production data for strategy app',

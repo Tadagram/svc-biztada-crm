@@ -1,56 +1,76 @@
 import { FastifyInstance, RouteHandlerMethod } from 'fastify';
-import { getMarketProfileHandler } from '@handlers/strategyMarket';
-import { getMarketProfileSchema } from '@schemas/strategyMarket.schema';
-import { getActionPlanHandler } from '@handlers/strategyPlan';
-import { getActionPlanSchema } from '@schemas/strategyPlan.schema';
-import { getFeaturesHandler } from '@handlers/strategyFeatures';
-import { getFeaturesSchema } from '@schemas/strategyFeatures.schema';
-import { getMatrixHandler } from '@handlers/strategyMatrix';
-import { getMatrixSchema } from '@schemas/strategyMatrix.schema';
-import { getFactoryHandler } from '@handlers/strategyFactory';
-import { getFactorySchema } from '@schemas/strategyFactory.schema';
+import { getMarketProfileHandler, upsertMarketProfileHandler } from '@handlers/strategyMarket';
+import { getMarketProfileSchema, upsertMarketProfileSchema } from '@schemas/strategyMarket.schema';
+import { getActionPlanHandler, upsertActionPlanHandler } from '@handlers/strategyPlan';
+import { getActionPlanSchema, upsertActionPlanSchema } from '@schemas/strategyPlan.schema';
+import { getFeaturesHandler, upsertFeaturesHandler } from '@handlers/strategyFeatures';
+import { getFeaturesSchema, upsertFeaturesSchema } from '@schemas/strategyFeatures.schema';
+import { getMatrixHandler, upsertMatrixHandler } from '@handlers/strategyMatrix';
+import { getMatrixSchema, upsertMatrixSchema } from '@schemas/strategyMatrix.schema';
+import { getFactoryHandler, upsertFactoryHandler } from '@handlers/strategyFactory';
+import { getFactorySchema, upsertFactorySchema } from '@schemas/strategyFactory.schema';
 
 async function strategyRoutes(fastify: FastifyInstance) {
   // Public endpoint: no auth required.
   // If user/business context is missing, handler returns demo dataset.
   fastify.get(
     '/market-profile',
-    {
-      schema: getMarketProfileSchema,
-    },
+    { schema: getMarketProfileSchema },
     getMarketProfileHandler as RouteHandlerMethod,
+  );
+
+  fastify.post(
+    '/market-profile',
+    { schema: upsertMarketProfileSchema },
+    upsertMarketProfileHandler as RouteHandlerMethod,
   );
 
   fastify.get(
     '/action-plan',
-    {
-      schema: getActionPlanSchema,
-    },
+    { schema: getActionPlanSchema },
     getActionPlanHandler as RouteHandlerMethod,
+  );
+
+  fastify.post(
+    '/action-plan',
+    { schema: upsertActionPlanSchema },
+    upsertActionPlanHandler as RouteHandlerMethod,
   );
 
   fastify.get(
     '/features',
-    {
-      schema: getFeaturesSchema,
-    },
+    { schema: getFeaturesSchema },
     getFeaturesHandler as RouteHandlerMethod,
+  );
+
+  fastify.post(
+    '/features',
+    { schema: upsertFeaturesSchema },
+    upsertFeaturesHandler as RouteHandlerMethod,
   );
 
   fastify.get(
     '/matrix',
-    {
-      schema: getMatrixSchema,
-    },
+    { schema: getMatrixSchema },
     getMatrixHandler as RouteHandlerMethod,
+  );
+
+  fastify.post(
+    '/matrix',
+    { schema: upsertMatrixSchema },
+    upsertMatrixHandler as RouteHandlerMethod,
   );
 
   fastify.get(
     '/factory',
-    {
-      schema: getFactorySchema,
-    },
+    { schema: getFactorySchema },
     getFactoryHandler as RouteHandlerMethod,
+  );
+
+  fastify.post(
+    '/factory',
+    { schema: upsertFactorySchema },
+    upsertFactoryHandler as RouteHandlerMethod,
   );
 }
 export default strategyRoutes;

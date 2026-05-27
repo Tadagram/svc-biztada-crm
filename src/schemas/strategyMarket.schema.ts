@@ -1,5 +1,41 @@
 import { FastifySchema } from 'fastify';
 
+const upsertResponseShape = {
+  type: 'object',
+  properties: {
+    success: { type: 'boolean' },
+    data: { type: 'object', additionalProperties: true },
+    meta: {
+      type: 'object',
+      properties: {
+        created: { type: 'boolean' },
+        id: { type: 'string' },
+        businessId: { type: 'string' },
+        userId: { type: ['string', 'null'] },
+      },
+    },
+  },
+} as const;
+
+const upsertBodyShape = {
+  type: 'object',
+  required: ['payload'],
+  properties: {
+    businessId: { type: 'string', maxLength: 64 },
+    userId: { type: 'string', maxLength: 64 },
+    payload: { type: 'object', additionalProperties: true },
+  },
+  additionalProperties: false,
+} as const;
+
+export const upsertMarketProfileSchema: FastifySchema = {
+  tags: ['Strategy Market'],
+  summary: 'Create or update market analysis profile',
+  description: 'Public upsert endpoint. If businessId/userId not provided, defaults to demo row.',
+  body: upsertBodyShape,
+  response: { 200: upsertResponseShape },
+};
+
 export const getMarketProfileSchema: FastifySchema = {
   tags: ['Strategy Market'],
   summary: 'Get market analysis profile for strategy app',
