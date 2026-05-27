@@ -2,6 +2,7 @@ import { FastifyReply, FastifyRequest } from 'fastify';
 
 interface UpsertActionPlanBody {
   payload: unknown;
+  guestId?: string;
   businessId?: string;
   userId?: string;
 }
@@ -20,14 +21,51 @@ export async function handler(
   request: FastifyRequest<{ Body: UpsertActionPlanBody }>,
   reply: FastifyReply,
 ) {
-  const { payload, businessId: bodyBusinessId, userId: bodyUserId } = request.body;
+  const { payload, guestId: bodyGuestId, businessId: bodyBusinessId, userId: bodyUserId } = request.body;
 
   const authUserId = sanitizeId((request.user as { userId?: string } | undefined)?.userId);
+  const effectiveGuestId = sanitizeId(bodyGuestId);
   const effectiveUserId = authUserId ?? sanitizeId(bodyUserId);
   const effectiveBusinessId = sanitizeId(bodyBusinessId) ?? 'demo';
 
   const payloadJson = JSON.stringify(payload ?? {});
 
+  // Guest path: upsert by guest_id only
+  if (effectiveGuestId) {
+    const existing = await request.prisma.$queryRaw<StrategyActionPlanRow[]>`
+      SELECT strategy_action_plan_id
+      FROM strategy_action_plans
+      WHERE deleted_at IS NULL
+        AND guest_id = ${effectiveGuestId}
+      LIMIT 1
+    `;
+    let created = false;
+    let rowId: string;
+    if (existing.length > 0) {
+      rowId = existing[0].strategy_action_plan_id;
+      await request.prisma.$executeRaw`
+        UPDATE strategy_action_plans
+        SET payload = ${payloadJson}, updated_at = NOW()
+        WHERE strategy_action_plan_id = ${rowId}
+      `;
+    } else {
+      const newId = crypto.randomUUID();
+      await request.prisma.$executeRaw`
+        INSERT INTO strategy_action_plans
+          (strategy_action_plan_id, business_id, user_id, guest_id, payload, is_demo, created_at, updated_at)
+        VALUES (${newId}, 'guest', NULL, ${effectiveGuestId}, ${payloadJson}, 0, NOW(), NOW())
+      `;
+      rowId = newId;
+      created = true;
+    }
+    return reply.send({
+      success: true,
+      data: payload,
+      meta: { created, id: rowId, guestId: effectiveGuestId, businessId: null, userId: null },
+    });
+  }
+
+  // Legacy path: upsert by (business_id, user_id)
   let existing: StrategyActionPlanRow[];
   if (effectiveUserId !== null) {
     existing = await request.prisma.$queryRaw<StrategyActionPlanRow[]>`
@@ -63,11 +101,12 @@ export async function handler(
     const newId = crypto.randomUUID();
     await request.prisma.$executeRaw`
       INSERT INTO strategy_action_plans
-        (strategy_action_plan_id, business_id, user_id, payload, is_demo, created_at, updated_at)
+        (strategy_action_plan_id, business_id, user_id, guest_id, payload, is_demo, created_at, updated_at)
       VALUES (
         ${newId},
         ${effectiveBusinessId},
         ${effectiveUserId},
+        NULL,
         ${payloadJson},
         ${effectiveBusinessId === 'demo' ? 1 : 0},
         NOW(),

@@ -1,16 +1,18 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
 
 interface FeaturesQuery {
+  guestId?: string;
   businessId?: string;
   userId?: string;
 }
 
-type SourceType = 'user' | 'business' | 'demo';
+type SourceType = 'guest' | 'user' | 'business' | 'demo';
 
 interface StrategyFeaturesRow {
   strategy_features_id: string;
   business_id: string;
   user_id: string | null;
+  guest_id: string | null;
   payload: unknown;
   is_demo: number | boolean;
   updated_at: Date;
@@ -78,13 +80,28 @@ function normalizePayload(payload: unknown): unknown {
   return payload ?? FALLBACK_DEMO_DATA;
 }
 
+async function getFeaturesByGuest(
+  request: FastifyRequest,
+  guestId: string,
+): Promise<StrategyFeaturesRow | null> {
+  const rows = await request.prisma.$queryRaw<StrategyFeaturesRow[]>`
+    SELECT strategy_features_id, business_id, user_id, guest_id, payload, is_demo, updated_at
+    FROM strategy_features
+    WHERE deleted_at IS NULL
+      AND guest_id = ${guestId}
+    ORDER BY updated_at DESC
+    LIMIT 1
+  `;
+  return rows[0] ?? null;
+}
+
 async function getFeaturesByUser(
   request: FastifyRequest,
   businessId: string,
   userId: string,
 ): Promise<StrategyFeaturesRow | null> {
   const rows = await request.prisma.$queryRaw<StrategyFeaturesRow[]>`
-    SELECT strategy_features_id, business_id, user_id, payload, is_demo, updated_at
+    SELECT strategy_features_id, business_id, user_id, guest_id, payload, is_demo, updated_at
     FROM strategy_features
     WHERE deleted_at IS NULL
       AND business_id = ${businessId}
@@ -100,7 +117,7 @@ async function getFeaturesByBusiness(
   businessId: string,
 ): Promise<StrategyFeaturesRow | null> {
   const rows = await request.prisma.$queryRaw<StrategyFeaturesRow[]>`
-    SELECT strategy_features_id, business_id, user_id, payload, is_demo, updated_at
+    SELECT strategy_features_id, business_id, user_id, guest_id, payload, is_demo, updated_at
     FROM strategy_features
     WHERE deleted_at IS NULL
       AND business_id = ${businessId}
@@ -115,6 +132,7 @@ export async function handler(
   request: FastifyRequest<{ Querystring: FeaturesQuery }>,
   reply: FastifyReply,
 ) {
+  const queryGuestId = sanitizeId(request.query.guestId);
   const queryBusinessId = sanitizeId(request.query.businessId);
   const queryUserId = sanitizeId(request.query.userId);
 
@@ -125,7 +143,12 @@ export async function handler(
   let source: SourceType = 'demo';
   let selected: StrategyFeaturesRow | null = null;
 
-  if (effectiveUserId) {
+  if (queryGuestId) {
+    selected = await getFeaturesByGuest(request, queryGuestId);
+    if (selected) source = 'guest';
+  }
+
+  if (!selected && effectiveUserId) {
     selected = await getFeaturesByUser(request, effectiveBusinessId, effectiveUserId);
     if (selected) source = 'user';
   }
@@ -147,6 +170,7 @@ export async function handler(
     data: payload,
     meta: {
       source,
+      guestId: selected?.guest_id ?? queryGuestId ?? null,
       businessId: effectiveBusinessId,
       userId: effectiveUserId ?? null,
       usedFallbackDemo: !selected,

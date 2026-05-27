@@ -10,7 +10,8 @@ const upsertResponseShape = {
       properties: {
         created: { type: 'boolean' },
         id: { type: 'string' },
-        businessId: { type: 'string' },
+        guestId: { type: ['string', 'null'] },
+        businessId: { type: ['string', 'null'] },
         userId: { type: ['string', 'null'] },
       },
     },
@@ -21,6 +22,7 @@ const upsertBodyShape = {
   type: 'object',
   required: ['payload'],
   properties: {
+    guestId: { type: 'string', maxLength: 36 },
     businessId: { type: 'string', maxLength: 64 },
     userId: { type: 'string', maxLength: 64 },
     payload: { type: 'object', additionalProperties: true },
@@ -44,6 +46,7 @@ export const getMatrixSchema: FastifySchema = {
   querystring: {
     type: 'object',
     properties: {
+      guestId: { type: 'string', maxLength: 36 },
       businessId: { type: 'string', maxLength: 64 },
       userId: { type: 'string', maxLength: 64 },
     },
@@ -59,6 +62,7 @@ export const getMatrixSchema: FastifySchema = {
           type: 'object',
           properties: {
             source: { type: 'string' },
+            guestId: { type: ['string', 'null'] },
             businessId: { type: 'string' },
             userId: { type: ['string', 'null'] },
             usedFallbackDemo: { type: 'boolean' },

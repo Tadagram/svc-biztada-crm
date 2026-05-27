@@ -1,4 +1,6 @@
 import { FastifyInstance, RouteHandlerMethod } from 'fastify';
+import { registerGuestHandler } from '@handlers/strategyGuest';
+import { registerGuestSchema } from '@schemas/strategyGuest.schema';
 import { getMarketProfileHandler, upsertMarketProfileHandler } from '@handlers/strategyMarket';
 import { getMarketProfileSchema, upsertMarketProfileSchema } from '@schemas/strategyMarket.schema';
 import { getActionPlanHandler, upsertActionPlanHandler } from '@handlers/strategyPlan';
@@ -11,6 +13,13 @@ import { getFactoryHandler, upsertFactoryHandler } from '@handlers/strategyFacto
 import { getFactorySchema, upsertFactorySchema } from '@schemas/strategyFactory.schema';
 
 async function strategyRoutes(fastify: FastifyInstance) {
+  // Public endpoint: register guest user (phone + businessName → guestId)
+  fastify.post(
+    '/guest',
+    { schema: registerGuestSchema },
+    registerGuestHandler as RouteHandlerMethod,
+  );
+
   // Public endpoint: no auth required.
   // If user/business context is missing, handler returns demo dataset.
   fastify.get(
