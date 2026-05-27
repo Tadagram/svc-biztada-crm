@@ -12,6 +12,7 @@ import dashboardRoutes from './dashboard.routes';
 import servicePackageRoutes from './servicePackage.routes';
 import portalRoutes from './portal.routes';
 import promotionRoutes from './promotion.routes';
+import strategyRoutes from './strategy.routes';
 
 async function routes(fastify: FastifyInstance, _options: FastifyPluginOptions) {
   fastify.register(userRoutes, { prefix: '/users' });
@@ -27,6 +28,7 @@ async function routes(fastify: FastifyInstance, _options: FastifyPluginOptions) 
   fastify.register(dashboardRoutes, { prefix: '/dashboard' });
   fastify.register(portalRoutes, { prefix: '/portals' });
   fastify.register(promotionRoutes, { prefix: '/promotions' });
+  fastify.register(strategyRoutes, { prefix: '/strategy' });
 
   fastify.get(
     '/health',
