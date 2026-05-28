@@ -1,0 +1,1 @@
+export { generateAiTextHandler } from './generateAiTextHandler';

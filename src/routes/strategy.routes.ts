@@ -1,5 +1,6 @@
 import { FastifyInstance, RouteHandlerMethod } from 'fastify';
 import { registerGuestHandler } from '@handlers/strategyGuest';
+import { generateAiTextHandler } from '@handlers/strategyAi';
 import { registerGuestSchema } from '@schemas/strategyGuest.schema';
 import { getMarketProfileHandler, upsertMarketProfileHandler } from '@handlers/strategyMarket';
 import { getMarketProfileSchema, upsertMarketProfileSchema } from '@schemas/strategyMarket.schema';
@@ -13,12 +14,21 @@ import { getFactoryHandler, upsertFactoryHandler } from '@handlers/strategyFacto
 import { getFactorySchema, upsertFactorySchema } from '@schemas/strategyFactory.schema';
 
 async function strategyRoutes(fastify: FastifyInstance) {
+  // Allow raw text/plain bodies for the AI endpoint.
+  fastify.addContentTypeParser('text/plain', { parseAs: 'string' }, (_req, body, done) => {
+    done(null, body);
+  });
+
   // Public endpoint: register guest user (phone + businessName → guestId)
   fastify.post(
     '/guest',
     { schema: registerGuestSchema },
     registerGuestHandler as RouteHandlerMethod,
   );
+
+  // Public endpoint: AI text generation for strategy guests.
+  // Accepts text/plain prompt, returns text/plain AI response.
+  fastify.post('/ai', generateAiTextHandler as RouteHandlerMethod);
 
   // Public endpoint: no auth required.
   // If user/business context is missing, handler returns demo dataset.
