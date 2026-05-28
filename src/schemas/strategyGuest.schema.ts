@@ -47,3 +47,42 @@ export const registerGuestSchema: FastifySchema = {
     },
   },
 };
+
+export const loginGuestSchema: FastifySchema = {
+  tags: ['Strategy Guest'],
+  summary: 'Login as an existing guest (phone lookup)',
+  description:
+    'Looks up a guest by phone number. Returns guestId and businessName so returning users can resume their saved strategy data. Returns 404 if phone not registered.',
+  querystring: {
+    type: 'object',
+    required: ['phone'],
+    properties: {
+      phone: { type: 'string', minLength: 7, maxLength: 20 },
+    },
+    additionalProperties: false,
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'object',
+          properties: {
+            guestId: { type: 'string' },
+            phone: { type: 'string' },
+            businessName: { type: 'string' },
+          },
+        },
+      },
+    },
+    404: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        error: { type: 'string' },
+      },
+    },
+  },
+};
+

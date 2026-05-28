@@ -1,7 +1,7 @@
 import { FastifyInstance, RouteHandlerMethod } from 'fastify';
-import { registerGuestHandler } from '@handlers/strategyGuest';
+import { registerGuestHandler, loginGuestHandler } from '@handlers/strategyGuest';
 import { generateAiTextHandler } from '@handlers/strategyAi';
-import { registerGuestSchema } from '@schemas/strategyGuest.schema';
+import { registerGuestSchema, loginGuestSchema } from '@schemas/strategyGuest.schema';
 import { getMarketProfileHandler, upsertMarketProfileHandler } from '@handlers/strategyMarket';
 import { getMarketProfileSchema, upsertMarketProfileSchema } from '@schemas/strategyMarket.schema';
 import { getActionPlanHandler, upsertActionPlanHandler } from '@handlers/strategyPlan';
@@ -24,6 +24,13 @@ async function strategyRoutes(fastify: FastifyInstance) {
     '/guest',
     { schema: registerGuestSchema },
     registerGuestHandler as RouteHandlerMethod,
+  );
+
+  // Public endpoint: login as existing guest (phone lookup → guestId + businessName)
+  fastify.get(
+    '/guest',
+    { schema: loginGuestSchema },
+    loginGuestHandler as RouteHandlerMethod,
   );
 
   // Public endpoint: AI text generation for strategy guests.
