@@ -69,6 +69,9 @@ export async function createTextTask(prompt: string): Promise<TaskAssignment> {
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
+      // Route to platform-hosted wkr-ai-controller workers only (mode=hosted portals).
+      // This prevents strategy tasks from landing on customer-owned private workers.
+      'X-Tadagram-Portal-Scope': 'hosted',
     },
     body: JSON.stringify({
       task_type: 'text.generate',
