@@ -494,3 +494,27 @@ model PromotionExecutionLogs {
   @@index([user_id])
   @@map("promotion_execution_logs")
 }
+
+// ── Strategy AI Session Logs ──────────────────────────────────────────────
+// Logs each consult call from svc-biztada-crm → svc-ai-controller RAG pipeline.
+// Table is created via migration 20260531000000_add_strategy_session_logs.
+// Table already applied to production DB (IF NOT EXISTS guard in migration).
+model StrategySessionLog {
+  session_id     String    @id @db.Char(36)
+  user_id        String    @db.Char(36)
+  question       String    @db.Text
+  industry       String?   @db.VarChar(50)
+  business_size  String?   @db.VarChar(20)
+  current_tools  Json?
+  goal           String?   @db.VarChar(50)
+  chunks_used    Json?
+  actions_count  Int       @default(0)
+  model          String?   @db.VarChar(50)
+  feedback_score Int?
+  feedback_note  String?   @db.VarChar(500)
+  created_at     DateTime  @default(now()) @db.DateTime(0)
+
+  @@index([user_id, created_at(sort: Desc)])
+  @@index([industry, created_at(sort: Desc)])
+  @@map("strategy_session_logs")
+}

@@ -12,6 +12,8 @@ import { getMatrixHandler, upsertMatrixHandler } from '@handlers/strategyMatrix'
 import { getMatrixSchema, upsertMatrixSchema } from '@schemas/strategyMatrix.schema';
 import { getFactoryHandler, upsertFactoryHandler } from '@handlers/strategyFactory';
 import { getFactorySchema, upsertFactorySchema } from '@schemas/strategyFactory.schema';
+import { consultHandler, feedbackHandler, historyHandler } from '@handlers/strategySession';
+import { consultSchema, feedbackSchema, historySchema } from '@schemas/strategySession.schema';
 
 async function strategyRoutes(fastify: FastifyInstance) {
   // Allow raw text/plain bodies for the AI endpoint.
@@ -97,6 +99,28 @@ async function strategyRoutes(fastify: FastifyInstance) {
     '/factory',
     { schema: upsertFactorySchema },
     upsertFactoryHandler as RouteHandlerMethod,
+  );
+
+  // ── RAG Consult + Session Logging ────────────────────────────────────────
+  // Calls svc-ai-controller internal endpoint; logs session for authenticated users.
+  fastify.post(
+    '/consult',
+    { schema: consultSchema },
+    consultHandler as RouteHandlerMethod,
+  );
+
+  // Save 1–5 feedback score for a past consult session.
+  fastify.post(
+    '/feedback',
+    { schema: feedbackSchema },
+    feedbackHandler as RouteHandlerMethod,
+  );
+
+  // Paginated consult session history for a user.
+  fastify.get(
+    '/session-history',
+    { schema: historySchema },
+    historyHandler as RouteHandlerMethod,
   );
 }
 export default strategyRoutes;
