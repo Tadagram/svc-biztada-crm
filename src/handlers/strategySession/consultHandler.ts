@@ -20,11 +20,15 @@ interface ConsultBody {
 }
 
 interface AiControllerResponse {
-  answer?: string;
-  action_plan?: {
-    actions?: unknown[];
+  session_id?: string;
+  advice?: string;                        // main advice text (markdown)
+  plan?: {
+    short_term?: string[];
+    mid_term?: string[];
+    kpis?: string[];
   };
-  chunks_used?: unknown;
+  recommended_actions?: unknown[];        // []StrategyRecommendedAction
+  chunks_used?: string[];                 // chunk_ids used as context
   model?: string;
   [key: string]: unknown;
 }
@@ -88,11 +92,11 @@ export async function consultHandler(
           question,
           industry: context?.industry ?? null,
           business_size: context?.business_size ?? null,
-          current_tools: context?.current_tools ? JSON.stringify(context.current_tools) : null,
+          current_tools: context?.current_tools ?? null,     // Json? — pass array directly
           goal: context?.goal ?? null,
-          chunks_used: aiResult.chunks_used ? JSON.stringify(aiResult.chunks_used) : null,
-          actions_count: Array.isArray(aiResult.action_plan?.actions)
-            ? aiResult.action_plan!.actions!.length
+          chunks_used: aiResult.chunks_used ?? null,         // Json? — pass []string directly
+          actions_count: Array.isArray(aiResult.recommended_actions)
+            ? aiResult.recommended_actions.length
             : 0,
           model: aiResult.model ?? null,
         },
@@ -102,5 +106,5 @@ export async function consultHandler(
     }
   }
 
-  reply.status(200).send({ ...aiResult, session_id: userId ? sessionId : undefined });
+  reply.status(200).send(userId ? { ...aiResult, session_id: sessionId } : aiResult);
 }
