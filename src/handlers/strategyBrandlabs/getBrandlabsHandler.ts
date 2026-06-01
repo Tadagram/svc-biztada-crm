@@ -76,6 +76,75 @@ const FALLBACK_DEMO_DATA = {
       tools: ['marketing', 'brandlabs'],
     },
   ],
+  contentLibrary: {
+    totalAssets: 120,
+    lastUpdated: '2026-05-30',
+    categories: [
+      { name: 'Video TikTok nguồn', count: 45, source: 'TikTok Scraper — chạy daily', tags: ['#tráicây', '#thựcphẩmsạch', '#ănclean', '#detox', '#giađình'], filterNote: '>15k views/7 ngày, <30 ngày tuổi, không nhạc bản quyền mạnh' },
+      { name: 'Footage kho hàng PHF', count: 38, source: 'Nhóm kho tự quay — upload weekly', tags: ['đóng gói', 'kho hàng', 'sản phẩm tươi', 'nhân viên kiểm hàng', 'xe giao'] },
+      { name: 'Video YouTube Shorts', count: 22, source: 'YouTube Scraper — chạy weekly', tags: ['nutrition facts', 'healthy food', 'family meal', 'fruit tips', 'clean eating'] },
+      { name: 'Ảnh sản phẩm', count: 15, source: 'Upload thủ công — monthly', tags: ['xoài cát Hòa Lộc', 'cam sành', 'bưởi da xanh', 'hộp quà premium', 'combo'] },
+    ],
+  },
+  publishChannelMap: [
+    {
+      contentType: 'Remake TikTok (video 15–30s)',
+      sourceFrom: ['Video TikTok nguồn', 'Footage kho hàng PHF'],
+      publishTo: ['TikTok Trái Cây & Sức Khỏe', 'TikTok Phụ Nữ Bận Rộn', 'TikTok Bữa Nhà & Gia Đình'],
+      weeklyVolume: 9,
+      seederConfig: '3 seeders comment trong 10 phút đầu',
+      notes: '3 kênh TikTok × 3 video/tuần — luân phiên chủ đề theo ngày',
+    },
+    {
+      contentType: 'Remake Facebook Reels (30–60s)',
+      sourceFrom: ['Video TikTok nguồn', 'Footage kho hàng PHF'],
+      publishTo: ['Fanpage Sàn Sale Thủ Dầu Một'],
+      weeklyVolume: 4,
+      seederConfig: '5 seeders trong 15 phút đầu',
+      notes: 'Dùng lại từ TikTok remake — thêm caption giá thực và CTA "Đặt ngay Zalo"',
+    },
+    {
+      contentType: 'Ảnh Carousel (5–7 tấm)',
+      sourceFrom: ['Ảnh sản phẩm', 'Footage kho hàng PHF'],
+      publishTo: ['Fanpage Sàn Sale TDM', 'Group Sống Khỏe', 'Group Phụ Nữ Đẹp', 'Group Bếp Nhà'],
+      weeklyVolume: 12,
+      seederConfig: '4 seeders trong 20 phút đầu',
+      notes: 'Chủ đề xoay vòng theo tuần: flash sale → review thực tế → dinh dưỡng → combo quà tặng',
+    },
+    {
+      contentType: 'Nội dung gốc Zalo OA',
+      sourceFrom: ['Ảnh sản phẩm'],
+      publishTo: ['Zalo OA Phú Hòa Fresh'],
+      weeklyVolume: 5,
+      seederConfig: 'Không seeding — organic ZNS broadcast',
+      notes: 'ZNS follow-up + thông báo deal riêng cho subscriber đã opt-in',
+    },
+  ],
+  chatbotConfig: {
+    consultationStyle: 'Tư vấn chủ động như "người bạn am hiểu dinh dưỡng" — gợi combo theo nhu cầu thực tế, không push sale cứng. Tone: gần gũi, xưng mình/bạn, emoji vừa phải.',
+    platforms: ['Facebook Messenger', 'Zalo OA Chat'],
+    responseTime: '< 30 giây (AI tự động 24/7)',
+    qualificationQuestions: [
+      { step: 1, question: 'Bạn đang tìm trái cây cho mục đích gì ạ — ăn hằng ngày, quà biếu, hay detox?', purpose: 'Phân loại purchase_intent', crmField: 'purchase_intent', options: ['Ăn hằng ngày', 'Quà biếu/tặng', 'Detox/làm đẹp', 'Cho trẻ nhỏ'] },
+      { step: 2, question: 'Gia đình bạn có mấy người, có trẻ nhỏ hoặc người lớn tuổi không?', purpose: 'Gợi combo phù hợp cấu trúc gia đình', crmField: 'household_profile', options: ['1–2 người', '3–4 người', '5+ người', 'Có trẻ < 5 tuổi', 'Có người cao tuổi'] },
+      { step: 3, question: 'Bạn ở quận/khu nào trong Bình Dương ạ?', purpose: 'Kiểm tra vùng giao hàng + tính phí ship', crmField: 'delivery_area', options: ['Thủ Dầu Một', 'Thuận An', 'Dĩ An', 'Bến Cát', 'Tân Uyên', 'Nơi khác'] },
+      { step: 4, question: 'Ngân sách mình nhắm khoảng bao nhiêu cho đơn lần này?', purpose: 'Gợi tier sản phẩm phù hợp', crmField: 'budget_range', options: ['< 150k', '150k–300k', '300k–500k', '> 500k (hộp quà cao cấp)'] },
+    ],
+  },
+  crmFunnel: {
+    stages: [
+      { id: 'awareness', name: 'Nhận biết', color: 'slate', trigger: 'Tương tác lần đầu với bài post (like/comment/share)', source: ['Group Facebook', 'TikTok comment', 'Zalo group'], dataCollected: ['platform_source', 'post_id', 'interaction_type', 'timestamp'], nextAction: 'Retarget với seeder wave 2 trong 1h' },
+      { id: 'interest', name: 'Quan tâm', color: 'blue', trigger: 'Chủ động nhắn tin hoặc inbox hỏi giá', source: ['Facebook Messenger', 'Zalo OA Chat'], dataCollected: ['contact_name', 'purchase_intent', 'delivery_area'], nextAction: 'Chatbot tư vấn + gợi combo ngay trong 30 giây' },
+      { id: 'consideration', name: 'Cân nhắc', color: 'amber', trigger: 'Đã nhận báo giá nhưng chưa đặt hàng sau 2h', source: ['Chatbot conversation log'], dataCollected: ['household_profile', 'budget_range', 'products_discussed'], nextAction: 'ZNS nhắc lại + ưu đãi freeship trong T+2h' },
+      { id: 'purchase', name: 'Đặt hàng', color: 'emerald', trigger: 'Xác nhận đơn hàng + thanh toán', source: ['Chatbot', 'Zalo OA'], dataCollected: ['order_value', 'product_list', 'delivery_time', 'payment_method'], nextAction: 'Xác nhận đơn + đẩy vào order management system' },
+      { id: 'retention', name: 'Tái mua', color: 'purple', trigger: 'T+3 ngày sau đơn đầu tiên', source: ['Zalo ZNS broadcast'], dataCollected: ['satisfaction_score', 'reorder_intent', 'referral_willingness'], nextAction: 'ZNS ưu đãi lần 2 + mời vào loyalty Zalo group' },
+    ],
+    leadSources: [
+      { source: 'Facebook comment/inbox', expectedVolume: '15–25 leads/ngày', conversionRate: '12–18%' },
+      { source: 'Zalo group chat', expectedVolume: '8–12 leads/ngày', conversionRate: '20–28%' },
+      { source: 'TikTok link in bio', expectedVolume: '5–8 leads/ngày', conversionRate: '8–12%' },
+    ],
+  },
 };
 
 function sanitizeId(input?: string): string | null {
@@ -85,10 +154,15 @@ function sanitizeId(input?: string): string | null {
 }
 
 function normalizePayload(payload: unknown): unknown {
+  let parsed: Record<string, unknown> | null = null;
   if (typeof payload === 'string') {
-    try { return JSON.parse(payload); } catch { return FALLBACK_DEMO_DATA; }
+    try { parsed = JSON.parse(payload) as Record<string, unknown>; } catch { /* use fallback */ }
+  } else if (payload && typeof payload === 'object') {
+    parsed = payload as Record<string, unknown>;
   }
-  return payload ?? FALLBACK_DEMO_DATA;
+  if (!parsed) return FALLBACK_DEMO_DATA;
+  // Merge: fill missing new fields from FALLBACK so old DB records stay compatible
+  return { ...FALLBACK_DEMO_DATA, ...parsed };
 }
 
 async function getByGuest(request: FastifyRequest, guestId: string): Promise<StrategyBrandlabsRow | null> {

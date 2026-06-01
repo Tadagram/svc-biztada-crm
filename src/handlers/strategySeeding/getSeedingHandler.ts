@@ -52,6 +52,68 @@ const FALLBACK_DEMO_DATA = {
     { type: 'review_detail', ratio: '10%', tone: 'authentic', timing: 'sau 3–6 giờ', example: 'Vừa nhận 5kg xoài cát Hòa Lộc, múi dày ngọt vừa. Đóng gói cẩn thận, sẽ order tiếp.' },
   ],
   notes: 'Không seeding đồng loạt — trải đều trong 4–6 giờ/bài. Mỗi account chỉ seeding 1 bài/ngày của cùng 1 fanpage.',
+  campaigns: [
+    {
+      id: 'camp-community',
+      name: 'Nuôi Cộng Đồng',
+      objective: 'Tăng trust + membership cho 3 group Facebook chủ lực',
+      porterPlacement: [
+        { channel: 'Group Sống Khỏe Mỗi Ngày', porterCount: 2, action: 'Đăng bài gốc 2 lần/ngày', postTopics: ['Tip dinh dưỡng trái cây theo mùa', 'Công thức nước ép detox đơn giản'], timing: '7h và 20h' },
+        { channel: 'Group Phụ Nữ Đẹp Từ Bên Trong', porterCount: 2, action: 'Đăng bài gốc 2 lần/ngày', postTopics: ['Beauty routine với trái cây', 'Giữ dáng sau sinh nhẹ nhàng'], timing: '8h và 21h' },
+        { channel: 'Group Bếp Nhà Có Trái Cây', porterCount: 2, action: 'Đăng bài gốc 2 lần/ngày', postTopics: ['Thực đơn gia đình có trẻ nhỏ', 'Bữa phụ lành mạnh cho bé'], timing: '7h30 và 20h30' },
+      ],
+      seedingWaves: [
+        { wave: 1, triggerTime: 'T+5–15 phút', accountCount: 3, behavior: 'seed_question', personaMapping: 'Mẹ Bỉm Sữa', sampleComment: 'Trái cây ở đây đặt online có tươi không ạ? Mình hay mua cho bé ăn sáng nên cần đảm bảo lắm.' },
+        { wave: 2, triggerTime: 'T+30–60 phút', accountCount: 5, behavior: 'reply_confirm', personaMapping: 'Chuyên Gia Dinh Dưỡng', sampleComment: 'Đã order 2 lần ở đây rồi, nguồn gốc rõ ràng, xoài cát Hòa Lộc đúng vị, không bị nhão.' },
+        { wave: 3, triggerTime: 'T+2–3 giờ', accountCount: 4, behavior: 'tag_friend', personaMapping: 'Reviewer Local', sampleComment: '@[bạn thân] đây rồi, chỗ này giao tận nhà khu Thủ Dầu Một nè, mình đặt được á!' },
+      ],
+      accounts: { porter: 6, seeding: 12 },
+    },
+    {
+      id: 'camp-sales',
+      name: 'Chiến Dịch Sales Fanpage',
+      objective: 'Thúc đẩy đặt hàng qua fanpage và chatbot Zalo',
+      porterPlacement: [
+        { channel: 'Fanpage Sàn Sale Thủ Dầu Một', porterCount: 2, action: 'Comment đặt hàng sớm trong 5 phút đầu + hỏi deal mới', postTopics: ['Flash sale theo khung giờ', 'Combo tiết kiệm gia đình'], timing: 'Trong 5 phút ngay sau bài đăng' },
+      ],
+      seedingWaves: [
+        { wave: 1, triggerTime: 'T+3–5 phút', accountCount: 4, behavior: 'seed_question', personaMapping: 'Reviewer Local', sampleComment: 'Giá combo 3kg bao nhiêu vậy chị? Ship khu Bình Hòa có không?' },
+        { wave: 2, triggerTime: 'T+15–30 phút', accountCount: 8, behavior: 'reply_confirm', personaMapping: 'Gia Đình Hiện Đại', sampleComment: 'Freeship cả tuần này, mình order 2 lần tuần trước — hàng tươi, giao đúng giờ lắm.' },
+        { wave: 3, triggerTime: 'T+1–2 giờ', accountCount: 5, behavior: 'tag_friend', personaMapping: 'Mẹ Bỉm Sữa', sampleComment: '@Lan ơi mày đang tìm trái cây sạch cho bé không? Chỗ này order về đợi nha.' },
+        { wave: 4, triggerTime: 'T+4–6 giờ', accountCount: 3, behavior: 'review_detail', personaMapping: 'Chuyên Gia Dinh Dưỡng', sampleComment: 'Vừa nhận 5kg xoài cát Hòa Lộc: múi dày không xơ, ngọt đều, đóng gói giữ lạnh cẩn thận. Sẽ order tiếp tuần tới.' },
+      ],
+      accounts: { porter: 2, seeding: 20 },
+    },
+    {
+      id: 'camp-tiktok',
+      name: 'Viral TikTok',
+      objective: 'Tăng views + kéo traffic về link Zalo/fanpage',
+      porterPlacement: [
+        { channel: 'TikTok 1 / 2 / 3 (3 kênh luân phiên)', porterCount: 2, action: 'Comment hỏi đặt hàng trong 5 phút đầu', postTopics: ['Unbox đơn hàng tươi ngon', 'Tip chọn trái cây ngon theo mùa'], timing: 'Ngay sau khi upload video' },
+      ],
+      seedingWaves: [
+        { wave: 1, triggerTime: 'T+2–5 phút', accountCount: 3, behavior: 'seed_question', personaMapping: 'Mẹ Bỉm Sữa', sampleComment: 'Mua ở đâu vậy bạn? Có ship khu Bình Dương không ạ?' },
+        { wave: 2, triggerTime: 'T+15–30 phút', accountCount: 5, behavior: 'reply_confirm', personaMapping: 'Reviewer Local', sampleComment: 'Giao nhanh lắm, tươi hơn ngoài chợ nhiều, mình order 3 lần rồi!' },
+        { wave: 3, triggerTime: 'T+1 giờ', accountCount: 4, behavior: 'tag_friend', personaMapping: 'Gia Đình Hiện Đại', sampleComment: '@Nam ơi mình order cho nhà mình được á, link trong bio nè!' },
+      ],
+      accounts: { porter: 2, seeding: 12 },
+    },
+  ],
+  accountMaintenance: {
+    warmupActivities: [
+      'Đăng 1–2 bài đời sống/ngày: ảnh ăn uống, check-in quán cà phê, cảnh đẹp Bình Dương — KHÔNG liên quan trái cây',
+      'Kết bạn 5–10 người/ngày từ mạng lưới bạn bè địa phương khu Thủ Dầu Một, Thuận An',
+      'Like và comment 3–5 bài/ngày từ bạn bè trong mạng lưới đã kết nối',
+      'Tham gia 2–3 group địa phương, comment tự nhiên (không seeding) trong 1 tuần đầu',
+      'Check-in 1 lần/tuần tại địa điểm nổi tiếng Thủ Dầu Một',
+    ],
+    activeAccountBehavior: [
+      'Seeding tối đa 3 bài/ngày trên cùng 1 fanpage — phân bố đều khung sáng/trưa/tối',
+      'Không comment 2 bài liên tiếp trên cùng fanpage trong vòng 30 phút',
+      'Mỗi 3 ngày đăng 1 bài đời sống cá nhân để giữ profile trông tự nhiên',
+      'Luân phiên role: 1 ngày seeding fanpage → 1 ngày seeding group → tránh lặp pattern',
+    ],
+  },
 };
 
 function sanitizeId(input?: string): string | null {
@@ -61,10 +123,15 @@ function sanitizeId(input?: string): string | null {
 }
 
 function normalizePayload(payload: unknown): unknown {
+  let parsed: Record<string, unknown> | null = null;
   if (typeof payload === 'string') {
-    try { return JSON.parse(payload); } catch { return FALLBACK_DEMO_DATA; }
+    try { parsed = JSON.parse(payload) as Record<string, unknown>; } catch { /* use fallback */ }
+  } else if (payload && typeof payload === 'object') {
+    parsed = payload as Record<string, unknown>;
   }
-  return payload ?? FALLBACK_DEMO_DATA;
+  if (!parsed) return FALLBACK_DEMO_DATA;
+  // Merge: fill missing new fields from FALLBACK so old DB records stay compatible
+  return { ...FALLBACK_DEMO_DATA, ...parsed };
 }
 
 async function getByGuest(request: FastifyRequest, guestId: string): Promise<StrategySeedingRow | null> {
