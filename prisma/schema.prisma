@@ -497,11 +497,13 @@ model PromotionExecutionLogs {
 
 // ── Strategy AI Session Logs ──────────────────────────────────────────────
 // Logs each consult call from svc-biztada-crm → svc-ai-controller RAG pipeline.
-// Table is created via migration 20260531000000_add_strategy_session_logs.
-// Table already applied to production DB (IF NOT EXISTS guard in migration).
+// user_id is nullable — guest sessions are logged with guest_id instead.
+// When a guest claims their account (POST /strategy/claim-guest), both
+// strategy data tables and session logs are updated to set user_id.
 model StrategySessionLog {
   session_id     String    @id @db.Char(36)
-  user_id        String    @db.Char(36)
+  user_id        String?   @db.Char(36)    // nullable — set after guest→user migration
+  guest_id       String?   @db.Char(36)    // set when session belongs to a guest
   question       String    @db.Text
   industry       String?   @db.VarChar(50)
   business_size  String?   @db.VarChar(20)
@@ -515,6 +517,7 @@ model StrategySessionLog {
   created_at     DateTime  @default(now()) @db.DateTime(0)
 
   @@index([user_id, created_at(sort: Desc)])
+  @@index([guest_id, created_at(sort: Desc)])
   @@index([industry, created_at(sort: Desc)])
   @@map("strategy_session_logs")
 }

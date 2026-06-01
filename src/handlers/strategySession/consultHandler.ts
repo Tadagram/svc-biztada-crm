@@ -38,16 +38,25 @@ interface AiControllerResponse {
  *
  * Forwards the user's question to svc-ai-controller RAG pipeline,
  * then logs the session to strategy_session_logs (non-fatal if logging fails).
- * Works with or without a user JWT — userId falls back to query param.
+ *
+ * Identity resolution (first match wins):
+ *   1. JWT userId          → authenticated user session
+ *   2. ?userId query param → authenticated user (legacy)
+ *   3. ?guestId query param → guest session (logged with guest_id)
+ *   4. None               → anonymous, no logging
  */
 export async function consultHandler(
-  request: FastifyRequest<{ Body: ConsultBody; Querystring: { userId?: string } }>,
+  request: FastifyRequest<{
+    Body: ConsultBody;
+    Querystring: { userId?: string; guestId?: string };
+  }>,
   reply: FastifyReply,
 ): Promise<void> {
   const { question, context } = request.body;
 
   const authUser = request.user as { userId?: string } | undefined;
   const userId = authUser?.userId ?? request.query.userId ?? null;
+  const guestId = userId ? null : (request.query.guestId ?? null);
 
   if (!STRATEGY_INTERNAL_TOKEN) {
     request.log.warn('[strategySession] STRATEGY_INTERNAL_TOKEN not configured');
@@ -83,12 +92,15 @@ export async function consultHandler(
 
   // ── Log session (non-fatal) ───────────────────────────────────────────────
   const sessionId = crypto.randomUUID();
-  if (userId) {
+  const hasIdentity = !!(userId || guestId);
+
+  if (hasIdentity) {
     try {
       await request.prisma.strategySessionLog.create({
         data: {
           session_id: sessionId,
-          user_id: userId,
+          user_id: userId ?? null,
+          guest_id: guestId ?? null,
           question,
           industry: context?.industry ?? null,
           business_size: context?.business_size ?? null,
@@ -106,5 +118,6 @@ export async function consultHandler(
     }
   }
 
-  reply.status(200).send(userId ? { ...aiResult, session_id: sessionId } : aiResult);
+  reply.status(200).send(hasIdentity ? { ...aiResult, session_id: sessionId } : aiResult);
 }
+

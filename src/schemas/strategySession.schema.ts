@@ -35,6 +35,7 @@ export const consultSchema: FastifySchema = {
     type: 'object',
     properties: {
       userId: { type: 'string' },
+      guestId: { type: 'string' },
     },
   },
 };
@@ -57,6 +58,7 @@ export const feedbackSchema: FastifySchema = {
     type: 'object',
     properties: {
       userId: { type: 'string' },
+      guestId: { type: 'string' },
     },
   },
 };
@@ -69,8 +71,32 @@ export const historySchema: FastifySchema = {
     type: 'object',
     properties: {
       userId: { type: 'string' },
+      guestId: { type: 'string' },
       page: { type: 'string' },
       limit: { type: 'string' },
+    },
+  },
+};
+
+export const claimGuestSchema: FastifySchema = {
+  tags: ['Strategy Session'],
+  summary: 'Claim guest strategy data for an authenticated user',
+  description:
+    'Atomically migrates all strategy data (slides + session logs) from a guest session to a ' +
+    'registered user. Call once after registration when the user previously interacted as a guest. ' +
+    'Requires userId from JWT or ?userId query param.',
+  body: {
+    type: 'object',
+    required: ['guestId'],
+    properties: {
+      guestId: { type: 'string', minLength: 36, maxLength: 36 },
+    },
+    additionalProperties: false,
+  },
+  querystring: {
+    type: 'object',
+    properties: {
+      userId: { type: 'string' },
     },
   },
 };

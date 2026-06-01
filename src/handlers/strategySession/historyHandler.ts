@@ -2,6 +2,7 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 
 interface HistoryQuerystring {
   userId?: string;
+  guestId?: string;
   page?: string;
   limit?: string;
 }
@@ -9,8 +10,9 @@ interface HistoryQuerystring {
 /**
  * GET /strategy/session-history
  *
- * Returns a paginated list of the user's past consult sessions.
- * Requires userId from JWT or query param.
+ * Returns a paginated list of past consult sessions for a user or guest.
+ * Identity: JWT userId > ?userId > ?guestId.
+ * At least one identity is required.
  */
 export async function historyHandler(
   request: FastifyRequest<{ Querystring: HistoryQuerystring }>,
@@ -18,18 +20,21 @@ export async function historyHandler(
 ): Promise<void> {
   const authUser = request.user as { userId?: string } | undefined;
   const userId = authUser?.userId ?? request.query.userId ?? null;
+  const guestId = userId ? null : (request.query.guestId ?? null);
 
-  if (!userId) {
-    return reply.status(401).send({ error: 'userId is required' });
+  if (!userId && !guestId) {
+    return reply.status(401).send({ error: 'userId or guestId is required' });
   }
 
   const page = Math.max(1, parseInt(request.query.page ?? '1', 10) || 1);
   const limit = Math.min(50, Math.max(1, parseInt(request.query.limit ?? '10', 10) || 10));
   const skip = (page - 1) * limit;
 
+  const where = userId ? { user_id: userId } : { guest_id: guestId! };
+
   const [items, total] = await Promise.all([
     request.prisma.strategySessionLog.findMany({
-      where: { user_id: userId },
+      where,
       orderBy: { created_at: 'desc' },
       skip,
       take: limit,
@@ -46,8 +51,9 @@ export async function historyHandler(
         created_at: true,
       },
     }),
-    request.prisma.strategySessionLog.count({ where: { user_id: userId } }),
+    request.prisma.strategySessionLog.count({ where }),
   ]);
 
   reply.status(200).send({ items, total, page, limit });
 }
+

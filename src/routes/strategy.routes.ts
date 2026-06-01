@@ -12,8 +12,8 @@ import { getMatrixHandler, upsertMatrixHandler } from '@handlers/strategyMatrix'
 import { getMatrixSchema, upsertMatrixSchema } from '@schemas/strategyMatrix.schema';
 import { getFactoryHandler, upsertFactoryHandler } from '@handlers/strategyFactory';
 import { getFactorySchema, upsertFactorySchema } from '@schemas/strategyFactory.schema';
-import { consultHandler, feedbackHandler, historyHandler } from '@handlers/strategySession';
-import { consultSchema, feedbackSchema, historySchema } from '@schemas/strategySession.schema';
+import { consultHandler, feedbackHandler, historyHandler, claimGuestHandler } from '@handlers/strategySession';
+import { consultSchema, feedbackSchema, historySchema, claimGuestSchema } from '@schemas/strategySession.schema';
 
 async function strategyRoutes(fastify: FastifyInstance) {
   // Allow raw text/plain bodies for the AI endpoint.
@@ -116,11 +116,19 @@ async function strategyRoutes(fastify: FastifyInstance) {
     feedbackHandler as RouteHandlerMethod,
   );
 
-  // Paginated consult session history for a user.
+  // Paginated consult session history for a user or guest.
   fastify.get(
     '/session-history',
     { schema: historySchema },
     historyHandler as RouteHandlerMethod,
+  );
+
+  // Claim guest strategy data for a newly registered user.
+  // Atomic migration: all 5 strategy tables + session logs + soft-delete guest.
+  fastify.post(
+    '/claim-guest',
+    { schema: claimGuestSchema },
+    claimGuestHandler as RouteHandlerMethod,
   );
 }
 export default strategyRoutes;
