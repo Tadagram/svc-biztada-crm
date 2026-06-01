@@ -1,5 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import crypto from 'crypto';
+import { Prisma } from '@prisma/client';
 
 const AI_CONTROLLER_URL =
   process.env.AI_CONTROLLER_URL ??
@@ -104,9 +105,9 @@ export async function consultHandler(
           question,
           industry: context?.industry ?? null,
           business_size: context?.business_size ?? null,
-          current_tools: context?.current_tools ?? null,     // Json? — pass array directly
+          current_tools: context?.current_tools ?? Prisma.JsonNull,
           goal: context?.goal ?? null,
-          chunks_used: aiResult.chunks_used ?? null,         // Json? — pass []string directly
+          chunks_used: aiResult.chunks_used ?? Prisma.JsonNull,
           actions_count: Array.isArray(aiResult.recommended_actions)
             ? aiResult.recommended_actions.length
             : 0,
