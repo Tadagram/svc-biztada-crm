@@ -374,6 +374,23 @@ model StrategyBrandlabs {
   @@map("strategy_brandlabs")
 }
 
+model StrategyDirection {
+  strategy_direction_id String    @id @default(uuid()) @db.Char(36)
+  business_id           String    @default("demo") @db.VarChar(64)
+  user_id               String?   @db.Char(36)
+  guest_id              String?   @db.Char(36)
+  payload               Json
+  is_demo               Boolean   @default(false)
+  created_at            DateTime  @default(now()) @db.DateTime(0)
+  updated_at            DateTime  @default(now()) @updatedAt @db.DateTime(0)
+  deleted_at            DateTime? @db.DateTime(0)
+
+  @@index([business_id, updated_at(sort: Desc)])
+  @@index([business_id, user_id, updated_at(sort: Desc)])
+  @@index([guest_id])
+  @@map("strategy_direction")
+}
+
 model StrategyContentNetwork {
   strategy_content_network_id String    @id @default(uuid()) @db.Char(36)
   business_id                 String    @default("demo") @db.VarChar(64)

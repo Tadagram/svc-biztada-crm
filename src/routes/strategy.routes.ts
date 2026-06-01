@@ -20,6 +20,8 @@ import { getBrandlabsHandler, upsertBrandlabsHandler } from '@handlers/strategyB
 import { getBrandlabsSchema, upsertBrandlabsSchema } from '@schemas/strategyBrandlabs.schema';
 import { getContentNetworkHandler, upsertContentNetworkHandler } from '@handlers/strategyContentNetwork';
 import { getContentNetworkSchema, upsertContentNetworkSchema } from '@schemas/strategyContentNetwork.schema';
+import { getDirectionHandler, upsertDirectionHandler } from '@handlers/strategyDirection';
+import { getDirectionSchema, upsertDirectionSchema } from '@schemas/strategyDirection.schema';
 import { consultHandler, feedbackHandler, historyHandler, claimGuestHandler } from '@handlers/strategySession';
 import { consultSchema, feedbackSchema, historySchema, claimGuestSchema } from '@schemas/strategySession.schema';
 
@@ -49,6 +51,18 @@ async function strategyRoutes(fastify: FastifyInstance) {
 
   // Public endpoint: no auth required.
   // If user/business context is missing, handler returns demo dataset.
+  fastify.get(
+    '/strategic-direction',
+    { schema: getDirectionSchema },
+    getDirectionHandler as RouteHandlerMethod,
+  );
+
+  fastify.post(
+    '/strategic-direction',
+    { schema: upsertDirectionSchema },
+    upsertDirectionHandler as RouteHandlerMethod,
+  );
+
   fastify.get(
     '/market-profile',
     { schema: getMarketProfileSchema },
