@@ -12,6 +12,12 @@ import { getMatrixHandler, upsertMatrixHandler } from '@handlers/strategyMatrix'
 import { getMatrixSchema, upsertMatrixSchema } from '@schemas/strategyMatrix.schema';
 import { getFactoryHandler, upsertFactoryHandler } from '@handlers/strategyFactory';
 import { getFactorySchema, upsertFactorySchema } from '@schemas/strategyFactory.schema';
+import { getSeedingHandler, upsertSeedingHandler } from '@handlers/strategySeeding';
+import { getSeedingSchema, upsertSeedingSchema } from '@schemas/strategySeeding.schema';
+import { getContentPlanHandler, upsertContentPlanHandler } from '@handlers/strategyContentPlan';
+import { getContentPlanSchema, upsertContentPlanSchema } from '@schemas/strategyContentPlan.schema';
+import { getBrandlabsHandler, upsertBrandlabsHandler } from '@handlers/strategyBrandlabs';
+import { getBrandlabsSchema, upsertBrandlabsSchema } from '@schemas/strategyBrandlabs.schema';
 import { consultHandler, feedbackHandler, historyHandler, claimGuestHandler } from '@handlers/strategySession';
 import { consultSchema, feedbackSchema, historySchema, claimGuestSchema } from '@schemas/strategySession.schema';
 
@@ -99,6 +105,42 @@ async function strategyRoutes(fastify: FastifyInstance) {
     '/factory',
     { schema: upsertFactorySchema },
     upsertFactoryHandler as RouteHandlerMethod,
+  );
+
+  fastify.get(
+    '/seeding',
+    { schema: getSeedingSchema },
+    getSeedingHandler as RouteHandlerMethod,
+  );
+
+  fastify.post(
+    '/seeding',
+    { schema: upsertSeedingSchema },
+    upsertSeedingHandler as RouteHandlerMethod,
+  );
+
+  fastify.get(
+    '/content-plan',
+    { schema: getContentPlanSchema },
+    getContentPlanHandler as RouteHandlerMethod,
+  );
+
+  fastify.post(
+    '/content-plan',
+    { schema: upsertContentPlanSchema },
+    upsertContentPlanHandler as RouteHandlerMethod,
+  );
+
+  fastify.get(
+    '/brandlabs-ops',
+    { schema: getBrandlabsSchema },
+    getBrandlabsHandler as RouteHandlerMethod,
+  );
+
+  fastify.post(
+    '/brandlabs-ops',
+    { schema: upsertBrandlabsSchema },
+    upsertBrandlabsHandler as RouteHandlerMethod,
   );
 
   // ── RAG Consult + Session Logging ────────────────────────────────────────
