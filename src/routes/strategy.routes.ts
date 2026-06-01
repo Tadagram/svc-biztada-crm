@@ -18,6 +18,8 @@ import { getContentPlanHandler, upsertContentPlanHandler } from '@handlers/strat
 import { getContentPlanSchema, upsertContentPlanSchema } from '@schemas/strategyContentPlan.schema';
 import { getBrandlabsHandler, upsertBrandlabsHandler } from '@handlers/strategyBrandlabs';
 import { getBrandlabsSchema, upsertBrandlabsSchema } from '@schemas/strategyBrandlabs.schema';
+import { getContentNetworkHandler, upsertContentNetworkHandler } from '@handlers/strategyContentNetwork';
+import { getContentNetworkSchema, upsertContentNetworkSchema } from '@schemas/strategyContentNetwork.schema';
 import { consultHandler, feedbackHandler, historyHandler, claimGuestHandler } from '@handlers/strategySession';
 import { consultSchema, feedbackSchema, historySchema, claimGuestSchema } from '@schemas/strategySession.schema';
 
@@ -141,6 +143,18 @@ async function strategyRoutes(fastify: FastifyInstance) {
     '/brandlabs-ops',
     { schema: upsertBrandlabsSchema },
     upsertBrandlabsHandler as RouteHandlerMethod,
+  );
+
+  fastify.get(
+    '/content-network',
+    { schema: getContentNetworkSchema },
+    getContentNetworkHandler as RouteHandlerMethod,
+  );
+
+  fastify.post(
+    '/content-network',
+    { schema: upsertContentNetworkSchema },
+    upsertContentNetworkHandler as RouteHandlerMethod,
   );
 
   // ── RAG Consult + Session Logging ────────────────────────────────────────
