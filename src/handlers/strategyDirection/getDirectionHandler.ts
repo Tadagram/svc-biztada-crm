@@ -31,6 +31,16 @@ const FALLBACK_DEMO_DATA = {
     rationale:
       'Phú Hòa Fresh có lợi thế về chất lượng và nguồn gốc rõ ràng — nhưng lợi thế đó chỉ phát huy được khi đúng người biết đến, tin tưởng và quay lại mua. Toàn bộ kế hoạch xoay quanh một thông điệp nhất quán: tươi — sạch — nguồn gốc minh bạch — giao tận nơi. Chu kỳ 5 module dưới đây là cách triển khai thông điệp đó thành hành động cụ thể, liên tục và có hệ thống.',
   },
+  conceptDetail: {
+    communicationGoal:
+      'Xây dựng nhận thức thương hiệu Phú Hòa Fresh = "trái cây sạch đáng tin" trong cộng đồng gia đình trẻ tại Bình Dương. Không quảng bá kiểu bán hàng — đặt vị trí như người tư vấn dinh dưỡng đáng tin cậy. Khi gia đình Bình Dương nghĩ đến trái cây sạch, Phú Hòa Fresh là cái tên đầu tiên. Đo bằng: lượt follow Zalo OA, tần suất hỏi giá tự nhiên, tỷ lệ khách mua lần 2.',
+    deploymentStyle:
+      'Ấm áp, gần gũi, thực tế — không khoa trương. Nội dung thiên về câu chuyện thật: vườn thật, người thật, hàng thật. Tone như lời tư vấn của người bán hàng uy tín lâu năm, không phải quảng cáo. Hình ảnh tươi sáng thực tế tại vườn và điểm bán, không dùng ảnh stock. Video 30-60s kiểu "hôm nay vườn có gì", "cách chọn sầu riêng chuẩn", "xoài mùa về rồi".',
+    channelCoverage:
+      'Ưu tiên: Zalo OA (kênh chốt đơn chính) + Facebook Groups địa phương Bình Dương (kênh seeding cộng đồng). Thứ cấp: Fanpage Facebook (đăng đều brand content). TikTok: thử nghiệm nếu có nhân sự, không ép. Không nên đầu tư Google Ads hay SEO giai đoạn này — ngân sách tập trung community seeding và Zalo automation để xây tệp khách định kỳ trong vùng giao hàng.',
+    deploymentTendency:
+      'Phú Hòa Fresh thuộc nhóm XÂY KÊNH CỘNG ĐỒNG — không phải SĂN LEADS. Lý do: trái cây sạch là nhu cầu định kỳ hàng tuần — khách trung thành quan trọng hơn khách mới. Ngược với mô hình môi giới BĐS (săn leads đang có nhu cầu ngay, xây kênh không có ý nghĩa nhiều) hay sản phẩm thời vụ (chạy ads peak season). Với Phú Hòa Fresh: xây tệp Zalo OA lớn trong vùng giao hàng → duy trì tiếp xúc đều qua content → chuyển dần thành khách định kỳ. Module 1 (Content) và Module 5 (Loyalty) có trọng số ngang Module 3 (Chatbot) trong chu kỳ.',
+  },
   funnelPhases: [
     {
       id: 'ph1-content-engine',
