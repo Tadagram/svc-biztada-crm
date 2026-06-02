@@ -27,9 +27,9 @@ const FALLBACK_DEMO_DATA = {
   },
   strategicNorth: {
     headline:
-      'Xây dựng hệ thống Sale & Marketing tự vận hành — không phụ thuộc vào cá nhân, có thể nhân bản và mở rộng quy mô.',
+      'Trở thành thương hiệu trái cây sạch đáng tin cậy nhất tại Bình Dương — xây dựng tệp khách hàng mua định kỳ dựa trên uy tín chất lượng, không cạnh tranh bằng giá.',
     rationale:
-      'Thay vì quản lý từng hoạt động thủ công, BizTada tích hợp 5 module tạo thành chu kỳ khép kín: content được sản xuất tự động → khuếch đại organic → chuyển đổi thành data → nuôi dưỡng đến chốt đơn → giữ chân và tái kích hoạt. Concept này là nền tảng để phân bổ mọi hoạt động chi tiết tiếp theo.',
+      'Phú Hòa Fresh có lợi thế về chất lượng và nguồn gốc rõ ràng — nhưng lợi thế đó chỉ phát huy được khi đúng người biết đến, tin tưởng và quay lại mua. Toàn bộ kế hoạch xoay quanh một thông điệp nhất quán: tươi — sạch — nguồn gốc minh bạch — giao tận nơi. Chu kỳ 5 module dưới đây là cách triển khai thông điệp đó thành hành động cụ thể, liên tục và có hệ thống.',
   },
   funnelPhases: [
     {
@@ -38,10 +38,10 @@ const FALLBACK_DEMO_DATA = {
       icon: '🎨',
       title: 'Content & Brand Engine',
       description:
-        'Xây dựng "nhà máy nội dung" thông minh vận hành bằng AI. BrandLabs không chỉ sản xuất nội dung — nó định hình ngôn ngữ thương hiệu, học từ insight thị trường và liên tục tối ưu theo phản hồi. Đây là nền tảng để toàn bộ hệ thống có "nguyên liệu" để vận hành.',
+        'Sản xuất nội dung định vị Phú Hòa Fresh là chuyên gia trái cây sạch tại Bình Dương: review trái cây theo mùa vụ, câu chuyện về nguồn hàng và nhà vườn, tips chọn trái cây sạch cho gia đình, công dụng dinh dưỡng và gợi ý cách dùng (sinh tố, salad, ăn dặm cho bé). Nội dung đăng đều đặn trên Zalo OA và Fanpage.',
       tools: ['BrandLabs AI', 'Auto-Publishing', 'Brand Persona'],
       measurable:
-        'Tạo ra luồng nội dung liên tục để nuôi toàn bộ chu kỳ — không có content, các module tiếp theo không có gì để khuếch đại hay chuyển đổi.',
+        'Cung cấp nội dung cho toàn bộ chu kỳ vận hành — không có content nhất quán về chất lượng và nguồn gốc, thông điệp của Phú Hòa Fresh không đến được với khách hàng mục tiêu.',
       color: 'emerald',
     },
     {
@@ -50,10 +50,10 @@ const FALLBACK_DEMO_DATA = {
       icon: '🌐',
       title: 'Social Amplification Network',
       description:
-        'Khuếch đại nội dung thông qua mạng lưới được điều phối chiến lược. Matrix Seeding mô phỏng hành vi xã hội tự nhiên, tạo social proof và kích hoạt thuật toán để nội dung tiếp cận đúng nhóm đối tượng mục tiêu — không đơn thuần là "seeding bài".',
+        'Đưa nội dung từ Module 1 đến đúng tệp khách hàng tại Bình Dương: nhóm mẹ & bé, gia đình trẻ quan tâm sức khỏe, hội ăn chay, cộng đồng healthy lifestyle tại Thủ Dầu Một và vùng lân cận. Seeding kịch bản hỏi về nguồn gốc, giá cả, chia sẻ trải nghiệm — tạo social proof tự nhiên từ cộng đồng địa phương.',
       tools: ['Matrix Seeding', 'Porter Network', 'Demographic Targeting'],
       measurable:
-        'Khuếch đại content từ Module 1 để tạo traffic và social proof — đưa đúng người vào đúng điểm tiếp xúc để Module 3 có thể chuyển đổi.',
+        'Đưa thông điệp về chất lượng và uy tín của Phú Hòa Fresh vào đúng cộng đồng đang có nhu cầu — tạo điểm tiếp xúc để Module 3 chuyển đổi thành đơn hàng.',
       color: 'cyan',
     },
     {
@@ -62,10 +62,10 @@ const FALLBACK_DEMO_DATA = {
       icon: '🤖',
       title: 'AI Conversion Gateway',
       description:
-        'Biến điểm tiếp xúc thành cơ hội chuyển đổi. AI Chatbot không chỉ trả lời tin nhắn — nó phân tích ý định, dẫn dắt cuộc hội thoại theo kịch bản đã được thiết kế và chuyển đổi sự tò mò thành hành động. Đây là điểm giao thoa giữa "traffic" và "data khách hàng."',
+        'Chatbot tư vấn chọn trái cây theo nhu cầu cụ thể của từng khách: trái cây cho bé ăn dặm, cho người bệnh tiểu đường, cho người già, làm sinh tố giảm cân... Chatbot lấy địa chỉ giao hàng, xác nhận đơn và hỗ trợ 24/7 — không bỏ sót khách nhắn ngoài giờ làm việc.',
       tools: ['AI Chatbot', 'Intent Recognition', 'Multi-channel Integration'],
       measurable:
-        'Chuyển traffic từ Module 2 thành data khách hàng có cấu trúc — đầu ra của module này là leads sạch, sẵn sàng đưa vào pipeline bán hàng ở Module 4.',
+        'Biến người quan tâm (từ Module 2) thành đơn hàng có địa chỉ thực tế — đầu vào cụ thể để Module 4 phân loại và chốt.',
       color: 'amber',
     },
     {
@@ -74,10 +74,10 @@ const FALLBACK_DEMO_DATA = {
       icon: '🔗',
       title: 'Pipeline & Closing Engine',
       description:
-        'Quản lý toàn bộ hành trình từ lead đến giao dịch bằng quy trình hệ thống. CRM phân loại, ưu tiên và kích hoạt kịch bản chăm sóc phù hợp với từng giai đoạn — không phụ thuộc vào phán đoán cá nhân hay kỹ năng sales thủ công.',
+        'Phân loại leads theo khu vực giao hàng, thiết lập đơn định kỳ hàng tuần cho khách mua thường xuyên. ZNS tự động nhắc khách chưa chốt sau 2 giờ, telesale follow up đơn lớn hoặc khách hỏi nhiều chưa quyết định. Không bỏ lọt bất kỳ tiếp xúc nào vào phễu trống.',
       tools: ['CRM Pipeline', 'ZNS Automation', 'Sales Workflow'],
       measurable:
-        'Xử lý leads từ Module 3 theo quy trình chuẩn hóa — nuôi dưỡng, phân loại và chốt đơn; đầu ra là khách hàng đã giao dịch chuyển sang Module 5 để giữ chân.',
+        'Biến leads từ Module 3 thành giao dịch hoàn chỉnh và khởi động hành trình khách hàng thường xuyên — đầu ra là danh sách khách đã mua để Module 5 chăm sóc.',
       color: 'violet',
     },
     {
@@ -86,19 +86,19 @@ const FALLBACK_DEMO_DATA = {
       icon: '♾️',
       title: 'Loyalty & Growth Loop',
       description:
-        'Biến khách hàng thành tài sản chiến lược dài hạn. Module Retention không chỉ giữ chân — nó tạo vòng lặp tăng trưởng tự nhiên: khách hàng hài lòng → tái mua → giới thiệu → khách hàng mới. Đây là cơ chế làm cho toàn bộ chu kỳ 5 module trở nên bền vững.',
+        'Nhắc khách theo mùa vụ trái cây (xoài mùa, sầu riêng, thanh long...), thông báo hàng mới về, ưu đãi đặc biệt cho khách mua định kỳ. Kích hoạt chương trình giới thiệu bạn bè — khách quen Phú Hòa Fresh trở thành kênh quảng cáo tự nhiên trong cộng đồng địa phương.',
       tools: ['Broadcast Automation', 'Loyalty Tagging', 'Re-marketing'],
       measurable:
-        'Giữ chân và tái kích hoạt khách hàng từ Module 4 — tạo vòng lặp khép kín khi khách hàng cũ quay lại đầu phễu và trở thành nguồn acquisition tự nhiên cho chu kỳ mới.',
+        'Giữ chân khách từ Module 4, biến người mua lẻ thành khách định kỳ — và khách thân thiết thành nguồn giới thiệu mới, khép kín chu kỳ tăng trưởng.',
       color: 'rose',
     },
   ],
   implementationLogic:
-    'Chu kỳ 5 module vận hành liên tục và khép kín: Module 1 tạo nguyên liệu → Module 2 khuếch đại phạm vi → Module 3 chuyển đổi thành data → Module 4 đưa data thành doanh thu → Module 5 giữ chân và tái khởi động chu kỳ. Concept này là nền tảng để từ đó phân bổ chi tiết hoạt động, chủ đề nội dung và kênh truyền thông.',
+    'Chu kỳ chạy liên tục: content định vị thương hiệu → khuếch đại đúng tệp địa phương → chatbot chuyển đổi thành đơn → CRM chốt và tạo khách thường xuyên → loyalty kéo khách quay lại và giới thiệu mới. Toàn bộ phục vụ một mục tiêu duy nhất: Phú Hòa Fresh trở thành lựa chọn đầu tiên của gia đình Bình Dương khi cần trái cây sạch.',
   keyAssumptions: [
-    'Zalo OA, Fanpage và các kênh đã được kết nối vào hệ thống BizTada',
-    'Kịch bản Seeding, Knowledge Base Chatbot và Brand Persona được khởi tạo trước khi vận hành',
-    'Mỗi module cần được cấu hình đồng bộ để data chạy xuyên suốt từ Marketing → Chatbot → CRM',
+    'Zalo OA, Fanpage đã được kết nối vào hệ thống BizTada trước khi vận hành',
+    'Knowledge Base Chatbot được cài sẵn kịch bản tư vấn theo loại trái cây và nhu cầu khách',
+    'Danh mục sản phẩm và khu vực giao hàng được cập nhật định kỳ vào hệ thống',
   ],
 };
 
