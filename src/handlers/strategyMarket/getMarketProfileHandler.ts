@@ -19,6 +19,21 @@ interface StrategyMarketProfileRow {
 }
 
 const FALLBACK_DEMO_DATA = {
+  businessProfile: {
+    name: 'Phú Hòa Fresh',
+    industry: 'Kinh doanh trái cây tươi & thực phẩm sạch',
+    location: 'Bình Dương — Thủ Dầu Một',
+    stage: 'Mở rộng cộng đồng địa phương — hướng tới hệ thống hóa vận hành bán hàng',
+    coreChallenge:
+      'Phú Hòa Fresh có chất lượng sản phẩm tốt nhưng chưa có hệ thống để tiếp cận đúng khách hàng mục tiêu, duy trì tiếp xúc thường xuyên và chuyển khách mới thành khách mua định kỳ — hoàn toàn phụ thuộc vào bán hàng thủ công, word-of-mouth và nhắn tin tay.',
+    needs: [
+      'Kênh Zalo OA được tự động hóa để nuôi dưỡng khách hàng định kỳ và broadcast theo mùa vụ/sản phẩm mới.',
+      'Chatbot phản hồi 24/7 để trả lời câu hỏi phổ biến (giá, giao hàng, chất lượng) và chốt đơn ngay trên Zalo.',
+      'Content định kỳ về trái cây sạch, nguồn gốc, dinh dưỡng — xây dựng thương hiệu "chuyên gia trái cây sạch Bình Dương".',
+      'Hệ thống seeding vào các nhóm cộng đồng địa phương (mẹ bé, gia đình, healthy lifestyle) để mở rộng nhận thức thương hiệu.',
+      'Chương trình loyalty/re-marketing để giữ chân khách đã mua và tăng tần suất mua lại.',
+    ],
+  },
   location: {
     region: 'Binh Duong',
     city: 'Thu Dau Mot',
@@ -62,23 +77,30 @@ const FALLBACK_DEMO_DATA = {
   trends: [
     {
       name: 'Uu tien trai cay tot cho suc khoe',
-      insight: 'Khach hang doc thanh phan, quan tam an toan thuc pham va nguon goc ro rang truoc khi mua.',
-      impact: 'Content can thien ve gia tri dinh duong, chung thuc chat luong va tu van theo nhu cau that.',
+      insight:
+        'Khach hang doc thanh phan, quan tam an toan thuc pham va nguon goc ro rang truoc khi mua.',
+      impact:
+        'Content can thien ve gia tri dinh duong, chung thuc chat luong va tu van theo nhu cau that.',
     },
     {
       name: 'Nu 25-40 mua cho ca gia dinh',
-      insight: 'Phu nu la nguoi ra quyet dinh chinh cho bua phu tre nho, nguoi lon tuoi va qua bieu trong gia dinh.',
-      impact: 'Concept nen di theo truc phu nu - gia dinh: tien, dep, an tam va phu hop nhieu thanh vien.',
+      insight:
+        'Phu nu la nguoi ra quyet dinh chinh cho bua phu tre nho, nguoi lon tuoi va qua bieu trong gia dinh.',
+      impact:
+        'Concept nen di theo truc phu nu - gia dinh: tien, dep, an tam va phu hop nhieu thanh vien.',
     },
     {
       name: 'Hanh vi mua theo khung gio va uu dai',
-      insight: 'Khach phan hoi tot vao khung trua va toi, de chot khi co combo/freeship/qua tang nho.',
-      impact: 'Lich content can chia khung gio ro rang, uu tien bai deal ngan gon kem CTA dat nhanh.',
+      insight:
+        'Khach phan hoi tot vao khung trua va toi, de chot khi co combo/freeship/qua tang nho.',
+      impact:
+        'Lich content can chia khung gio ro rang, uu tien bai deal ngan gon kem CTA dat nhanh.',
     },
   ],
   corePersona: {
     title: 'Chan dung nguoi dung trong tam',
-    profile: 'Nu 27-38 tuoi, song tai Thu Dau Mot/Binh Duong, thu nhap on dinh, ban ron nhung chu trong suc khoe gia dinh.',
+    profile:
+      'Nu 27-38 tuoi, song tai Thu Dau Mot/Binh Duong, thu nhap on dinh, ban ron nhung chu trong suc khoe gia dinh.',
     painPoints: [
       'Kho chon noi ban trai cay vua ngon vua an toan cho con va nguoi lon tuoi.',
       'Thieu thoi gian di cho, can dich vu giao nhanh va dong goi sach dep.',
