@@ -23,76 +23,82 @@ const FALLBACK_DEMO_DATA = {
     name: 'Phú Hòa Fresh',
     industry: 'Kinh doanh trái cây tươi & thực phẩm sạch',
     location: 'Bình Dương — Thủ Dầu Một',
-    stage: 'Đang mở rộng thị phần trong bán kính 15km',
+    stage: 'Mở rộng cộng đồng địa phương — hướng tới hệ thống hóa vận hành bán hàng',
   },
-  coreChallenge:
-    'Cạnh tranh với chợ truyền thống và các sàn TMĐT lớn (Shopee/TikTok Shop) trong địa bàn hẹp, nhưng không có lợi thế về giá. Lợi thế thực sự nằm ở sự tin tưởng cộng đồng địa phương, tính tươi và giao nhanh — nhưng chưa được truyền thông hiệu quả.',
   strategicNorth: {
     headline:
-      'Xây dựng thương hiệu cộng đồng địa phương tin cậy — không cạnh tranh giá, cạnh tranh bằng Trust + Tiện lợi + Cộng đồng.',
+      'Xây dựng hệ thống Sale & Marketing tự vận hành — không phụ thuộc vào cá nhân, có thể nhân bản và mở rộng quy mô.',
     rationale:
-      'Thị trường Bình Dương có cộng đồng cư dân mới đang tìm nguồn thực phẩm đáng tin cậy ngoài chợ truyền thống. Sàn TMĐT có giá tốt nhưng không có nguồn gốc rõ ràng và không giao nhanh trong ngày. PHF có thể lấp đúng khoảng trống này bằng cách xây cộng đồng local trước, bán hàng sau.',
+      'Thay vì quản lý từng hoạt động thủ công, BizTada tích hợp 5 module tạo thành chu kỳ khép kín: content được sản xuất tự động → khuếch đại organic → chuyển đổi thành data → nuôi dưỡng đến chốt đơn → giữ chân và tái kích hoạt. Concept này là nền tảng để phân bổ mọi hoạt động chi tiết tiếp theo.',
   },
-  pillars: [
+  funnelPhases: [
     {
-      id: 'p-community',
-      icon: '🏘️',
-      title: 'Xây cộng đồng địa phương',
-      what: 'Facebook Groups + Zalo OA là nền tảng chính — ưu tiên build community trước khi push sales',
-      why: 'Người mua thực phẩm cần trust từ cộng đồng họ belong — không phải từ ads đơn thuần',
-      measurable: '3 Facebook Group hoạt động, 1.000+ thành viên active trong 90 ngày',
+      id: 'ph1-content-engine',
+      phaseId: 1,
+      icon: '🎨',
+      title: 'Content & Brand Engine',
+      description:
+        'Xây dựng "nhà máy nội dung" thông minh vận hành bằng AI. BrandLabs không chỉ sản xuất nội dung — nó định hình ngôn ngữ thương hiệu, học từ insight thị trường và liên tục tối ưu theo phản hồi. Đây là nền tảng để toàn bộ hệ thống có "nguyên liệu" để vận hành.',
+      tools: ['BrandLabs AI', 'Auto-Publishing', 'Brand Persona'],
+      measurable:
+        'Định vị thương hiệu nhất quán và duy trì hiện diện số liên tục — tạo nền tảng content cho toàn bộ chu kỳ vận hành.',
       color: 'emerald',
-      linkedSections: ['Action Plan Community', 'Vận hành Seeding & Porter'],
     },
     {
-      id: 'p-content',
-      icon: '📢',
-      title: 'Authority nội dung địa phương',
-      what: 'Content TikTok/Reels định kỳ về dinh dưỡng, mùa vụ, cách chọn trái cây — không chỉ là quảng cáo',
-      why: 'Content có giá trị = reach organic cao + khách quay lại vì thấy brand là người thật, am hiểu',
-      measurable: '4–5 bài/tuần, đạt 50K views/tháng trên TikTok trong 60 ngày',
+      id: 'ph2-amplification',
+      phaseId: 2,
+      icon: '🌐',
+      title: 'Social Amplification Network',
+      description:
+        'Khuếch đại nội dung thông qua mạng lưới được điều phối chiến lược. Matrix Seeding mô phỏng hành vi xã hội tự nhiên, tạo social proof và kích hoạt thuật toán để nội dung tiếp cận đúng nhóm đối tượng mục tiêu — không đơn thuần là "seeding bài".',
+      tools: ['Matrix Seeding', 'Porter Network', 'Demographic Targeting'],
+      measurable:
+        'Xây dựng social proof có chiều sâu và mở rộng độ phủ organic — dẫn dắt đúng tệp khách hàng tiềm năng vào phễu.',
       color: 'cyan',
-      linkedSections: ['Lịch Nội dung Đa kênh', 'Mạng lưới Nội dung Chiến lược'],
     },
     {
-      id: 'p-seeding',
-      icon: '🌱',
-      title: 'Xã hội hóa thảo luận có kiểm soát',
-      what: 'Ma trận tài khoản seeding tạo thảo luận tự nhiên trong group và comment section',
-      why: 'Social proof tự nhiên hiệu quả hơn ads 3× đối với quyết định mua thực phẩm địa phương',
-      measurable: '20–30 seeding accounts hoạt động, 15–30 interactions/ngày trong group',
-      color: 'amber',
-      linkedSections: ['Cấu Trúc Ma Trận Seeding', 'Vận hành Seeding & Porter'],
-    },
-    {
-      id: 'p-automation',
+      id: 'ph3-conversion-gateway',
+      phaseId: 3,
       icon: '🤖',
-      title: 'Tự động hóa chuyển đổi leads',
-      what: 'AI Chatbot xử lý hỏi giá, tư vấn sản phẩm, chốt đơn 24/7 qua Messenger + Zalo',
-      why: 'Response time <30 giây quyết định tỷ lệ chốt — leads từ community và content không được để nguội',
-      measurable: 'Chatbot xử lý 80% incoming messages, tỷ lệ chuyển đổi >12% trong 45 ngày',
-      color: 'violet',
-      linkedSections: ['Cơ chế hoạt động: Marketing - Chatbot - BrandLabs'],
+      title: 'AI Conversion Gateway',
+      description:
+        'Biến điểm tiếp xúc thành cơ hội chuyển đổi. AI Chatbot không chỉ trả lời tin nhắn — nó phân tích ý định, dẫn dắt cuộc hội thoại theo kịch bản đã được thiết kế và chuyển đổi sự tò mò thành hành động. Đây là điểm giao thoa giữa "traffic" và "data khách hàng."',
+      tools: ['AI Chatbot', 'Intent Recognition', 'Multi-channel Integration'],
+      measurable:
+        'Chuyển đổi engagement và traffic thành data khách hàng có cấu trúc — cầu nối giữa độ tiếp cận và doanh thu.',
+      color: 'amber',
     },
     {
-      id: 'p-production',
-      icon: '⚡',
-      title: 'Sản xuất content hàng loạt tối ưu chi phí',
-      what: 'BrandLabs AI Factory sản xuất 28+ bài/tuần với quy trình chuẩn hóa — ảnh, video, text đồng bộ',
-      why: 'Volume content đủ lớn là điều kiện tiên quyết để cộng đồng và seeding hoạt động liên tục',
-      measurable: '28 bài/tuần với chi phí sản xuất dưới 2 triệu VND/tháng',
+      id: 'ph4-pipeline-engine',
+      phaseId: 4,
+      icon: '🔗',
+      title: 'Pipeline & Closing Engine',
+      description:
+        'Quản lý toàn bộ hành trình từ lead đến giao dịch bằng quy trình hệ thống. CRM phân loại, ưu tiên và kích hoạt kịch bản chăm sóc phù hợp với từng giai đoạn — không phụ thuộc vào phán đoán cá nhân hay kỹ năng sales thủ công.',
+      tools: ['CRM Pipeline', 'ZNS Automation', 'Sales Workflow'],
+      measurable:
+        'Chuẩn hóa quy trình bán hàng và tối ưu tỷ lệ chốt đơn thông qua hệ thống — tạo khả năng mở rộng quy mô mà không tăng nhân sự tương ứng.',
+      color: 'violet',
+    },
+    {
+      id: 'ph5-growth-loop',
+      phaseId: 5,
+      icon: '♾️',
+      title: 'Loyalty & Growth Loop',
+      description:
+        'Biến khách hàng thành tài sản chiến lược dài hạn. Module Retention không chỉ giữ chân — nó tạo vòng lặp tăng trưởng tự nhiên: khách hàng hài lòng → tái mua → giới thiệu → khách hàng mới. Đây là cơ chế làm cho toàn bộ chu kỳ 5 module trở nên bền vững.',
+      tools: ['Broadcast Automation', 'Loyalty Tagging', 'Re-marketing'],
+      measurable:
+        'Tạo vòng lặp tăng trưởng bền vững — khách hàng cũ trở thành kênh acquisition mới, giảm chi phí và tăng giá trị vòng đời (LTV) toàn hệ thống.',
       color: 'rose',
-      linkedSections: ['Sản Xuất Content Trực Quan', 'Brandlabs & Marketing Workflows'],
     },
   ],
   implementationLogic:
-    '5 trụ cột vận hành song song nhưng có thứ tự ưu tiên rõ ràng: (1) Cộng đồng + Content đặt nền tảng → (2) Seeding khuếch đại reach tự nhiên → (3) Chatbot convert leads → (4) BrandLabs duy trì volume nội dung. Toàn bộ ngân sách hạ tầng, kế hoạch seeding và lịch content ở các phần tiếp theo được tính toán dựa trên quy mô của 5 trụ cột này.',
+    'Chu kỳ 5 module vận hành liên tục và khép kín: Module 1 tạo nguyên liệu → Module 2 khuếch đại phạm vi → Module 3 chuyển đổi thành data → Module 4 đưa data thành doanh thu → Module 5 giữ chân và tái khởi động chu kỳ. Concept này là nền tảng để từ đó phân bổ chi tiết hoạt động, chủ đề nội dung và kênh truyền thông.',
   keyAssumptions: [
-    'Thị trường Bình Dương có nhu cầu mua thực phẩm sạch online tăng ổn định sau 2022',
-    'PHF có khả năng duy trì chất lượng sản phẩm nhất quán để không thất hứa khi seeding tạo kỳ vọng cao',
-    'Team có khả năng produce 28+ bài content/tuần hoặc sẵn sàng dùng BrandLabs AI Factory',
-    'Budget triển khai tối thiểu 15–20 triệu VND/tháng trong 3 tháng đầu (infra + seeding + content)',
-    'Chatbot được tích hợp với Messenger + Zalo OA trước khi campaign bắt đầu',
+    'Zalo OA, Fanpage và các kênh đã được kết nối vào hệ thống BizTada',
+    'Kịch bản Seeding, Knowledge Base Chatbot và Brand Persona được khởi tạo trước khi vận hành',
+    'Mỗi module cần được cấu hình đồng bộ để data chạy xuyên suốt từ Marketing → Chatbot → CRM',
   ],
 };
 
