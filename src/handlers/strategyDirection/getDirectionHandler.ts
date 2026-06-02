@@ -41,7 +41,7 @@ const FALLBACK_DEMO_DATA = {
         'Xây dựng "nhà máy nội dung" thông minh vận hành bằng AI. BrandLabs không chỉ sản xuất nội dung — nó định hình ngôn ngữ thương hiệu, học từ insight thị trường và liên tục tối ưu theo phản hồi. Đây là nền tảng để toàn bộ hệ thống có "nguyên liệu" để vận hành.',
       tools: ['BrandLabs AI', 'Auto-Publishing', 'Brand Persona'],
       measurable:
-        'Định vị thương hiệu nhất quán và duy trì hiện diện số liên tục — tạo nền tảng content cho toàn bộ chu kỳ vận hành.',
+        'Tạo ra luồng nội dung liên tục để nuôi toàn bộ chu kỳ — không có content, các module tiếp theo không có gì để khuếch đại hay chuyển đổi.',
       color: 'emerald',
     },
     {
@@ -53,7 +53,7 @@ const FALLBACK_DEMO_DATA = {
         'Khuếch đại nội dung thông qua mạng lưới được điều phối chiến lược. Matrix Seeding mô phỏng hành vi xã hội tự nhiên, tạo social proof và kích hoạt thuật toán để nội dung tiếp cận đúng nhóm đối tượng mục tiêu — không đơn thuần là "seeding bài".',
       tools: ['Matrix Seeding', 'Porter Network', 'Demographic Targeting'],
       measurable:
-        'Xây dựng social proof có chiều sâu và mở rộng độ phủ organic — dẫn dắt đúng tệp khách hàng tiềm năng vào phễu.',
+        'Khuếch đại content từ Module 1 để tạo traffic và social proof — đưa đúng người vào đúng điểm tiếp xúc để Module 3 có thể chuyển đổi.',
       color: 'cyan',
     },
     {
@@ -65,7 +65,7 @@ const FALLBACK_DEMO_DATA = {
         'Biến điểm tiếp xúc thành cơ hội chuyển đổi. AI Chatbot không chỉ trả lời tin nhắn — nó phân tích ý định, dẫn dắt cuộc hội thoại theo kịch bản đã được thiết kế và chuyển đổi sự tò mò thành hành động. Đây là điểm giao thoa giữa "traffic" và "data khách hàng."',
       tools: ['AI Chatbot', 'Intent Recognition', 'Multi-channel Integration'],
       measurable:
-        'Chuyển đổi engagement và traffic thành data khách hàng có cấu trúc — cầu nối giữa độ tiếp cận và doanh thu.',
+        'Chuyển traffic từ Module 2 thành data khách hàng có cấu trúc — đầu ra của module này là leads sạch, sẵn sàng đưa vào pipeline bán hàng ở Module 4.',
       color: 'amber',
     },
     {
@@ -77,7 +77,7 @@ const FALLBACK_DEMO_DATA = {
         'Quản lý toàn bộ hành trình từ lead đến giao dịch bằng quy trình hệ thống. CRM phân loại, ưu tiên và kích hoạt kịch bản chăm sóc phù hợp với từng giai đoạn — không phụ thuộc vào phán đoán cá nhân hay kỹ năng sales thủ công.',
       tools: ['CRM Pipeline', 'ZNS Automation', 'Sales Workflow'],
       measurable:
-        'Chuẩn hóa quy trình bán hàng và tối ưu tỷ lệ chốt đơn thông qua hệ thống — tạo khả năng mở rộng quy mô mà không tăng nhân sự tương ứng.',
+        'Xử lý leads từ Module 3 theo quy trình chuẩn hóa — nuôi dưỡng, phân loại và chốt đơn; đầu ra là khách hàng đã giao dịch chuyển sang Module 5 để giữ chân.',
       color: 'violet',
     },
     {
@@ -89,7 +89,7 @@ const FALLBACK_DEMO_DATA = {
         'Biến khách hàng thành tài sản chiến lược dài hạn. Module Retention không chỉ giữ chân — nó tạo vòng lặp tăng trưởng tự nhiên: khách hàng hài lòng → tái mua → giới thiệu → khách hàng mới. Đây là cơ chế làm cho toàn bộ chu kỳ 5 module trở nên bền vững.',
       tools: ['Broadcast Automation', 'Loyalty Tagging', 'Re-marketing'],
       measurable:
-        'Tạo vòng lặp tăng trưởng bền vững — khách hàng cũ trở thành kênh acquisition mới, giảm chi phí và tăng giá trị vòng đời (LTV) toàn hệ thống.',
+        'Giữ chân và tái kích hoạt khách hàng từ Module 4 — tạo vòng lặp khép kín khi khách hàng cũ quay lại đầu phễu và trở thành nguồn acquisition tự nhiên cho chu kỳ mới.',
       color: 'rose',
     },
   ],
