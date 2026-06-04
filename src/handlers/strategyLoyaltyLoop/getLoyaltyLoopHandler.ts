@@ -1,5 +1,4 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import crypto from 'crypto';
 
 interface LoyaltyLoopQuery {
   guestId?: string;
@@ -22,33 +21,32 @@ interface LoyaltyLoopRow {
 // TODO: Replace with actual mock data from frontend
 const FALLBACK_DEMO_DATA = {
   features: [
-  {
-    id: 'tagging',
-    icon: '🏷️',
-    title: 'Phân Khúc & Tagging',
-    desc: 'Hệ thống hóa dữ liệu khách hàng cũ.',
-    color: 'emerald'
-  },
-  {
-    id: 'broadcast',
-    icon: '📢',
-    title: 'Re-marketing Tự Động',
-    desc: 'Gửi ZNS mùa vụ & chăm sóc định kỳ.',
-    color: 'amber'
-  },
-  {
-    id: 'viral_loop',
-    icon: '♾️',
-    title: 'Vòng Lặp Lan Truyền',
-    desc: 'Biến khách quen thành người giới thiệu.',
-    color: 'rose'
-  },
-],
+    {
+      id: 'tagging',
+      icon: '🏷️',
+      title: 'Phân Khúc & Tagging',
+      desc: 'Hệ thống hóa dữ liệu khách hàng cũ.',
+      color: 'emerald',
+    },
+    {
+      id: 'broadcast',
+      icon: '📢',
+      title: 'Re-marketing Tự Động',
+      desc: 'Gửi ZNS mùa vụ & chăm sóc định kỳ.',
+      color: 'amber',
+    },
+    {
+      id: 'viral_loop',
+      icon: '♾️',
+      title: 'Vòng Lặp Lan Truyền',
+      desc: 'Biến khách quen thành người giới thiệu.',
+      color: 'rose',
+    },
+  ],
   customerSegments: [],
   znsCampaignPreview: [],
   viralLoopSteps: [],
 };
-
 
 function sanitizeId(input?: string): string | null {
   const value = input?.trim();

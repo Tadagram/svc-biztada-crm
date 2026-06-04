@@ -1,5 +1,4 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import crypto from 'crypto';
 
 interface PipelineEngineQuery {
   guestId?: string;
@@ -22,26 +21,25 @@ interface PipelineEngineRow {
 // TODO: Replace with actual mock data from frontend
 const FALLBACK_DEMO_DATA = {
   features: [
-  {
-    id: 'kanban',
-    icon: '📊',
-    title: 'CRM Pipeline Board',
-    desc: 'Quản lý Lead theo luồng Kanban trực quan.',
-    color: 'violet'
-  },
-  {
-    id: 'automation',
-    icon: '⚡',
-    title: 'ZNS & Sales Automation',
-    desc: 'Tự động hóa chăm sóc và nhắc nhở chốt đơn.',
-    color: 'rose'
-  },
-],
+    {
+      id: 'kanban',
+      icon: '📊',
+      title: 'CRM Pipeline Board',
+      desc: 'Quản lý Lead theo luồng Kanban trực quan.',
+      color: 'violet',
+    },
+    {
+      id: 'automation',
+      icon: '⚡',
+      title: 'ZNS & Sales Automation',
+      desc: 'Tự động hóa chăm sóc và nhắc nhở chốt đơn.',
+      color: 'rose',
+    },
+  ],
   kanbanColumns: [],
   leadCards: [],
   znsWorkflowSteps: [],
 };
-
 
 function sanitizeId(input?: string): string | null {
   const value = input?.trim();

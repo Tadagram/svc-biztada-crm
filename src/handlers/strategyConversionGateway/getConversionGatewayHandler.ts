@@ -1,5 +1,4 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import crypto from 'crypto';
 
 interface ConversionGatewayQuery {
   guestId?: string;
@@ -22,33 +21,32 @@ interface ConversionGatewayRow {
 // TODO: Replace with actual mock data from frontend
 const FALLBACK_DEMO_DATA = {
   features: [
-  {
-    id: 'filter',
-    icon: '🔍',
-    title: 'Bộ Lọc & Định Nghĩa Phễu',
-    desc: 'Cấu hình để AI nhận diện và thu thập Leads.',
-    color: 'emerald'
-  },
-  {
-    id: 'scenario',
-    icon: '💬',
-    title: 'Kịch Bản Tư Vấn AI',
-    desc: 'Phân luồng tự động Inbound và Outbound.',
-    color: 'blue'
-  },
-  {
-    id: 'pipeline',
-    icon: '🗂️',
-    title: 'Quản Lý & Lọc Leads',
-    desc: 'Chuyển hóa dữ liệu vào Pipeline CRM.',
-    color: 'violet'
-  },
-],
+    {
+      id: 'filter',
+      icon: '🔍',
+      title: 'Bộ Lọc & Định Nghĩa Phễu',
+      desc: 'Cấu hình để AI nhận diện và thu thập Leads.',
+      color: 'emerald',
+    },
+    {
+      id: 'scenario',
+      icon: '💬',
+      title: 'Kịch Bản Tư Vấn AI',
+      desc: 'Phân luồng tự động Inbound và Outbound.',
+      color: 'blue',
+    },
+    {
+      id: 'pipeline',
+      icon: '🗂️',
+      title: 'Quản Lý & Lọc Leads',
+      desc: 'Chuyển hóa dữ liệu vào Pipeline CRM.',
+      color: 'violet',
+    },
+  ],
   pipelineData: [],
   aiScenarios: [],
   filterRules: [],
 };
-
 
 function sanitizeId(input?: string): string | null {
   const value = input?.trim();
