@@ -2,7 +2,7 @@ node_modules/
 dist/
 .env
 .env.*
-certs/
+# keep certs in test builds so JWT plugin can load keys
 *.log
 coverage/
 .git/

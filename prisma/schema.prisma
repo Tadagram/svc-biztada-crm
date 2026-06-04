@@ -57,6 +57,11 @@ enum CreditLedgerEntryType {
   USAGE
   ADJUSTMENT
   REFUND
+  MARKETPLACE_HOLD
+  MARKETPLACE_RELEASE
+  MARKETPLACE_FEE
+  MARKETPLACE_REFUND
+  MARKETPLACE_WITHDRAWAL
 }
 
 enum CreditLedgerDirection {
@@ -91,64 +96,98 @@ enum PromotionStatus {
   cancelled
 }
 
+enum MarketplaceListingType {
+  seeding
+  ai
+}
+
+enum MarketplaceListingStatus {
+  pending
+  active
+  rejected
+  suspended
+}
+
+enum MarketplaceTradeStatus {
+  escrow
+  completed
+  refunded
+  disputed
+}
+
+enum MarketplaceTradeSide {
+  buy
+  sell
+}
+
+enum MarketplaceWithdrawalStatus {
+  pending
+  approved
+  rejected
+}
+
 model Users {
-  user_id         String             @id @default(uuid()) @db.Char(36)
-  parent_user_id  String?            @db.Char(36)
-  agency_name     String?
-  phone_number    String             @unique
-  role            UserRole?
-  status          UserStatus         @default(active)
-  custom_fields   Json?
-  last_active_at  DateTime?          @db.DateTime(0)
-  created_at      DateTime           @default(now()) @db.DateTime(0)
-  updated_at      DateTime           @default(now()) @updatedAt @db.DateTime(0)
-  deleted_at      DateTime?          @db.DateTime(0)
+  user_id        String     @id @default(uuid()) @db.Char(36)
+  parent_user_id String?    @db.Char(36)
+  agency_name    String?
+  phone_number   String     @unique
+  role           UserRole?
+  status         UserStatus @default(active)
+  custom_fields  Json?
+  last_active_at DateTime?  @db.DateTime(0)
+  created_at     DateTime   @default(now()) @db.DateTime(0)
+  updated_at     DateTime   @default(now()) @updatedAt @db.DateTime(0)
+  deleted_at     DateTime?  @db.DateTime(0)
 
   // Relations
-  parent          Users?               @relation("UserToUser", fields: [parent_user_id], references: [user_id])
-  children        Users[]              @relation("UserToUser")
-  agency_workers  AgencyWorkers[]      @relation("AgencyUser")
-  worker_usages   AgencyWorkers[]      @relation("WorkerUsager")
-  usage_logs_agency WorkerUsageLogs[]  @relation("LogAgency")
-  usage_logs_user   WorkerUsageLogs[]  @relation("LogUser")
-  sessions         UserSessions[]
-  sent_notifications     Notifications[]  @relation("NotificationSender")
-  received_notifications Notifications[]  @relation("NotificationRecipient")
-  topup_requests         TopUpRequests[]  @relation("TopUpSubmitter")
-  topup_reviews          TopUpRequests[]  @relation("TopUpReviewer")
-  credit_balance         UserCreditBalances?
-  credit_ledger_entries  CreditLedgerEntries[]
+  parent                    Users?                    @relation("UserToUser", fields: [parent_user_id], references: [user_id])
+  children                  Users[]                   @relation("UserToUser")
+  agency_workers            AgencyWorkers[]           @relation("AgencyUser")
+  worker_usages             AgencyWorkers[]           @relation("WorkerUsager")
+  usage_logs_agency         WorkerUsageLogs[]         @relation("LogAgency")
+  usage_logs_user           WorkerUsageLogs[]         @relation("LogUser")
+  sessions                  UserSessions[]
+  sent_notifications        Notifications[]           @relation("NotificationSender")
+  received_notifications    Notifications[]           @relation("NotificationRecipient")
+  topup_requests            TopUpRequests[]           @relation("TopUpSubmitter")
+  topup_reviews             TopUpRequests[]           @relation("TopUpReviewer")
+  credit_balance            UserCreditBalances?
+  credit_ledger_entries     CreditLedgerEntries[]
   service_package_purchases ServicePackagePurchases[] @relation("ServicePackagePurchasesUser")
   promotions_created        Promotions[]              @relation("PromotionCreator")
   promotions_executed       Promotions[]              @relation("PromotionExecutor")
   promotion_targets         PromotionUserTargets[]
   promotion_exec_logs       PromotionExecutionLogs[]
+  marketplace_listings      MarketplaceListings[]
+  marketplace_trades_bought MarketplaceTrades[]       @relation("BuyerTrades")
+  marketplace_trades_sold   MarketplaceTrades[]       @relation("SellerTrades")
+  marketplace_withdrawals   MarketplaceWithdrawals[]
 
   @@map("users")
 }
 
 model UserSessions {
-  session_id     String    @id @default(uuid()) @db.Char(36)
-  user_id        String    @db.Char(36)
-  refresh_token  String    @unique
-  expires_at     DateTime  @db.DateTime(0)
-  ip_address     String?
-  user_agent     String?
-  created_at     DateTime  @default(now()) @db.DateTime(0)
+  session_id    String   @id @default(uuid()) @db.Char(36)
+  user_id       String   @db.Char(36)
+  refresh_token String   @unique
+  expires_at    DateTime @db.DateTime(0)
+  ip_address    String?
+  user_agent    String?
+  created_at    DateTime @default(now()) @db.DateTime(0)
 
   // Relations
-  user           Users     @relation(fields: [user_id], references: [user_id])
+  user Users @relation(fields: [user_id], references: [user_id])
 
   @@map("user_sessions")
 }
 
 model Permissions {
-  permission_id   String             @id @default(uuid()) @db.Char(36)
-  name            String
-  code            String             @unique
-  created_at      DateTime           @default(now()) @db.DateTime(0)
-  updated_at      DateTime           @default(now()) @updatedAt @db.DateTime(0)
-  deleted_at      DateTime?          @db.DateTime(0)
+  permission_id String    @id @default(uuid()) @db.Char(36)
+  name          String
+  code          String    @unique
+  created_at    DateTime  @default(now()) @db.DateTime(0)
+  updated_at    DateTime  @default(now()) @updatedAt @db.DateTime(0)
+  deleted_at    DateTime? @db.DateTime(0)
 
   // Relations
   role_permissions RolePermissions[]
@@ -157,88 +196,88 @@ model Permissions {
 }
 
 model RolePermissions {
-  role_permission_id String          @id @default(uuid()) @db.Char(36)
-  role              String
-  permission_id      String          @db.Char(36)
-  created_at         DateTime        @default(now()) @db.DateTime(0)
-  updated_at         DateTime        @default(now()) @updatedAt @db.DateTime(0)
-  deleted_at         DateTime?       @db.DateTime(0)
+  role_permission_id String    @id @default(uuid()) @db.Char(36)
+  role               String
+  permission_id      String    @db.Char(36)
+  created_at         DateTime  @default(now()) @db.DateTime(0)
+  updated_at         DateTime  @default(now()) @updatedAt @db.DateTime(0)
+  deleted_at         DateTime? @db.DateTime(0)
 
   // Relations
-  permission         Permissions     @relation(fields: [permission_id], references: [permission_id])
+  permission Permissions @relation(fields: [permission_id], references: [permission_id])
 
   @@map("role_permissions")
 }
 
 model Workers {
-  worker_id       String             @id @default(uuid()) @db.Char(36)
-  name            String
-  status          String             @default("ready") // ready, busy, offline
-  created_at      DateTime           @default(now()) @db.DateTime(0)
-  updated_at      DateTime           @default(now()) @updatedAt @db.DateTime(0)
-  deleted_at      DateTime?          @db.DateTime(0)
+  worker_id  String    @id @default(uuid()) @db.Char(36)
+  name       String
+  status     String    @default("ready") // ready, busy, offline
+  created_at DateTime  @default(now()) @db.DateTime(0)
+  updated_at DateTime  @default(now()) @updatedAt @db.DateTime(0)
+  deleted_at DateTime? @db.DateTime(0)
 
   // Relations
-  agency_workers  AgencyWorkers[]
-  usage_logs      WorkerUsageLogs[]
+  agency_workers AgencyWorkers[]
+  usage_logs     WorkerUsageLogs[]
 
   @@map("workers")
 }
 
 model AgencyWorkers {
-  agency_worker_id String            @id @default(uuid()) @db.Char(36)
-  agency_user_id   String            @db.Char(36)
-  worker_id        String            @db.Char(36)
-  using_by         String?           @db.Char(36)
-  status           AssignmentStatus  @default(active)
-  created_at       DateTime          @default(now()) @db.DateTime(0)
-  updated_at       DateTime          @default(now()) @updatedAt @db.DateTime(0)
-  deleted_at       DateTime?         @db.DateTime(0)
+  agency_worker_id String           @id @default(uuid()) @db.Char(36)
+  agency_user_id   String           @db.Char(36)
+  worker_id        String           @db.Char(36)
+  using_by         String?          @db.Char(36)
+  status           AssignmentStatus @default(active)
+  created_at       DateTime         @default(now()) @db.DateTime(0)
+  updated_at       DateTime         @default(now()) @updatedAt @db.DateTime(0)
+  deleted_at       DateTime?        @db.DateTime(0)
 
   // Relations
-  agency           Users             @relation("AgencyUser", fields: [agency_user_id], references: [user_id])
-  worker           Workers           @relation(fields: [worker_id], references: [worker_id])
-  user             Users?            @relation("WorkerUsager", fields: [using_by], references: [user_id])
+  agency Users   @relation("AgencyUser", fields: [agency_user_id], references: [user_id])
+  worker Workers @relation(fields: [worker_id], references: [worker_id])
+  user   Users?  @relation("WorkerUsager", fields: [using_by], references: [user_id])
 
   @@map("agency_workers")
 }
 
 model WorkerUsageLogs {
-  usage_log_id    String             @id @default(uuid()) @db.Char(36)
-  worker_id       String             @db.Char(36)
-  agency_user_id  String             @db.Char(36)
-  user_id         String             @db.Char(36)
-  start_at        DateTime           @default(now()) @db.DateTime(0)
-  end_at          DateTime?          @db.DateTime(0)
-  metadata        Json?
-  created_at      DateTime           @default(now()) @db.DateTime(0)
+  usage_log_id   String    @id @default(uuid()) @db.Char(36)
+  worker_id      String    @db.Char(36)
+  agency_user_id String    @db.Char(36)
+  user_id        String    @db.Char(36)
+  start_at       DateTime  @default(now()) @db.DateTime(0)
+  end_at         DateTime? @db.DateTime(0)
+  metadata       Json?
+  created_at     DateTime  @default(now()) @db.DateTime(0)
 
   // Relations
-  worker          Workers            @relation(fields: [worker_id], references: [worker_id])
-  agency          Users              @relation("LogAgency", fields: [agency_user_id], references: [user_id])
-  user            Users              @relation("LogUser", fields: [user_id], references: [user_id])
+  worker Workers @relation(fields: [worker_id], references: [worker_id])
+  agency Users   @relation("LogAgency", fields: [agency_user_id], references: [user_id])
+  user   Users   @relation("LogUser", fields: [user_id], references: [user_id])
 
   @@map("worker_usage_logs")
 }
 
 model Notifications {
-  notification_id String            @id @default(uuid()) @db.Char(36)
-  recipient_id    String            @db.Char(36)
-  sender_id       String?           @db.Char(36)
-  type            NotificationType  @default(custom)
+  notification_id String           @id @default(uuid()) @db.Char(36)
+  recipient_id    String           @db.Char(36)
+  sender_id       String?          @db.Char(36)
+  type            NotificationType @default(custom)
   title           String
   body            String
   image_url       String?
   action_url      String?
   custom_fields   Json?
-  is_read         Boolean           @default(false)
-  read_at         DateTime?         @db.DateTime(0)
-  expires_at      DateTime?         @db.DateTime(0)
-  created_at      DateTime          @default(now()) @db.DateTime(0)
+  is_read         Boolean          @default(false)
+  read_at         DateTime?        @db.DateTime(0)
+  expires_at      DateTime?        @db.DateTime(0)
+  created_at      DateTime         @default(now()) @db.DateTime(0)
 
   // Relations
-  recipient       Users             @relation("NotificationRecipient", fields: [recipient_id], references: [user_id])
-  sender          Users?            @relation("NotificationSender",    fields: [sender_id],    references: [user_id])
+  recipient Users  @relation("NotificationRecipient", fields: [recipient_id], references: [user_id])
+  sender    Users? @relation("NotificationSender", fields: [sender_id], references: [user_id])
 
   @@index([recipient_id, is_read])
   @@index([recipient_id, created_at(sort: Desc)])
@@ -459,61 +498,62 @@ model StrategyContentNetwork {
 }
 
 model TopUpRequests {
-  topup_id      String       @id @default(uuid()) @db.Char(36)
-  user_id       String       @db.Char(36)
-  amount        Decimal      @db.Decimal(15, 2)
-  currency      String       @default("USD") @db.VarChar(8)
-  credit_amount Decimal      @db.Decimal(15, 2)
-  source_channel TopUpSourceChannel @default(DIRECT)
-  sales_agency_uuid String?  @db.Char(36)
-  transfer_ref  String?      @db.VarChar(64)  // mã nội dung khách điền khi chuyển khoản
-  proof_note    String?      // nội dung CK, ngân hàng, thời gian khách khai
-  status        TopUpStatus  @default(PENDING)
-  submitted_at  DateTime     @default(now()) @db.DateTime(0)
-  reviewed_by   String?      @db.Char(36)  // trace: ai duyệt
-  reviewed_at   DateTime?    @db.DateTime(0)
-  review_note   String?      // ghi chú duyệt hoặc lý do reject
-  created_at    DateTime     @default(now()) @db.DateTime(0)
-  updated_at    DateTime     @default(now()) @updatedAt @db.DateTime(0)
+  topup_id          String             @id @default(uuid()) @db.Char(36)
+  user_id           String             @db.Char(36)
+  amount            Decimal            @db.Decimal(15, 2)
+  currency          String             @default("USD") @db.VarChar(8)
+  credit_amount     Decimal            @db.Decimal(15, 2)
+  source_channel    TopUpSourceChannel @default(DIRECT)
+  sales_agency_uuid String?            @db.Char(36)
+  transfer_ref      String?            @db.VarChar(64) // mã nội dung khách điền khi chuyển khoản
+  proof_note        String? // nội dung CK, ngân hàng, thời gian khách khai
+  status            TopUpStatus        @default(PENDING)
+  submitted_at      DateTime           @default(now()) @db.DateTime(0)
+  reviewed_by       String?            @db.Char(36) // trace: ai duyệt
+  reviewed_at       DateTime?          @db.DateTime(0)
+  review_note       String? // ghi chú duyệt hoặc lý do reject
+  created_at        DateTime           @default(now()) @db.DateTime(0)
+  updated_at        DateTime           @default(now()) @updatedAt @db.DateTime(0)
 
   // Relations
-  user          Users        @relation("TopUpSubmitter", fields: [user_id],     references: [user_id])
-  reviewer      Users?       @relation("TopUpReviewer",  fields: [reviewed_by], references: [user_id])
+  user                  Users                 @relation("TopUpSubmitter", fields: [user_id], references: [user_id])
+  reviewer              Users?                @relation("TopUpReviewer", fields: [reviewed_by], references: [user_id])
   credit_ledger_entries CreditLedgerEntries[]
 
-  @@index([status, submitted_at(sort: Desc)])   // reviewer xem PENDING
-  @@index([user_id, created_at(sort: Desc)])    // customer xem lịch sử mình
-  @@index([reviewed_by])                         // audit theo reviewer
+  @@index([status, submitted_at(sort: Desc)]) // reviewer xem PENDING
+  @@index([user_id, created_at(sort: Desc)]) // customer xem lịch sử mình
+  @@index([reviewed_by]) // audit theo reviewer
   @@map("topup_requests")
 }
 
 model UserCreditBalances {
   user_id           String   @id @db.Char(36)
   available_credits Decimal  @default(0) @db.Decimal(15, 2)
+  escrow_credits    Decimal  @default(0) @db.Decimal(15, 2)
   updated_at        DateTime @default(now()) @updatedAt @db.DateTime(0)
 
-  user              Users    @relation(fields: [user_id], references: [user_id])
+  user Users @relation(fields: [user_id], references: [user_id])
 
   @@map("user_credit_balances")
 }
 
 model CreditLedgerEntries {
-  credit_entry_id    String                @id @default(uuid()) @db.Char(36)
-  user_id            String                @db.Char(36)
-  topup_id           String?               @db.Char(36)
-  entry_type         CreditLedgerEntryType
-  direction          CreditLedgerDirection
-  amount             Decimal               @db.Decimal(15, 2)
-  balance_after      Decimal               @db.Decimal(15, 2)
-  purpose            String?
-  source_channel     TopUpSourceChannel    @default(DIRECT)
-  sales_agency_uuid  String?               @db.Char(36)
-  metadata           Json?
-  created_by         String?               @db.Char(36)
-  created_at         DateTime              @default(now()) @db.DateTime(0)
+  credit_entry_id   String                @id @default(uuid()) @db.Char(36)
+  user_id           String                @db.Char(36)
+  topup_id          String?               @db.Char(36)
+  entry_type        CreditLedgerEntryType
+  direction         CreditLedgerDirection
+  amount            Decimal               @db.Decimal(15, 2)
+  balance_after     Decimal               @db.Decimal(15, 2)
+  purpose           String?
+  source_channel    TopUpSourceChannel    @default(DIRECT)
+  sales_agency_uuid String?               @db.Char(36)
+  metadata          Json?
+  created_by        String?               @db.Char(36)
+  created_at        DateTime              @default(now()) @db.DateTime(0)
 
-  user               Users                 @relation(fields: [user_id], references: [user_id])
-  topup              TopUpRequests?        @relation(fields: [topup_id], references: [topup_id])
+  user  Users          @relation(fields: [user_id], references: [user_id])
+  topup TopUpRequests? @relation(fields: [topup_id], references: [topup_id])
 
   @@index([user_id, created_at(sort: Desc)])
   @@index([entry_type, created_at(sort: Desc)])
@@ -522,51 +562,51 @@ model CreditLedgerEntries {
 }
 
 model ServicePackages {
-  service_package_id       String             @id @default(uuid()) @db.Char(36)
-  product_code             String             @unique @db.VarChar(64)
-  price_per_month          Decimal            @db.Decimal(15, 2)
-  license_key_count        Int
-  facebook_personal_limit  Int
-  facebook_fanpage_limit   Int
-  zalo_limit               Int
-  tiktok_limit             Int
-  telegram_limit           Int
-  bonus                    String?            @db.VarChar(255)
-  agent_discount_percent   Int                @default(0)
-  community_support        Boolean            @default(true)
-  support_24_7             Boolean            @default(false)
-  type                     ServicePackageType
-  is_popular               Boolean            @default(false)
-  sort_order               Int                @default(0)
-  is_active                Boolean            @default(true)
-  created_at               DateTime           @default(now()) @db.DateTime(0)
-  updated_at               DateTime           @default(now()) @updatedAt @db.DateTime(0)
+  service_package_id      String             @id @default(uuid()) @db.Char(36)
+  product_code            String             @unique @db.VarChar(64)
+  price_per_month         Decimal            @db.Decimal(15, 2)
+  license_key_count       Int
+  facebook_personal_limit Int
+  facebook_fanpage_limit  Int
+  zalo_limit              Int
+  tiktok_limit            Int
+  telegram_limit          Int
+  bonus                   String?            @db.VarChar(255)
+  agent_discount_percent  Int                @default(0)
+  community_support       Boolean            @default(true)
+  support_24_7            Boolean            @default(false)
+  type                    ServicePackageType
+  is_popular              Boolean            @default(false)
+  sort_order              Int                @default(0)
+  is_active               Boolean            @default(true)
+  created_at              DateTime           @default(now()) @db.DateTime(0)
+  updated_at              DateTime           @default(now()) @updatedAt @db.DateTime(0)
 
-  purchases                ServicePackagePurchases[]
+  purchases ServicePackagePurchases[]
 
   @@index([type, is_active, sort_order])
   @@map("service_packages")
 }
 
 model ServicePackagePurchases {
-  service_package_purchase_id String                       @id @default(uuid()) @db.Char(36)
-  user_id                     String                       @db.Char(36)
-  service_package_id          String                       @db.Char(36)
-  status                      ServicePackagePurchaseStatus @default(processing)
+  service_package_purchase_id String                        @id @default(uuid()) @db.Char(36)
+  user_id                     String                        @db.Char(36)
+  service_package_id          String                        @db.Char(36)
+  status                      ServicePackagePurchaseStatus  @default(processing)
   channel                     ServicePackagePurchaseChannel @default(direct)
-  seller_user_id              String?                      @db.Char(36)
+  seller_user_id              String?                       @db.Char(36)
   license_key_count_snapshot  Int
-  unit_price_usd              Decimal                      @db.Decimal(15, 2)
-  total_price_usd             Decimal                      @db.Decimal(15, 2)
-  currency                    String                       @default("USD") @db.VarChar(8)
-  core_note_ref               String?                      @unique @db.VarChar(128)
-  failure_reason              String?                      @db.Text
-  purchased_at                DateTime                     @default(now()) @db.DateTime(0)
-  created_at                  DateTime                     @default(now()) @db.DateTime(0)
-  updated_at                  DateTime                     @default(now()) @updatedAt @db.DateTime(0)
+  unit_price_usd              Decimal                       @db.Decimal(15, 2)
+  total_price_usd             Decimal                       @db.Decimal(15, 2)
+  currency                    String                        @default("USD") @db.VarChar(8)
+  core_note_ref               String?                       @unique @db.VarChar(128)
+  failure_reason              String?                       @db.Text
+  purchased_at                DateTime                      @default(now()) @db.DateTime(0)
+  created_at                  DateTime                      @default(now()) @db.DateTime(0)
+  updated_at                  DateTime                      @default(now()) @updatedAt @db.DateTime(0)
 
-  user                        Users                        @relation("ServicePackagePurchasesUser", fields: [user_id], references: [user_id])
-  service_package             ServicePackages              @relation(fields: [service_package_id], references: [service_package_id])
+  user            Users           @relation("ServicePackagePurchasesUser", fields: [user_id], references: [user_id])
+  service_package ServicePackages @relation(fields: [service_package_id], references: [service_package_id])
 
   @@index([user_id, purchased_at(sort: Desc)])
   @@index([service_package_id, purchased_at(sort: Desc)])
@@ -575,20 +615,20 @@ model ServicePackagePurchases {
 }
 
 model Promotions {
-  promotion_id   String               @id @default(uuid()) @db.Char(36)
-  name           String               @db.VarChar(255)
-  message        String               @db.Text
-  credit_amount  Decimal              @db.Decimal(15, 2)
-  target_type    PromotionTargetType  @default(all)
-  status         PromotionStatus      @default(draft)
-  created_by     String               @db.Char(36)
-  executed_by    String?              @db.Char(36)
-  executed_at    DateTime?            @db.DateTime(0)
-  created_at     DateTime             @default(now()) @db.DateTime(0)
-  updated_at     DateTime             @default(now()) @updatedAt @db.DateTime(0)
+  promotion_id  String              @id @default(uuid()) @db.Char(36)
+  name          String              @db.VarChar(255)
+  message       String              @db.Text
+  credit_amount Decimal             @db.Decimal(15, 2)
+  target_type   PromotionTargetType @default(all)
+  status        PromotionStatus     @default(draft)
+  created_by    String              @db.Char(36)
+  executed_by   String?             @db.Char(36)
+  executed_at   DateTime?           @db.DateTime(0)
+  created_at    DateTime            @default(now()) @db.DateTime(0)
+  updated_at    DateTime            @default(now()) @updatedAt @db.DateTime(0)
 
-  creator        Users                @relation("PromotionCreator",  fields: [created_by],   references: [user_id])
-  executor       Users?               @relation("PromotionExecutor", fields: [executed_by],  references: [user_id])
+  creator        Users                    @relation("PromotionCreator", fields: [created_by], references: [user_id])
+  executor       Users?                   @relation("PromotionExecutor", fields: [executed_by], references: [user_id])
   user_targets   PromotionUserTargets[]
   execution_logs PromotionExecutionLogs[]
 
@@ -597,27 +637,27 @@ model Promotions {
 }
 
 model PromotionUserTargets {
-  id             String     @id @default(uuid()) @db.Char(36)
-  promotion_id   String     @db.Char(36)
-  user_id        String     @db.Char(36)
+  id           String @id @default(uuid()) @db.Char(36)
+  promotion_id String @db.Char(36)
+  user_id      String @db.Char(36)
 
-  promotion      Promotions @relation(fields: [promotion_id], references: [promotion_id])
-  user           Users      @relation(fields: [user_id],      references: [user_id])
+  promotion Promotions @relation(fields: [promotion_id], references: [promotion_id])
+  user      Users      @relation(fields: [user_id], references: [user_id])
 
   @@unique([promotion_id, user_id])
   @@map("promotion_user_targets")
 }
 
 model PromotionExecutionLogs {
-  log_id         String     @id @default(uuid()) @db.Char(36)
-  promotion_id   String     @db.Char(36)
-  user_id        String     @db.Char(36)
-  credit_amount  Decimal    @db.Decimal(15, 2)
-  notified       Boolean    @default(false)
-  created_at     DateTime   @default(now()) @db.DateTime(0)
+  log_id        String   @id @default(uuid()) @db.Char(36)
+  promotion_id  String   @db.Char(36)
+  user_id       String   @db.Char(36)
+  credit_amount Decimal  @db.Decimal(15, 2)
+  notified      Boolean  @default(false)
+  created_at    DateTime @default(now()) @db.DateTime(0)
 
-  promotion      Promotions @relation(fields: [promotion_id], references: [promotion_id])
-  user           Users      @relation(fields: [user_id],      references: [user_id])
+  promotion Promotions @relation(fields: [promotion_id], references: [promotion_id])
+  user      Users      @relation(fields: [user_id], references: [user_id])
 
   @@index([promotion_id])
   @@index([user_id])
@@ -630,23 +670,85 @@ model PromotionExecutionLogs {
 // When a guest claims their account (POST /strategy/claim-guest), both
 // strategy data tables and session logs are updated to set user_id.
 model StrategySessionLog {
-  session_id     String    @id @db.Char(36)
-  user_id        String?   @db.Char(36)    // nullable — set after guest→user migration
-  guest_id       String?   @db.Char(36)    // set when session belongs to a guest
-  question       String    @db.Text
-  industry       String?   @db.VarChar(50)
-  business_size  String?   @db.VarChar(20)
+  session_id     String   @id @db.Char(36)
+  user_id        String?  @db.Char(36) // nullable — set after guest→user migration
+  guest_id       String?  @db.Char(36) // set when session belongs to a guest
+  question       String   @db.Text
+  industry       String?  @db.VarChar(50)
+  business_size  String?  @db.VarChar(20)
   current_tools  Json?
-  goal           String?   @db.VarChar(50)
+  goal           String?  @db.VarChar(50)
   chunks_used    Json?
-  actions_count  Int       @default(0)
-  model          String?   @db.VarChar(50)
+  actions_count  Int      @default(0)
+  model          String?  @db.VarChar(50)
   feedback_score Int?
-  feedback_note  String?   @db.VarChar(500)
-  created_at     DateTime  @default(now()) @db.DateTime(0)
+  feedback_note  String?  @db.VarChar(500)
+  created_at     DateTime @default(now()) @db.DateTime(0)
 
   @@index([user_id, created_at(sort: Desc)])
   @@index([guest_id, created_at(sort: Desc)])
   @@index([industry, created_at(sort: Desc)])
   @@map("strategy_session_logs")
+}
+
+// ── Marketplace ────────────────────────────────────────────────────────────
+
+model MarketplaceListings {
+  listing_id  String                   @id @default(uuid()) @db.Char(36)
+  business_id String                   @db.VarChar(64)
+  seller_id   String                   @db.Char(36)
+  title       String                   @db.VarChar(120)
+  type        MarketplaceListingType
+  credits     Decimal                  @db.Decimal(15, 2)
+  banner      String                   @db.VarChar(120)
+  description String                   @db.Text
+  status      MarketplaceListingStatus @default(pending)
+  created_at  DateTime                 @default(now()) @db.DateTime(0)
+  updated_at  DateTime                 @default(now()) @updatedAt @db.DateTime(0)
+
+  seller Users               @relation(fields: [seller_id], references: [user_id])
+  trades MarketplaceTrades[]
+
+  @@index([business_id, status])
+  @@index([seller_id])
+  @@map("marketplace_listings")
+}
+
+model MarketplaceTrades {
+  trade_id    String                 @id @default(uuid()) @db.Char(36)
+  listing_id  String                 @db.Char(36)
+  buyer_id    String                 @db.Char(36)
+  seller_id   String                 @db.Char(36)
+  credits     Decimal                @db.Decimal(15, 2)
+  fee_credits Decimal                @default(0) @db.Decimal(15, 2)
+  status      MarketplaceTradeStatus @default(escrow)
+  order_ref   String                 @unique @db.VarChar(64)
+  created_at  DateTime               @default(now()) @db.DateTime(0)
+  updated_at  DateTime               @default(now()) @updatedAt @db.DateTime(0)
+
+  listing MarketplaceListings @relation(fields: [listing_id], references: [listing_id])
+  buyer   Users               @relation("BuyerTrades", fields: [buyer_id], references: [user_id])
+  seller  Users               @relation("SellerTrades", fields: [seller_id], references: [user_id])
+
+  @@index([buyer_id])
+  @@index([seller_id])
+  @@index([status])
+  @@map("marketplace_trades")
+}
+
+model MarketplaceWithdrawals {
+  withdrawal_id String                      @id @default(uuid()) @db.Char(36)
+  user_id       String                      @db.Char(36)
+  amount        Decimal                     @db.Decimal(15, 2)
+  status        MarketplaceWithdrawalStatus @default(pending)
+  destination   String                      @db.VarChar(255)
+  request_ref   String                      @unique @db.VarChar(64)
+  created_at    DateTime                    @default(now()) @db.DateTime(0)
+  updated_at    DateTime                    @default(now()) @updatedAt @db.DateTime(0)
+
+  user Users @relation(fields: [user_id], references: [user_id])
+
+  @@index([user_id])
+  @@index([status])
+  @@map("marketplace_withdrawals")
 }

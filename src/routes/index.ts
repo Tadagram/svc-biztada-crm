@@ -13,6 +13,8 @@ import servicePackageRoutes from './servicePackage.routes';
 import portalRoutes from './portal.routes';
 import promotionRoutes from './promotion.routes';
 import strategyRoutes from './strategy.routes';
+import marketplaceRoutes from './marketplace.routes';
+import marketplaceAdminRoutes from './marketplaceAdmin.routes';
 
 async function routes(fastify: FastifyInstance, _options: FastifyPluginOptions) {
   fastify.register(userRoutes, { prefix: '/users' });
@@ -29,6 +31,8 @@ async function routes(fastify: FastifyInstance, _options: FastifyPluginOptions) 
   fastify.register(portalRoutes, { prefix: '/portals' });
   fastify.register(promotionRoutes, { prefix: '/promotions' });
   fastify.register(strategyRoutes, { prefix: '/strategy' });
+  fastify.register(marketplaceRoutes, { prefix: '/marketplace' });
+  fastify.register(marketplaceAdminRoutes, { prefix: '/admin/marketplace' });
 
   fastify.get(
     '/health',

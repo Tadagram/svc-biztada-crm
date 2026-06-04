@@ -42,6 +42,7 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY prisma ./prisma
+COPY certs ./certs
 
 # TLS certs (mounted at runtime via volume or COPY at deploy time)
 # Mount certs directory: -v ./certs:/app/certs
@@ -49,8 +50,8 @@ RUN mkdir -p /app/certs
 
 EXPOSE 3000
 
-# Healthcheck using the /health endpoint
+# Healthcheck using the /health endpoint (respect PORT env when provided)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget -qO- http://localhost:3000/health || exit 1
+  CMD wget -qO- "http://localhost:${PORT:-3000}/health" || exit 1
 
 CMD ["node", "dist/index.js"]
