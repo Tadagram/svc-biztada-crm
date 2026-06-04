@@ -297,6 +297,7 @@ model StrategyMarketProfiles {
   strategy_market_profile_id String    @id @default(uuid()) @db.Char(36)
   business_id                String    @default("demo") @db.VarChar(64)
   user_id                    String?   @db.Char(36)
+  guest_id                   String?   @db.Char(36)
   payload                    Json
   is_demo                    Boolean   @default(false)
   created_at                 DateTime  @default(now()) @db.DateTime(0)
@@ -305,6 +306,7 @@ model StrategyMarketProfiles {
 
   @@index([business_id, updated_at(sort: Desc)])
   @@index([business_id, user_id, updated_at(sort: Desc)])
+  @@index([guest_id])
   @@map("strategy_market_profiles")
 }
 
@@ -312,6 +314,7 @@ model StrategyActionPlans {
   strategy_action_plan_id String    @id @default(uuid()) @db.Char(36)
   business_id             String    @default("demo") @db.VarChar(64)
   user_id                 String?   @db.Char(36)
+  guest_id                String?   @db.Char(36)
   payload                 Json
   is_demo                 Boolean   @default(false)
   created_at              DateTime  @default(now()) @db.DateTime(0)
@@ -320,6 +323,7 @@ model StrategyActionPlans {
 
   @@index([business_id, updated_at(sort: Desc)])
   @@index([business_id, user_id, updated_at(sort: Desc)])
+  @@index([guest_id])
   @@map("strategy_action_plans")
 }
 
@@ -327,6 +331,7 @@ model StrategyFeatures {
   strategy_features_id String    @id @default(uuid()) @db.Char(36)
   business_id          String    @default("demo") @db.VarChar(64)
   user_id              String?   @db.Char(36)
+  guest_id             String?   @db.Char(36)
   payload              Json
   is_demo              Boolean   @default(false)
   created_at           DateTime  @default(now()) @db.DateTime(0)
@@ -335,6 +340,7 @@ model StrategyFeatures {
 
   @@index([business_id, updated_at(sort: Desc)])
   @@index([business_id, user_id, updated_at(sort: Desc)])
+  @@index([guest_id])
   @@map("strategy_features")
 }
 
@@ -342,6 +348,7 @@ model StrategyMatrix {
   strategy_matrix_id String    @id @default(uuid()) @db.Char(36)
   business_id        String    @default("demo") @db.VarChar(64)
   user_id            String?   @db.Char(36)
+  guest_id           String?   @db.Char(36)
   payload            Json
   is_demo            Boolean   @default(false)
   created_at         DateTime  @default(now()) @db.DateTime(0)
@@ -350,6 +357,7 @@ model StrategyMatrix {
 
   @@index([business_id, updated_at(sort: Desc)])
   @@index([business_id, user_id, updated_at(sort: Desc)])
+  @@index([guest_id])
   @@map("strategy_matrix")
 }
 
@@ -357,6 +365,7 @@ model StrategyFactory {
   strategy_factory_id String    @id @default(uuid()) @db.Char(36)
   business_id         String    @default("demo") @db.VarChar(64)
   user_id             String?   @db.Char(36)
+  guest_id            String?   @db.Char(36)
   payload             Json
   is_demo             Boolean   @default(false)
   created_at          DateTime  @default(now()) @db.DateTime(0)
@@ -365,6 +374,7 @@ model StrategyFactory {
 
   @@index([business_id, updated_at(sort: Desc)])
   @@index([business_id, user_id, updated_at(sort: Desc)])
+  @@index([guest_id])
   @@map("strategy_factory")
 }
 
