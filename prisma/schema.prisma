@@ -344,10 +344,75 @@ model StrategySeeding {
   @@map("strategy_seeding")
 }
 
-model StrategyContentPlan {
-  strategy_content_plan_id String    @id @default(uuid()) @db.Char(36)
+model strategy_content_engine {
+  strategy_content_engine_id String    @id @db.Char(36)
+  business_id                String    @default("demo") @db.VarChar(64)
+  user_id                    String?   @db.Char(36)
+  guest_id                   String?   @db.Char(36)
+  payload                    Json
+  is_demo                    Boolean   @default(false)
+  created_at                 DateTime  @default(now()) @db.DateTime(0)
+  updated_at                 DateTime  @default(now()) @updatedAt @db.DateTime(0)
+  deleted_at                 DateTime? @db.DateTime(0)
+
+  @@index([business_id, updated_at(sort: Desc)])
+  @@index([business_id, user_id, updated_at(sort: Desc)])
+  @@index([guest_id])
+}
+
+model strategy_social_amplification {
+  strategy_social_amplification_id String    @id @db.Char(36)
+  business_id                      String    @default("demo") @db.VarChar(64)
+  user_id                          String?   @db.Char(36)
+  guest_id                         String?   @db.Char(36)
+  payload                          Json
+  is_demo                          Boolean   @default(false)
+  created_at                       DateTime  @default(now()) @db.DateTime(0)
+  updated_at                       DateTime  @default(now()) @updatedAt @db.DateTime(0)
+  deleted_at                       DateTime? @db.DateTime(0)
+
+  @@index([business_id, updated_at(sort: Desc)])
+  @@index([business_id, user_id, updated_at(sort: Desc)])
+  @@index([guest_id])
+}
+
+model strategy_conversion_gateway {
+  strategy_conversion_gateway_id String    @id @db.Char(36)
+  business_id                    String    @default("demo") @db.VarChar(64)
+  user_id                        String?   @db.Char(36)
+  guest_id                       String?   @db.Char(36)
+  payload                        Json
+  is_demo                        Boolean   @default(false)
+  created_at                     DateTime  @default(now()) @db.DateTime(0)
+  updated_at                     DateTime  @default(now()) @updatedAt @db.DateTime(0)
+  deleted_at                     DateTime? @db.DateTime(0)
+
+  @@index([business_id, updated_at(sort: Desc)])
+  @@index([business_id, user_id, updated_at(sort: Desc)])
+  @@index([guest_id])
+}
+
+model strategy_pipeline_engine {
+  strategy_pipeline_engine_id String    @id @db.Char(36)
+  business_id                 String    @default("demo") @db.VarChar(64)
+  user_id                     String?   @db.Char(36)
+  guest_id                    String?   @db.Char(36)
+  payload                     Json
+  is_demo                     Boolean   @default(false)
+  created_at                  DateTime  @default(now()) @db.DateTime(0)
+  updated_at                  DateTime  @default(now()) @updatedAt @db.DateTime(0)
+  deleted_at                  DateTime? @db.DateTime(0)
+
+  @@index([business_id, updated_at(sort: Desc)])
+  @@index([business_id, user_id, updated_at(sort: Desc)])
+  @@index([guest_id])
+}
+
+model strategy_loyalty_loop {
+  strategy_loyalty_loop_id String    @id @db.Char(36)
   business_id              String    @default("demo") @db.VarChar(64)
   user_id                  String?   @db.Char(36)
+  guest_id                 String?   @db.Char(36)
   payload                  Json
   is_demo                  Boolean   @default(false)
   created_at               DateTime  @default(now()) @db.DateTime(0)
@@ -356,22 +421,7 @@ model StrategyContentPlan {
 
   @@index([business_id, updated_at(sort: Desc)])
   @@index([business_id, user_id, updated_at(sort: Desc)])
-  @@map("strategy_content_plan")
-}
-
-model StrategyBrandlabs {
-  strategy_brandlabs_id String    @id @default(uuid()) @db.Char(36)
-  business_id           String    @default("demo") @db.VarChar(64)
-  user_id               String?   @db.Char(36)
-  payload               Json
-  is_demo               Boolean   @default(false)
-  created_at            DateTime  @default(now()) @db.DateTime(0)
-  updated_at            DateTime  @default(now()) @updatedAt @db.DateTime(0)
-  deleted_at            DateTime? @db.DateTime(0)
-
-  @@index([business_id, updated_at(sort: Desc)])
-  @@index([business_id, user_id, updated_at(sort: Desc)])
-  @@map("strategy_brandlabs")
+  @@index([guest_id])
 }
 
 model StrategyDirection {

@@ -14,10 +14,16 @@ import { getFactoryHandler, upsertFactoryHandler } from '@handlers/strategyFacto
 import { getFactorySchema, upsertFactorySchema } from '@schemas/strategyFactory.schema';
 import { getSeedingHandler, upsertSeedingHandler } from '@handlers/strategySeeding';
 import { getSeedingSchema, upsertSeedingSchema } from '@schemas/strategySeeding.schema';
-import { getContentPlanHandler, upsertContentPlanHandler } from '@handlers/strategyContentPlan';
-import { getContentPlanSchema, upsertContentPlanSchema } from '@schemas/strategyContentPlan.schema';
-import { getBrandlabsHandler, upsertBrandlabsHandler } from '@handlers/strategyBrandlabs';
-import { getBrandlabsSchema, upsertBrandlabsSchema } from '@schemas/strategyBrandlabs.schema';
+import { getContentEngineHandler, upsertContentEngineHandler } from '@handlers/strategyContentEngine';
+import { getContentEngineSchema, upsertContentEngineSchema } from '@schemas/strategyContentEngine.schema';
+import { getSocialAmplificationHandler, upsertSocialAmplificationHandler } from '@handlers/strategySocialAmplification';
+import { getSocialAmplificationSchema, upsertSocialAmplificationSchema } from '@schemas/strategySocialAmplification.schema';
+import { getConversionGatewayHandler, upsertConversionGatewayHandler } from '@handlers/strategyConversionGateway';
+import { getConversionGatewaySchema, upsertConversionGatewaySchema } from '@schemas/strategyConversionGateway.schema';
+import { getPipelineEngineHandler, upsertPipelineEngineHandler } from '@handlers/strategyPipelineEngine';
+import { getPipelineEngineSchema, upsertPipelineEngineSchema } from '@schemas/strategyPipelineEngine.schema';
+import { getLoyaltyLoopHandler, upsertLoyaltyLoopHandler } from '@handlers/strategyLoyaltyLoop';
+import { getLoyaltyLoopSchema, upsertLoyaltyLoopSchema } from '@schemas/strategyLoyaltyLoop.schema';
 import { getContentNetworkHandler, upsertContentNetworkHandler } from '@handlers/strategyContentNetwork';
 import { getContentNetworkSchema, upsertContentNetworkSchema } from '@schemas/strategyContentNetwork.schema';
 import { getDirectionHandler, upsertDirectionHandler } from '@handlers/strategyDirection';
@@ -136,27 +142,63 @@ async function strategyRoutes(fastify: FastifyInstance) {
   );
 
   fastify.get(
-    '/content-plan',
-    { schema: getContentPlanSchema },
-    getContentPlanHandler as RouteHandlerMethod,
+    '/content-engine',
+    { schema: getContentEngineSchema },
+    getContentEngineHandler as RouteHandlerMethod,
   );
 
   fastify.post(
-    '/content-plan',
-    { schema: upsertContentPlanSchema },
-    upsertContentPlanHandler as RouteHandlerMethod,
+    '/content-engine',
+    { schema: upsertContentEngineSchema },
+    upsertContentEngineHandler as RouteHandlerMethod,
   );
 
   fastify.get(
-    '/brandlabs-ops',
-    { schema: getBrandlabsSchema },
-    getBrandlabsHandler as RouteHandlerMethod,
+    '/social-amplification',
+    { schema: getSocialAmplificationSchema },
+    getSocialAmplificationHandler as RouteHandlerMethod,
   );
 
   fastify.post(
-    '/brandlabs-ops',
-    { schema: upsertBrandlabsSchema },
-    upsertBrandlabsHandler as RouteHandlerMethod,
+    '/social-amplification',
+    { schema: upsertSocialAmplificationSchema },
+    upsertSocialAmplificationHandler as RouteHandlerMethod,
+  );
+
+  fastify.get(
+    '/conversion-gateway',
+    { schema: getConversionGatewaySchema },
+    getConversionGatewayHandler as RouteHandlerMethod,
+  );
+
+  fastify.post(
+    '/conversion-gateway',
+    { schema: upsertConversionGatewaySchema },
+    upsertConversionGatewayHandler as RouteHandlerMethod,
+  );
+
+  fastify.get(
+    '/pipeline-engine',
+    { schema: getPipelineEngineSchema },
+    getPipelineEngineHandler as RouteHandlerMethod,
+  );
+
+  fastify.post(
+    '/pipeline-engine',
+    { schema: upsertPipelineEngineSchema },
+    upsertPipelineEngineHandler as RouteHandlerMethod,
+  );
+
+  fastify.get(
+    '/loyalty-loop',
+    { schema: getLoyaltyLoopSchema },
+    getLoyaltyLoopHandler as RouteHandlerMethod,
+  );
+
+  fastify.post(
+    '/loyalty-loop',
+    { schema: upsertLoyaltyLoopSchema },
+    upsertLoyaltyLoopHandler as RouteHandlerMethod,
   );
 
   fastify.get(

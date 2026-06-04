@@ -5,7 +5,7 @@ Danh sách các hạng mục cần hoàn thiện để đạt mục tiêu MVP.
 ## 🏗️ Cơ sở hạ tầng & Tooling (Sắp hoàn tất)
 
 - [x] Khởi tạo dự án Fastify + TypeScript.
-- [x] Thiết lập Database Schema (PostgreSQL).
+- [x] Thiết lập Database Schema (MySQL).
 - [x] Cấu hình Prisma ORM & Migrations.
 - [x] Cài đặt ESLint, Prettier, Husky.
 - [x] Thiết lập JWT với RS256 (Public/Private Key).

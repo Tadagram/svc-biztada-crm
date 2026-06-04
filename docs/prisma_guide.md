@@ -53,5 +53,5 @@ npx prisma studio
 ---
 
 ## ⚠️ Lưu ý quan trọng
-*   Đảm bảo Docker PostgreSQL đang chạy (`docker-compose up -d`) trước khi chạy bất kỳ lệnh Prisma nào.
+*   Đảm bảo Docker MySQL đang chạy (`docker-compose up -d`) trước khi chạy bất kỳ lệnh Prisma nào.
 *   Tránh sửa tay trực tiếp vào database qua các công cụ như TablePlus hay DBeaver mà không thông qua Prisma Migrate, vì nó sẽ gây lệch (drift) schema.
