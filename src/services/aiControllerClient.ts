@@ -177,3 +177,44 @@ export async function generateText(prompt: string): Promise<string> {
   const { task_id } = await createTextTask(prompt);
   return pollTextResult(task_id);
 }
+
+export async function createPrivateTextTask(prompt: string, userUuid: string): Promise<TaskAssignment> {
+  const token = signWorkerJwt();
+
+  const response = await fetch(`${AI_CONTROLLER_URL}/api/v1/tasks`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      // Route specifically to user-owned private local workers (mode=private)
+      'X-Tadagram-Portal-Scope': 'private',
+    },
+    body: JSON.stringify({
+      task_type: 'text.generate',
+      provider: 'gemini',
+      model: 'gemini-2.0-flash-exp',
+      prompt,
+      user_uuid: userUuid, // Pass user UUID to target their registered worker
+      parameters: {
+        input: { prompt, service: 'text2text' },
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(`ai-controller task creation failed: ${response.status} ${body}`);
+  }
+
+  const data = (await response.json()) as Partial<TaskAssignment>;
+  if (!data.task_id || !data.worker_url) {
+    throw new Error('ai-controller returned invalid task assignment (missing task_id or worker_url)');
+  }
+
+  return data as TaskAssignment;
+}
+
+export async function generatePrivateText(prompt: string, userUuid: string): Promise<string> {
+  const { task_id } = await createPrivateTextTask(prompt, userUuid);
+  return pollTextResult(task_id);
+}

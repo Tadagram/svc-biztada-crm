@@ -1,7 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-
-const AI_CONTROLLER_URL = process.env.AI_CONTROLLER_URL ?? 'http://svc-ai-controller.tadagram.svc.cluster.local:3100';
-const STRATEGY_INTERNAL_TOKEN = process.env.STRATEGY_INTERNAL_TOKEN ?? '';
+import { generatePrivateText } from '@services/aiControllerClient';
 
 export async function chatHandler(
   request: FastifyRequest,
@@ -9,39 +7,25 @@ export async function chatHandler(
 ): Promise<void> {
   const { message } = request.body as { message: string };
   const businessId = request.headers['x-business-id'] as string;
+  const userId = (request as any).user?.user_id;
 
   if (!message || typeof message !== 'string' || !message.trim()) {
     reply.status(400).send({ error: 'Message is required' });
     return;
   }
 
+  if (!userId) {
+    reply.status(401).send({ error: 'Unauthorized: User ID is required' });
+    return;
+  }
+
   try {
-    const resp = await fetch(`${AI_CONTROLLER_URL}/internal/strategy/consult`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Internal-Strategy-Token': STRATEGY_INTERNAL_TOKEN,
-      },
-      body: JSON.stringify({ 
-        question: message, 
-        context: {
-          description: `Managing business ID ${businessId}`
-        } 
-      }),
-    });
-
-    if (!resp.ok) {
-      throw new Error(`AI controller returned ${resp.status}`);
-    }
-
-    const aiResult = await resp.json() as any;
-    
-    // Parse actions out for the frontend
-    const toolActions = (aiResult.recommended_actions || []).map((action: any) => action.title);
+    const prompt = `[SYSTEM]: Bạn là Trợ lý ảo Biztada, chạy cục bộ trên thiết bị của người dùng (business: ${businessId}). Hãy trả lời câu hỏi của người dùng một cách chuyên nghiệp, ngắn gọn và hữu ích. Có thể sử dụng bảng biểu, danh sách nếu thích hợp.\n\n[USER]: ${message}`;
+    const replyText = await generatePrivateText(prompt, userId);
 
     reply.status(200).send({ 
-      reply: aiResult.advice || 'Xin lỗi, tôi không thể xử lý lúc này.',
-      toolActions: toolActions
+      reply: replyText,
+      toolActions: []
     });
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : 'Chat failed';
