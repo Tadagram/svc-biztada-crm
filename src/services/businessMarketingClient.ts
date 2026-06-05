@@ -52,3 +52,40 @@ export async function getActiveWorkflows(authHeader: string): Promise<any> {
 export async function getDashboardActivity(authHeader: string): Promise<any> {
   return fetchMarketingData('/api/v1/dashboard/activity', authHeader);
 }
+
+export async function executeDynamicAPI(
+  authHeader: string,
+  method: string,
+  endpoint: string,
+  payload?: any,
+): Promise<any> {
+  if (!authHeader) {
+    throw new Error('Missing Authorization header for marketing API call');
+  }
+
+  const url = `${MARKETING_API_URL}${endpoint}`;
+
+  const options: RequestInit = {
+    method: method.toUpperCase(),
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: authHeader,
+    },
+    signal: AbortSignal.timeout(20_000),
+  };
+
+  if (payload && ['POST', 'PUT', 'PATCH'].includes(options.method as string)) {
+    options.body = JSON.stringify(payload);
+  }
+
+  const response = await fetch(url, options);
+  const body = await parseJsonSafely<any>(response as any);
+
+  if (!response.ok) {
+    throw new Error(
+      `API ${method} ${endpoint} failed (${response.status}): ${JSON.stringify(body || response.statusText)}`,
+    );
+  }
+
+  return body;
+}
