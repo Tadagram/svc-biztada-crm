@@ -51,7 +51,7 @@ export async function chatHandler(
 }
 
 export async function historyHandler(
-  request: FastifyRequest,
+  _request: FastifyRequest,
   reply: FastifyReply,
 ): Promise<void> {
   try {
