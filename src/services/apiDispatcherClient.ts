@@ -1,5 +1,11 @@
 const MARKETING_API_URL =
   process.env.SVC_BUSINESS_MARKETING_URL ?? 'http://svc-business-marketing:8080';
+const CHATBOT_API_URL = process.env.SVC_BUSINESS_CHATBOT_URL ?? 'http://svc-business-chatbot:8080';
+
+function getServiceUrl(service: string): string {
+  if (service === 'chatbot') return CHATBOT_API_URL;
+  return MARKETING_API_URL; // default to marketing
+}
 
 async function parseJsonSafely<T>(response: Response): Promise<T | null> {
   try {
@@ -55,15 +61,17 @@ export async function getDashboardActivity(authHeader: string): Promise<any> {
 
 export async function executeDynamicAPI(
   authHeader: string,
+  service: string,
   method: string,
   endpoint: string,
   payload?: any,
 ): Promise<any> {
   if (!authHeader) {
-    throw new Error('Missing Authorization header for marketing API call');
+    throw new Error('Missing Authorization header for API call');
   }
 
-  const url = `${MARKETING_API_URL}${endpoint}`;
+  const baseUrl = getServiceUrl(service);
+  const url = `${baseUrl}${endpoint}`;
 
   const options: RequestInit = {
     method: method.toUpperCase(),
@@ -83,7 +91,7 @@ export async function executeDynamicAPI(
 
   if (!response.ok) {
     throw new Error(
-      `API ${method} ${endpoint} failed (${response.status}): ${JSON.stringify(body || response.statusText)}`,
+      `API [${service}] ${method} ${endpoint} failed (${response.status}): ${JSON.stringify(body || response.statusText)}`,
     );
   }
 

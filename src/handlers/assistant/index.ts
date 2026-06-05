@@ -6,8 +6,8 @@ import {
   getActiveWorkflows,
   getDashboardActivity,
   executeDynamicAPI,
-} from '@services/businessMarketingClient';
-import { MARKETING_API_GUIDE } from '../../config/marketingApiDictionary';
+} from '@services/apiDispatcherClient';
+import { MASTER_API_GUIDE } from '../../config/masterApiDictionary';
 
 export async function chatHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const { message } = request.body as { message: string };
@@ -59,16 +59,16 @@ Danh sách các Tools bạn có thể gọi:
 3. "get_active_workflows": Lấy danh sách workflow
 4. "get_dashboard_activity": Lấy báo cáo hoạt động chạy seeding
 5. "update_user_memory": Gọi tool này với tham số để CẬP NHẬT GHI NHỚ nếu người dùng yêu cầu bạn thay đổi cách trả lời.
-6. "execute_marketing_api": THỰC THI MỌI API KHÁC trong hệ thống của người dùng.
+6. "execute_biztada_api": THỰC THI MỌI API KHÁC trong hệ thống của người dùng (bao gồm Marketing, BrandLabs, Chatbot).
 
-${MARKETING_API_GUIDE}
+${MASTER_API_GUIDE}
 
 CÁCH GỌI TOOL:
 Trả về DUY NHẤT một khối JSON.
 \`\`\`json
 {
-  "TOOL_CALL": "tên_tool_ở_trên",
-  "TOOL_ARGS": { "key": "value" } // Dành cho update_user_memory
+  "TOOL_CALL": "execute_biztada_api",
+  "TOOL_ARGS": { "service": "marketing", "method": "POST", "endpoint": "/api/v1/accounts", "body": {} }
 }
 \`\`\`
 Nếu không cần dùng tool, trả lời trực tiếp cho người dùng.
@@ -122,14 +122,21 @@ ${historyText}`;
               toolResult = await getActiveWorkflows(authHeader);
             else if (toolName === 'get_dashboard_activity')
               toolResult = await getDashboardActivity(authHeader);
-            else if (toolName === 'execute_marketing_api') {
+            else if (toolName === 'execute_biztada_api') {
+              const service = toolData.TOOL_ARGS?.service || 'marketing';
               const method = toolData.TOOL_ARGS?.method;
               const endpoint = toolData.TOOL_ARGS?.endpoint;
               const payload = toolData.TOOL_ARGS?.body;
               if (!method || !endpoint) {
-                toolResult = { error: 'Missing method or endpoint for execute_marketing_api' };
+                toolResult = { error: 'Missing method or endpoint for execute_biztada_api' };
               } else {
-                toolResult = await executeDynamicAPI(authHeader, method, endpoint, payload);
+                toolResult = await executeDynamicAPI(
+                  authHeader,
+                  service,
+                  method,
+                  endpoint,
+                  payload,
+                );
               }
             } else toolResult = { error: 'Tool not found' };
           }
