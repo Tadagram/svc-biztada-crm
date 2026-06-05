@@ -1,10 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { generatePrivateText } from '@services/aiControllerClient';
+import { generateAssistantText } from '@services/aiControllerClient';
 
-export async function chatHandler(
-  request: FastifyRequest,
-  reply: FastifyReply,
-): Promise<void> {
+export async function chatHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const { message } = request.body as { message: string };
   const businessId = request.headers['x-business-id'] as string;
   const userId = (request as any).user?.user_id;
@@ -20,12 +17,13 @@ export async function chatHandler(
   }
 
   try {
-    const prompt = `[SYSTEM]: Bạn là Trợ lý ảo Biztada, chạy cục bộ trên thiết bị của người dùng (business: ${businessId}). Hãy trả lời câu hỏi của người dùng một cách chuyên nghiệp, ngắn gọn và hữu ích. Có thể sử dụng bảng biểu, danh sách nếu thích hợp.\n\n[USER]: ${message}`;
-    const replyText = await generatePrivateText(prompt, userId);
+    // Pass businessId in context so the AI knows the scope
+    const prompt = `[SYSTEM]: Bạn là Trợ lý ảo Biztada phục vụ cho doanh nghiệp (business ID: ${businessId || 'N/A'}). Hãy trả lời câu hỏi của người dùng một cách chuyên nghiệp, ngắn gọn và hữu ích. Có thể sử dụng bảng biểu, danh sách nếu thích hợp.\n\n[USER]: ${message}`;
+    const replyText = await generateAssistantText(prompt, userId);
 
-    reply.status(200).send({ 
+    reply.status(200).send({
       reply: replyText,
-      toolActions: []
+      toolActions: [],
     });
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : 'Chat failed';
@@ -34,10 +32,7 @@ export async function chatHandler(
   }
 }
 
-export async function historyHandler(
-  _request: FastifyRequest,
-  reply: FastifyReply,
-): Promise<void> {
+export async function historyHandler(_request: FastifyRequest, reply: FastifyReply): Promise<void> {
   try {
     reply.status(200).send({ messages: [] });
   } catch (err) {

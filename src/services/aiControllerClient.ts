@@ -15,8 +15,7 @@ import * as crypto from 'crypto';
 // ── Environment config ───────────────────────────────────────────────────────
 
 const AI_CONTROLLER_URL =
-  process.env.AI_CONTROLLER_URL ??
-  'http://svc-ai-controller.tadagram.svc.cluster.local:3100';
+  process.env.AI_CONTROLLER_URL ?? 'http://svc-ai-controller.tadagram.svc.cluster.local:3100';
 
 const AI_CONTROLLER_JWT_SECRET = process.env.AI_CONTROLLER_JWT_SECRET ?? '';
 
@@ -91,7 +90,9 @@ export async function createTextTask(prompt: string): Promise<TaskAssignment> {
 
   const data = (await response.json()) as Partial<TaskAssignment>;
   if (!data.task_id || !data.worker_url) {
-    throw new Error('ai-controller returned invalid task assignment (missing task_id or worker_url)');
+    throw new Error(
+      'ai-controller returned invalid task assignment (missing task_id or worker_url)',
+    );
   }
 
   return data as TaskAssignment;
@@ -132,10 +133,7 @@ function extractText(payload: WorkerResultPayload): string {
   return '';
 }
 
-export async function pollTextResult(
-  taskId: string,
-  timeoutMs = 80_000,
-): Promise<string> {
+export async function pollTextResult(taskId: string, timeoutMs = 80_000): Promise<string> {
   const deadline = Date.now() + timeoutMs;
 
   while (Date.now() < deadline) {
@@ -150,7 +148,7 @@ export async function pollTextResult(
 
       if (res.status === 202) continue; // still processing
       if (res.status === 422) {
-        const body = await res.json().catch(() => ({})) as { error?: string };
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(`AI task failed: ${body.error ?? 'unknown error'}`);
       }
       if (!res.ok) continue; // transient error — keep polling
@@ -178,7 +176,10 @@ export async function generateText(prompt: string): Promise<string> {
   return pollTextResult(task_id);
 }
 
-export async function createPrivateTextTask(prompt: string, userUuid: string): Promise<TaskAssignment> {
+export async function createAssistantTextTask(
+  prompt: string,
+  userUuid: string,
+): Promise<TaskAssignment> {
   const token = signWorkerJwt();
 
   const response = await fetch(`${AI_CONTROLLER_URL}/api/v1/tasks`, {
@@ -186,8 +187,8 @@ export async function createPrivateTextTask(prompt: string, userUuid: string): P
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
-      // Route specifically to user-owned private local workers (mode=private)
-      'X-Tadagram-Portal-Scope': 'private',
+      // Route to hosted workers, but explicitly target the user via user_uuid
+      'X-Tadagram-Portal-Scope': 'hosted',
     },
     body: JSON.stringify({
       task_type: 'text.generate',
@@ -208,13 +209,15 @@ export async function createPrivateTextTask(prompt: string, userUuid: string): P
 
   const data = (await response.json()) as Partial<TaskAssignment>;
   if (!data.task_id || !data.worker_url) {
-    throw new Error('ai-controller returned invalid task assignment (missing task_id or worker_url)');
+    throw new Error(
+      'ai-controller returned invalid task assignment (missing task_id or worker_url)',
+    );
   }
 
   return data as TaskAssignment;
 }
 
-export async function generatePrivateText(prompt: string, userUuid: string): Promise<string> {
-  const { task_id } = await createPrivateTextTask(prompt, userUuid);
+export async function generateAssistantText(prompt: string, userUuid: string): Promise<string> {
+  const { task_id } = await createAssistantTextTask(prompt, userUuid);
   return pollTextResult(task_id);
 }
