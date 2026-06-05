@@ -187,8 +187,8 @@ export async function createAssistantTextTask(
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
-      // Route to hosted workers, but explicitly target the user via user_uuid
-      'X-Tadagram-Portal-Scope': 'hosted',
+      // Route to user's portals (any type: private or hosted) by explicitly targeting the user via user_uuid
+      'X-Tadagram-Portal-Scope': 'user',
     },
     body: JSON.stringify({
       task_type: 'text.generate',
