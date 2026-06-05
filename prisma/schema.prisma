@@ -163,6 +163,8 @@ model Users {
   marketplace_trades_sold   MarketplaceTrades[]       @relation("SellerTrades")
   marketplace_withdrawals   MarketplaceWithdrawals[]
   ai_assistant_sessions     AiAssistantSessions[]
+  assistant_messages        AssistantMessage[]        @relation("UserAssistantMessages")
+  assistant_memory          UserAssistantMemory?      @relation("UserAssistantMemory")
 
   @@map("users")
 }
@@ -676,34 +678,33 @@ model PromotionExecutionLogs {
 }
 
 model AiAssistantSessions {
-  session_id      String    @id @default(uuid()) @db.Char(36)
-  user_id         String    @db.Char(36)
-  business_id     String?   @db.Char(36)
-  status          String    @default("active")
-  created_at      DateTime  @default(now()) @db.DateTime(0)
-  updated_at      DateTime  @default(now()) @updatedAt @db.DateTime(0)
+  session_id  String   @id @default(uuid()) @db.Char(36)
+  user_id     String   @db.Char(36)
+  business_id String?  @db.Char(36)
+  status      String   @default("active")
+  created_at  DateTime @default(now()) @db.DateTime(0)
+  updated_at  DateTime @default(now()) @updatedAt @db.DateTime(0)
 
   // Relations
-  user            Users     @relation(fields: [user_id], references: [user_id])
-  messages        AiAssistantMessages[]
+  user     Users                 @relation(fields: [user_id], references: [user_id])
+  messages AiAssistantMessages[]
 
   @@map("ai_assistant_sessions")
 }
 
 model AiAssistantMessages {
-  message_id      String    @id @default(uuid()) @db.Char(36)
-  session_id      String    @db.Char(36)
-  role            String
-  content         String    @db.Text
-  tool_actions    Json?
-  created_at      DateTime  @default(now()) @db.DateTime(0)
+  message_id   String   @id @default(uuid()) @db.Char(36)
+  session_id   String   @db.Char(36)
+  role         String
+  content      String   @db.Text
+  tool_actions Json?
+  created_at   DateTime @default(now()) @db.DateTime(0)
 
   // Relations
-  session         AiAssistantSessions @relation(fields: [session_id], references: [session_id])
+  session AiAssistantSessions @relation(fields: [session_id], references: [session_id])
 
   @@map("ai_assistant_messages")
 }
-
 
 // ── Strategy AI Session Logs ──────────────────────────────────────────────
 // Logs each consult call from svc-biztada-crm → svc-ai-controller RAG pipeline.
@@ -792,4 +793,34 @@ model MarketplaceWithdrawals {
   @@index([user_id])
   @@index([status])
   @@map("marketplace_withdrawals")
+}
+
+// ─── Assistant Chat History & Memory ──────────────────────────────────────────
+
+model AssistantMessage {
+  id           String   @id @default(uuid()) @db.Char(36)
+  user_id      String   @db.Char(36)
+  business_id  String?  @db.VarChar(255)
+  role         String   @db.VarChar(20) // 'user' | 'assistant' | 'system'
+  content      String   @db.Text
+  tool_actions Json? // List of tools called in this message
+  created_at   DateTime @default(now()) @db.DateTime(0)
+
+  user Users @relation("UserAssistantMessages", fields: [user_id], references: [user_id])
+
+  @@index([user_id])
+  @@index([business_id])
+  @@map("assistant_messages")
+}
+
+model UserAssistantMemory {
+  id          String   @id @default(uuid()) @db.Char(36)
+  user_id     String   @unique @db.Char(36)
+  preferences Json? // Lưu các thói quen: { "prefer_short_answers": true, "favorite_workflow": "..." }
+  created_at  DateTime @default(now()) @db.DateTime(0)
+  updated_at  DateTime @default(now()) @updatedAt @db.DateTime(0)
+
+  user Users @relation("UserAssistantMemory", fields: [user_id], references: [user_id])
+
+  @@map("user_assistant_memories")
 }
