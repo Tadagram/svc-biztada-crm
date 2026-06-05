@@ -1,9 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { generateText } from '@services/aiControllerClient';
 
-// Normally we would use Prisma here:
-// import { PrismaClient } from '@prisma/client';
-// const prisma = new PrismaClient();
+const AI_CONTROLLER_URL = process.env.AI_CONTROLLER_URL ?? 'http://svc-ai-controller.tadagram.svc.cluster.local:3100';
+const STRATEGY_INTERNAL_TOKEN = process.env.STRATEGY_INTERNAL_TOKEN ?? '';
 
 export async function chatHandler(
   request: FastifyRequest,
@@ -11,7 +9,6 @@ export async function chatHandler(
 ): Promise<void> {
   const { message } = request.body as { message: string };
   const businessId = request.headers['x-business-id'] as string;
-  const user = (request as any).user; // from Auth middleware
 
   if (!message || typeof message !== 'string' || !message.trim()) {
     reply.status(400).send({ error: 'Message is required' });
@@ -19,21 +16,32 @@ export async function chatHandler(
   }
 
   try {
-    // 1. Get or create active AiAssistantSession for this user + business
-    // 2. Save user message to AiAssistantMessages
-    // For now, we simulate this as Prisma client is not fully generated
-    
-    // 3. Build prompt with context
-    const prompt = `[SYSTEM]: You are Biztada Virtual Assistant. User wants to manage their business ID ${businessId}.\n\n[USER]: ${message}`;
+    const resp = await fetch(`${AI_CONTROLLER_URL}/internal/strategy/consult`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Strategy-Token': STRATEGY_INTERNAL_TOKEN,
+      },
+      body: JSON.stringify({ 
+        question: message, 
+        context: {
+          description: `Managing business ID ${businessId}`
+        } 
+      }),
+    });
 
-    // 4. Send task to svc-ai-controller
-    const result = await generateText(prompt);
+    if (!resp.ok) {
+      throw new Error(`AI controller returned ${resp.status}`);
+    }
 
-    // 5. Save assistant reply to AiAssistantMessages
+    const aiResult = await resp.json() as any;
     
+    // Parse actions out for the frontend
+    const toolActions = (aiResult.recommended_actions || []).map((action: any) => action.title);
+
     reply.status(200).send({ 
-      reply: result,
-      toolActions: [] // Extract tool actions if any from result
+      reply: aiResult.advice || 'Xin lỗi, tôi không thể xử lý lúc này.',
+      toolActions: toolActions
     });
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : 'Chat failed';
@@ -46,15 +54,9 @@ export async function historyHandler(
   request: FastifyRequest,
   reply: FastifyReply,
 ): Promise<void> {
-  const businessId = request.headers['x-business-id'] as string;
-  const user = (request as any).user;
-
   try {
-    // 1. Query AiAssistantMessages for active session
-    // Returning empty array for now since Prisma is not fully updated
     reply.status(200).send({ messages: [] });
   } catch (err) {
-    request.log.error({ err }, '[assistant] historyHandler failed');
     reply.status(500).send({ error: 'Failed to fetch history' });
   }
 }
