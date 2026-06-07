@@ -47,28 +47,6 @@ export class McpServer {
             `/api/v1/workflows/${args.workflow_id}/run-now`,
           );
           break;
-        case 'marketing_get_nodes_schema':
-          result = {
-            nodes: {
-              tiktok_scraper_node: {
-                description: 'Cào video từ một kênh TikTok.',
-                required_config: ['url_target', 'max_videos', 'extract_audio'],
-              },
-              ai_video_remaker_node: {
-                description: 'Dùng AI để xào lại (remake) video nhằm chống bản quyền.',
-                required_config: ['style', 'prompt_instructions', 'voice_dubbing'],
-              },
-              social_publisher_node: {
-                description: 'Tự động đăng bài lên mạng xã hội (Facebook, TikTok).',
-                required_config: ['platform', 'account_id', 'schedule_time'],
-              },
-              brandlabs_character_node: {
-                description: 'Gắn tính cách KOL vào quy trình sinh nội dung.',
-                required_config: ['character_id', 'tone_of_voice'],
-              },
-            },
-          };
-          break;
 
         // -- BrandLabs --
         case 'brandlabs_get_media_assets':

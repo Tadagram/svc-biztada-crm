@@ -49,25 +49,63 @@ export const MCP_TOOLS_REGISTRY: McpToolSchema[] = [
   {
     name: 'marketing_create_workflow',
     description:
-      'Tạo mới Workflow marketing. CẢNH BÁO: Bạn KHÔNG ĐƯỢC TỰ ĐOÁN Schema của các Node. Bắt buộc phải gọi tool "marketing_get_nodes_schema" trước để lấy JSON Schema chuẩn, sau đó mới dùng tool này để tạo.',
+      'Tạo mới Workflow marketing. Định nghĩa các node chính xác theo chuẩn kỹ thuật (không được tự bịa node).',
     inputSchema: {
       type: 'object',
       properties: {
         name: { type: 'string' },
         description: { type: 'string' },
-        nodes: { type: 'array' },
-        edges: { type: 'array' },
+        nodes: {
+          type: 'array',
+          items: {
+            oneOf: [
+              {
+                properties: {
+                  type: { const: 'tiktok_scraper' },
+                  url_target: { type: 'string' },
+                  max_videos: { type: 'number' },
+                  extract_audio: { type: 'boolean' },
+                },
+                required: ['type', 'url_target', 'max_videos'],
+              },
+              {
+                properties: {
+                  type: { const: 'ai_video_remaker' },
+                  style: { type: 'string' },
+                  prompt_instructions: { type: 'string' },
+                  voice_dubbing: { type: 'boolean' },
+                },
+                required: ['type', 'style', 'prompt_instructions'],
+              },
+              {
+                properties: {
+                  type: { const: 'social_publisher' },
+                  platform: { type: 'string', enum: ['facebook', 'tiktok'] },
+                  account_id: { type: 'string' },
+                  schedule_time: { type: 'string' },
+                },
+                required: ['type', 'platform', 'account_id'],
+              },
+              {
+                properties: {
+                  type: { const: 'brandlabs_character' },
+                  character_id: { type: 'string' },
+                  tone_of_voice: { type: 'string' },
+                },
+                required: ['type', 'character_id'],
+              },
+            ],
+          },
+        },
+        edges: {
+          type: 'array',
+          items: {
+            properties: { source_node_id: { type: 'string' }, target_node_id: { type: 'string' } },
+            required: ['source_node_id', 'target_node_id'],
+          },
+        },
       },
-      required: ['name'],
-    },
-  },
-  {
-    name: 'marketing_get_nodes_schema',
-    description:
-      'Lấy cấu hình JSON Schema cực chuẩn của toàn bộ các mảnh ghép (Nodes) hỗ trợ trong Marketing Workflow. Dùng để biết phải điền những trường (fields) gì khi gọi marketing_create_workflow.',
-    inputSchema: {
-      type: 'object',
-      properties: {},
+      required: ['name', 'nodes'],
     },
   },
   {
@@ -133,16 +171,50 @@ export const MCP_TOOLS_REGISTRY: McpToolSchema[] = [
   },
   {
     name: 'chatbot_create_scenario',
-    description: 'Tạo kịch bản chatbot mới.',
+    description: 'Tạo kịch bản chatbot mới với các bước xử lý chính xác theo chuẩn kỹ thuật.',
     inputSchema: {
       type: 'object',
       properties: {
         name: { type: 'string' },
-        triggers: { type: 'array' },
-        steps: { type: 'array' },
+        triggers: {
+          type: 'array',
+          items: {
+            properties: {
+              type: { const: 'keyword_match' },
+              keywords: { type: 'array', items: { type: 'string' } },
+            },
+            required: ['type', 'keywords'],
+          },
+        },
+        steps: {
+          type: 'array',
+          items: {
+            oneOf: [
+              {
+                properties: { type: { const: 'send_text' }, text: { type: 'string' } },
+                required: ['type', 'text'],
+              },
+              {
+                properties: {
+                  type: { const: 'ask_phone' },
+                  validation_message: { type: 'string' },
+                },
+                required: ['type'],
+              },
+              {
+                properties: {
+                  type: { const: 'call_api' },
+                  endpoint: { type: 'string' },
+                  method: { type: 'string' },
+                },
+                required: ['type', 'endpoint'],
+              },
+            ],
+          },
+        },
         is_active: { type: 'boolean' },
       },
-      required: ['name'],
+      required: ['name', 'steps'],
     },
   },
   {
