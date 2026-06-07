@@ -2,8 +2,8 @@ import { executeDynamicAPI } from '../services/apiDispatcherClient';
 import { McpToolCallRequest, McpToolCallResponse, getMcpToolsRegistry } from './registry';
 
 export class McpServer {
-  public getTools() {
-    return getMcpToolsRegistry();
+  public async getTools(authHeader?: string) {
+    return await getMcpToolsRegistry(authHeader);
   }
 
   public async callTool(

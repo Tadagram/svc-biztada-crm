@@ -1,3 +1,5 @@
+import { executeDynamicAPI } from '../services/apiDispatcherClient';
+
 export interface McpToolSchema {
   name: string;
   description: string;
@@ -22,7 +24,7 @@ export interface McpToolCallResponse {
   isError?: boolean;
 }
 
-export const MCP_TOOLS_REGISTRY: McpToolSchema[] = [
+const MCP_TOOLS_REGISTRY_BASE: McpToolSchema[] = [
   // ── Marketing Tools ──
   {
     name: 'marketing_create_account',
@@ -58,43 +60,7 @@ export const MCP_TOOLS_REGISTRY: McpToolSchema[] = [
         nodes: {
           type: 'array',
           items: {
-            oneOf: [
-              {
-                properties: {
-                  type: { const: 'tiktok_scraper' },
-                  url_target: { type: 'string' },
-                  max_videos: { type: 'number' },
-                  extract_audio: { type: 'boolean' },
-                },
-                required: ['type', 'url_target', 'max_videos'],
-              },
-              {
-                properties: {
-                  type: { const: 'ai_video_remaker' },
-                  style: { type: 'string' },
-                  prompt_instructions: { type: 'string' },
-                  voice_dubbing: { type: 'boolean' },
-                },
-                required: ['type', 'style', 'prompt_instructions'],
-              },
-              {
-                properties: {
-                  type: { const: 'social_publisher' },
-                  platform: { type: 'string', enum: ['facebook', 'tiktok'] },
-                  account_id: { type: 'string' },
-                  schedule_time: { type: 'string' },
-                },
-                required: ['type', 'platform', 'account_id'],
-              },
-              {
-                properties: {
-                  type: { const: 'brandlabs_character' },
-                  character_id: { type: 'string' },
-                  tone_of_voice: { type: 'string' },
-                },
-                required: ['type', 'character_id'],
-              },
-            ],
+            oneOf: [],
           },
         },
         edges: {
@@ -238,6 +204,36 @@ export const MCP_TOOLS_REGISTRY: McpToolSchema[] = [
   },
 ];
 
-export function getMcpToolsRegistry(): McpToolSchema[] {
-  return MCP_TOOLS_REGISTRY;
+export async function getMcpToolsRegistry(authHeader?: string): Promise<McpToolSchema[]> {
+  const registry = JSON.parse(JSON.stringify(MCP_TOOLS_REGISTRY_BASE)) as McpToolSchema[];
+
+  if (authHeader) {
+    try {
+      const result = await executeDynamicAPI(
+        authHeader,
+        'marketing',
+        'GET',
+        '/api/v1/workflows/node-registry',
+      );
+      if (result && result.nodes) {
+        const nodesList = Object.values(result.nodes) as any[];
+        const oneOfNodes = nodesList.map((n) => {
+          const reqs = n.input_schema?.required || [];
+          return {
+            properties: { type: { const: n.type }, ...(n.input_schema?.properties || {}) },
+            required: ['type', ...reqs],
+          };
+        });
+
+        const workflowTool = registry.find((t) => t.name === 'marketing_create_workflow');
+        if (workflowTool && workflowTool.inputSchema.properties.nodes) {
+          (workflowTool.inputSchema.properties.nodes as any).items = { oneOf: oneOfNodes };
+        }
+      }
+    } catch (e) {
+      console.error('[MCP] Failed to sync dynamic nodes from marketing service', e);
+    }
+  }
+
+  return registry;
 }

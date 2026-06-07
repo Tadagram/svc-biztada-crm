@@ -2,9 +2,10 @@ import { FastifyInstance, FastifyPluginOptions } from 'fastify';
 import { mcpServer } from '../mcp/server';
 
 export default async function mcpRoutes(fastify: FastifyInstance, _options: FastifyPluginOptions) {
-  fastify.get('/tools', async (_request, reply) => {
+  fastify.get('/tools', async (request, reply) => {
     try {
-      const tools = mcpServer.getTools();
+      const authHeader = request.headers.authorization;
+      const tools = await mcpServer.getTools(authHeader);
       return reply.send({ tools });
     } catch (error: any) {
       return reply.status(500).send({ error: error.message });

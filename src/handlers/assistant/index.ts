@@ -69,7 +69,7 @@ Danh sách các Tools bạn có thể gọi:
 6. "mcp_call_tool": THỰC THI MỌI API KHÁC trong hệ thống của người dùng (bao gồm lấy Playbooks, Marketing, BrandLabs, Chatbot) theo giao thức MCP.
 
 [MCP TOOLS LIST (Dành cho mcp_call_tool)]
-${JSON.stringify(mcpServer.getTools(), null, 2)}
+${JSON.stringify(await mcpServer.getTools(authHeader), null, 2)}
 
 CÁCH GỌI TOOL:
 Trả về DUY NHẤT một khối JSON.
