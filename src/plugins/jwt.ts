@@ -120,51 +120,56 @@ async function resolveOrCreateCoreMappedUser(
     });
   }
 
-  return prisma.users.create({
-    data: {
-      user_id: coreUserId,
-      phone_number: resolvedPhone,
-      role: UserRole.user,
-      status: UserStatus.active,
-    },
-  }).then(async (newUser) => {
-    // Grant new-user welcome bonus (non-blocking, non-fatal)
-    try {
-      const bonusSetting = await prisma.systemSettings.findUnique({
-        where: { key: 'new_user_bonus_credits' },
-      });
-      const bonusAmount = bonusSetting ? Number(bonusSetting.value) : 0;
-      if (bonusAmount > 0) {
-        await prisma.$transaction(async (tx) => {
-          const balance = await tx.userCreditBalances.upsert({
-            where: { user_id: newUser.user_id },
-            update: { available_credits: { increment: bonusAmount } },
-            create: { user_id: newUser.user_id, available_credits: bonusAmount },
-            select: { available_credits: true },
-          });
-          await tx.creditLedgerEntries.create({
-            data: {
-              user_id: newUser.user_id,
-              entry_type: 'ADJUSTMENT',
-              direction: 'CREDIT',
-              amount: bonusAmount,
-              balance_after: balance.available_credits,
-              purpose: 'New user welcome bonus',
-              created_by: newUser.user_id,
-              metadata: { source: 'new_user_bonus' },
-            },
-          });
+  return prisma.users
+    .create({
+      data: {
+        user_id: coreUserId,
+        phone_number: resolvedPhone,
+        role: UserRole.user,
+        status: UserStatus.active,
+      },
+    })
+    .then(async (newUser) => {
+      // Grant new-user welcome bonus (non-blocking, non-fatal)
+      try {
+        const bonusSetting = await prisma.systemSettings.findUnique({
+          where: { key: 'new_user_bonus_credits' },
         });
-        request.log.info(
-          { userId: newUser.user_id, bonusAmount },
-          '[NewUserBonus] Welcome bonus credited',
+        const bonusAmount = bonusSetting ? Number(bonusSetting.value) : 0;
+        if (bonusAmount > 0) {
+          await prisma.$transaction(async (tx) => {
+            const balance = await tx.userCreditBalances.upsert({
+              where: { user_id: newUser.user_id },
+              update: { available_credits: { increment: bonusAmount } },
+              create: { user_id: newUser.user_id, available_credits: bonusAmount },
+              select: { available_credits: true },
+            });
+            await tx.creditLedgerEntries.create({
+              data: {
+                user_id: newUser.user_id,
+                entry_type: 'ADJUSTMENT',
+                direction: 'CREDIT',
+                amount: bonusAmount,
+                balance_after: balance.available_credits,
+                purpose: 'New user welcome bonus',
+                created_by: newUser.user_id,
+                metadata: { source: 'new_user_bonus' },
+              },
+            });
+          });
+          request.log.info(
+            { userId: newUser.user_id, bonusAmount },
+            '[NewUserBonus] Welcome bonus credited',
+          );
+        }
+      } catch (bonusErr) {
+        request.log.warn(
+          { err: bonusErr, userId: newUser.user_id },
+          '[NewUserBonus] Failed to grant welcome bonus',
         );
       }
-    } catch (bonusErr) {
-      request.log.warn({ err: bonusErr, userId: newUser.user_id }, '[NewUserBonus] Failed to grant welcome bonus');
-    }
-    return newUser;
-  });
+      return newUser;
+    });
 }
 
 async function authenticateTopupViaCoreToken(request: FastifyRequest): Promise<boolean> {
@@ -241,13 +246,15 @@ async function authenticateTopupViaCoreToken(request: FastifyRequest): Promise<b
 async function syncRequestUserFromDatabase(request: FastifyRequest): Promise<boolean> {
   const payload = request.user as {
     userId?: string;
+    user_id?: string;
     sessionId?: string;
   };
 
-  if (!payload?.userId) return false;
+  const userId = payload?.userId || payload?.user_id;
+  if (!userId) return false;
 
   const dbUser = await request.server.prisma.users.findUnique({
-    where: { user_id: payload.userId },
+    where: { user_id: userId },
     select: {
       user_id: true,
       role: true,
