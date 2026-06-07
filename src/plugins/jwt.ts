@@ -176,7 +176,9 @@ async function authenticateTopupViaCoreToken(request: FastifyRequest): Promise<b
   const authHeader = request.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) return false;
   const supportsCoreFallback =
-    request.url.startsWith('/topup/') || request.url.startsWith('/service-packages');
+    request.url.startsWith('/topup/') ||
+    request.url.startsWith('/service-packages') ||
+    request.url.startsWith('/assistant/');
   if (!supportsCoreFallback) return false;
 
   const rawToken = authHeader.slice('Bearer '.length).trim();
