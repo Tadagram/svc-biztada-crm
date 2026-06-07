@@ -48,7 +48,8 @@ export const MCP_TOOLS_REGISTRY: McpToolSchema[] = [
   },
   {
     name: 'marketing_create_workflow',
-    description: 'Tạo mới Workflow marketing.',
+    description:
+      'Tạo mới Workflow marketing. CÁC NODES HỖ TRỢ HIỆN TẠI: tiktok_scraper_node (cào dữ liệu), ai_video_remaker_node (xào lại video), social_publisher_node (đăng bài tự động), brandlabs_character_node (gắn tính cách KOL). Dùng các node này để xây dựng kịch bản tự động.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -138,6 +139,17 @@ export const MCP_TOOLS_REGISTRY: McpToolSchema[] = [
   {
     name: 'chatbot_get_conversations',
     description: 'Xem danh sách tin nhắn khách hàng đổ về Chatbot.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+
+  // ── Orchestration Tools ──
+  {
+    name: 'get_business_playbooks',
+    description:
+      'Lấy danh sách các Cẩm nang Giải pháp (Business Playbooks) để biết cách phối hợp nhiều Tools thành một luồng công việc (Pipeline) hoàn chỉnh.',
     inputSchema: {
       type: 'object',
       properties: {},
