@@ -9,6 +9,7 @@ export class McpServer {
   public async callTool(
     authHeader: string,
     request: McpToolCallRequest,
+    prisma?: any,
   ): Promise<McpToolCallResponse> {
     const { name, arguments: args } = request;
 
@@ -45,6 +46,28 @@ export class McpServer {
             'POST',
             `/api/v1/workflows/${args.workflow_id}/run-now`,
           );
+          break;
+        case 'marketing_get_nodes_schema':
+          result = {
+            nodes: {
+              tiktok_scraper_node: {
+                description: 'Cào video từ một kênh TikTok.',
+                required_config: ['url_target', 'max_videos', 'extract_audio'],
+              },
+              ai_video_remaker_node: {
+                description: 'Dùng AI để xào lại (remake) video nhằm chống bản quyền.',
+                required_config: ['style', 'prompt_instructions', 'voice_dubbing'],
+              },
+              social_publisher_node: {
+                description: 'Tự động đăng bài lên mạng xã hội (Facebook, TikTok).',
+                required_config: ['platform', 'account_id', 'schedule_time'],
+              },
+              brandlabs_character_node: {
+                description: 'Gắn tính cách KOL vào quy trình sinh nội dung.',
+                required_config: ['character_id', 'tone_of_voice'],
+              },
+            },
+          };
           break;
 
         // -- BrandLabs --
@@ -90,47 +113,16 @@ export class McpServer {
           break;
 
         // -- Orchestration --
-        case 'get_business_playbooks':
-          result = {
-            playbooks: [
-              {
-                id: 'pb_fashion_auto',
-                name: 'Tự động hóa kênh Thời trang / Bán lẻ',
-                description: 'Xây dựng kênh truyền thông tự động cho mảng thời trang.',
-                steps: [
-                  {
-                    step: 1,
-                    tool: 'brandlabs_create_brand_character',
-                    action: 'Tạo KOL thời trang mang phong cách năng động.',
-                  },
-                  {
-                    step: 2,
-                    tool: 'marketing_create_workflow',
-                    action:
-                      'Tạo workflow dùng tiktok_scraper_node để lấy video hot, sau đó dùng ai_video_remaker_node xào lại, và social_publisher_node để đăng lên FB.',
-                  },
-                ],
-              },
-              {
-                id: 'pb_customer_support',
-                name: 'Tự động hóa CSKH Đa kênh',
-                description: 'Setup hệ thống trả lời tự động và phân luồng hội thoại.',
-                steps: [
-                  {
-                    step: 1,
-                    tool: 'brandlabs_create_brand_character',
-                    action: 'Tạo Bot mang tính cách thân thiện, chuyên nghiệp.',
-                  },
-                  {
-                    step: 2,
-                    tool: 'chatbot_create_scenario',
-                    action: 'Tạo kịch bản (Scenario) chào mừng và xin số điện thoại.',
-                  },
-                ],
-              },
-            ],
-          };
+        case 'get_business_playbooks': {
+          if (!prisma) {
+            throw new Error('Prisma client not provided to fetch playbooks');
+          }
+          const playbooks = await prisma.aiBusinessPlaybooks.findMany({
+            where: { is_active: true },
+          });
+          result = { playbooks };
           break;
+        }
 
         default:
           throw new Error(`Tool not found: ${name}`);

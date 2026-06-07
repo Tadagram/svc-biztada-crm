@@ -23,10 +23,14 @@ export default async function mcpRoutes(fastify: FastifyInstance, _options: Fast
         return reply.status(400).send({ error: 'Invalid MCP tool call request' });
       }
 
-      const response = await mcpServer.callTool(authHeader, {
-        name: body.name,
-        arguments: body.arguments,
-      });
+      const response = await mcpServer.callTool(
+        authHeader,
+        {
+          name: body.name,
+          arguments: body.arguments,
+        },
+        request.server.prisma,
+      );
 
       return reply.send(response);
     } catch (error: any) {

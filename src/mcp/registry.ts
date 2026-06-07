@@ -49,7 +49,7 @@ export const MCP_TOOLS_REGISTRY: McpToolSchema[] = [
   {
     name: 'marketing_create_workflow',
     description:
-      'Tạo mới Workflow marketing. CÁC NODES HỖ TRỢ HIỆN TẠI: tiktok_scraper_node (cào dữ liệu), ai_video_remaker_node (xào lại video), social_publisher_node (đăng bài tự động), brandlabs_character_node (gắn tính cách KOL). Dùng các node này để xây dựng kịch bản tự động.',
+      'Tạo mới Workflow marketing. CẢNH BÁO: Bạn KHÔNG ĐƯỢC TỰ ĐOÁN Schema của các Node. Bắt buộc phải gọi tool "marketing_get_nodes_schema" trước để lấy JSON Schema chuẩn, sau đó mới dùng tool này để tạo.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -59,6 +59,15 @@ export const MCP_TOOLS_REGISTRY: McpToolSchema[] = [
         edges: { type: 'array' },
       },
       required: ['name'],
+    },
+  },
+  {
+    name: 'marketing_get_nodes_schema',
+    description:
+      'Lấy cấu hình JSON Schema cực chuẩn của toàn bộ các mảnh ghép (Nodes) hỗ trợ trong Marketing Workflow. Dùng để biết phải điền những trường (fields) gì khi gọi marketing_create_workflow.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
     },
   },
   {
