@@ -5,13 +5,19 @@ import { chatAssistantSchema, historyAssistantSchema } from '@schemas/assistant.
 async function assistantRoutes(fastify: FastifyInstance) {
   fastify.post(
     '/chat',
-    { schema: chatAssistantSchema },
+    {
+      schema: chatAssistantSchema,
+      preHandler: [fastify.authenticate],
+    },
     chatHandler as RouteHandlerMethod,
   );
 
   fastify.get(
     '/history',
-    { schema: historyAssistantSchema },
+    {
+      schema: historyAssistantSchema,
+      preHandler: [fastify.authenticate],
+    },
     historyHandler as RouteHandlerMethod,
   );
 }
