@@ -5,9 +5,8 @@ import {
   getWorkerStats,
   getActiveWorkflows,
   getDashboardActivity,
-  executeDynamicAPI,
 } from '@services/apiDispatcherClient';
-import { MASTER_API_GUIDE } from '../../config/masterApiDictionary';
+import { mcpServer } from '../../mcp/server';
 
 export async function chatHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const { message } = request.body as { message: string };
@@ -59,16 +58,17 @@ Danh sách các Tools bạn có thể gọi:
 3. "get_active_workflows": Lấy danh sách workflow
 4. "get_dashboard_activity": Lấy báo cáo hoạt động chạy seeding
 5. "update_user_memory": Gọi tool này với tham số để CẬP NHẬT GHI NHỚ nếu người dùng yêu cầu bạn thay đổi cách trả lời.
-6. "execute_biztada_api": THỰC THI MỌI API KHÁC trong hệ thống của người dùng (bao gồm Marketing, BrandLabs, Chatbot).
+6. "mcp_call_tool": THỰC THI MỌI API KHÁC trong hệ thống của người dùng (bao gồm Marketing, BrandLabs, Chatbot) theo giao thức MCP.
 
-${MASTER_API_GUIDE}
+[MCP TOOLS LIST (Dành cho mcp_call_tool)]
+${JSON.stringify(mcpServer.getTools(), null, 2)}
 
 CÁCH GỌI TOOL:
 Trả về DUY NHẤT một khối JSON.
 \`\`\`json
 {
-  "TOOL_CALL": "execute_biztada_api",
-  "TOOL_ARGS": { "service": "marketing", "method": "POST", "endpoint": "/api/v1/accounts", "body": {} }
+  "TOOL_CALL": "mcp_call_tool",
+  "TOOL_ARGS": { "name": "marketing_create_account", "arguments": { "platform": "facebook", "account_name": "My Page" } }
 }
 \`\`\`
 Nếu không cần dùng tool, trả lời trực tiếp cho người dùng.
@@ -122,21 +122,13 @@ ${historyText}`;
               toolResult = await getActiveWorkflows(authHeader);
             else if (toolName === 'get_dashboard_activity')
               toolResult = await getDashboardActivity(authHeader);
-            else if (toolName === 'execute_biztada_api') {
-              const service = toolData.TOOL_ARGS?.service || 'marketing';
-              const method = toolData.TOOL_ARGS?.method;
-              const endpoint = toolData.TOOL_ARGS?.endpoint;
-              const payload = toolData.TOOL_ARGS?.body;
-              if (!method || !endpoint) {
-                toolResult = { error: 'Missing method or endpoint for execute_biztada_api' };
+            else if (toolName === 'mcp_call_tool') {
+              const name = toolData.TOOL_ARGS?.name;
+              const args = toolData.TOOL_ARGS?.arguments || {};
+              if (!name) {
+                toolResult = { error: 'Missing tool name for mcp_call_tool' };
               } else {
-                toolResult = await executeDynamicAPI(
-                  authHeader,
-                  service,
-                  method,
-                  endpoint,
-                  payload,
-                );
+                toolResult = await mcpServer.callTool(authHeader, { name, arguments: args });
               }
             } else toolResult = { error: 'Tool not found' };
           }
