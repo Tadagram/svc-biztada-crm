@@ -11,7 +11,7 @@ import { mcpServer } from '../../mcp/server';
 export async function chatHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const { message } = request.body as { message: string };
   const businessId = request.headers['x-business-id'] as string | undefined;
-  const userId = (request as any).user?.user_id;
+  const userId = (request as any).user?.userId || (request as any).user?.user_id;
   const authHeader = request.headers.authorization;
   const prisma = request.server.prisma;
 
