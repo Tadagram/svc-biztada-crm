@@ -51,7 +51,7 @@ QUY TRÌNH BẮT BUỘC KHI TƯ VẤN GIẢI PHÁP:
 2. Dựa vào Cẩm nang đó, vẽ ra lộ trình các bước (Ví dụ: Bước 1 tạo nhân vật ở BrandLabs, Bước 2 dùng Marketing Workflow để cào TikTok -> Remake AI -> Đăng Facebook).
 3. ĐỐI VỚI CÁC MCP TOOL: BẠN PHẢI TUÂN THỦ TẠO JSON PAYLOAD DỰA TRÊN ĐẶC TẢ SCHEMA CỦA CÔNG CỤ (Ví dụ: Nodes của workflow hay Steps của chatbot). TUYỆT ĐỐI KHÔNG ĐƯỢC TỰ BỊA (Hallucinate) CÁC TRƯỜNG HAY CÁC LOẠI NODE KHÔNG CÓ TRONG SCHEMA.
 4. Hỏi ý kiến người dùng xem họ có đồng ý với Lộ trình và cung cấp đủ tham số (như link nguồn, ID tài khoản) chưa.
-5. CHỈ KHI người dùng đồng ý và đủ tham số, bạn mới lần lượt tự động gọi các tool MCP tương ứng với JSON Payload CỰC KỲ CHÍNH XÁC để setup toàn bộ hệ thống cho họ.
+5. CHỈ KHI người dùng đồng ý và đủ tham số, bạn mới tạo ra Payload JSON CỰC KỲ CHÍNH XÁC để setup hệ thống.
 
 Bạn có khả năng trả về văn bản dùng Markdown. CÓ THỂ sử dụng Table, Danh sách (List) hoặc in đậm.
 ĐẶC BIỆT: Nếu muốn hiển thị Biểu đồ (Chart), hãy trả về một code block dạng JSON với type="chart". Ví dụ:
@@ -71,15 +71,18 @@ Danh sách các Tools bạn có thể gọi:
 [MCP TOOLS LIST (Dành cho mcp_call_tool)]
 ${JSON.stringify(await mcpServer.getTools(authHeader), null, 2)}
 
-CÁCH GỌI TOOL:
-Trả về DUY NHẤT một khối JSON.
+CÁCH GỌI TOOL NGẦM (BACKGROUND EXECUTION):
+Nếu bạn CẦN TRUY VẤN DỮ LIỆU (ví dụ lấy danh sách Playbook), hãy xuất ra DUY NHẤT một khối JSON chứa TOOL_CALL để hệ thống backend tự động gọi.
 \`\`\`json
 {
   "TOOL_CALL": "mcp_call_tool",
-  "TOOL_ARGS": { "name": "marketing_create_account", "arguments": { "platform": "facebook", "account_name": "My Page" } }
+  "TOOL_ARGS": { "name": "get_business_playbooks", "arguments": {} }
 }
 \`\`\`
-Nếu không cần dùng tool, trả lời trực tiếp cho người dùng.
+
+CÁCH TRẢ VỀ CẤU HÌNH (FRONTEND EXECUTION PAYLOAD):
+Khi bạn muốn tạo nội dung cho Frontend ứng dụng hiển thị hoặc gọi API lưu cấu hình (Brandlabs, Chatbot, Workflow), hãy viết văn bản giải thích cho User (Markdown) và MỘT khối JSON chứa Cấu hình/Payload hoàn chỉnh ở CUỐI cùng. Khối JSON này KHÔNG CHỨA "TOOL_CALL" mà chứa thẳng Payload API.
+Hệ thống Frontend sẽ tự động tách rời đoạn văn bản (để hiển thị) và đoạn JSON (để xử lý Data).
 
 [LỊCH SỬ GẦN ĐÂY]
 ${historyText}`;
@@ -156,19 +159,38 @@ ${historyText}`;
       }
     }
 
+    let finalReply = replyText;
+    const actionPayloads: any[] = [];
+    const jsonRegex = /```(?:json)?\s*(\{[\s\S]*?\})\s*```/g;
+    let match;
+    while ((match = jsonRegex.exec(replyText)) !== null) {
+      try {
+        const parsed = JSON.parse(match[1]);
+        actionPayloads.push(parsed);
+        finalReply = finalReply.replace(match[0], '').trim();
+      } catch (e) {
+        // Ignore invalid JSON
+      }
+    }
+
     // Save Assistant message
     await prisma.assistantMessage.create({
       data: {
         user_id: userId,
         business_id: businessId || null,
         role: 'assistant',
-        content: replyText,
-        tool_actions: toolActions.length ? toolActions : undefined,
+        content: finalReply,
+        tool_actions: actionPayloads.length
+          ? actionPayloads
+          : toolActions.length
+            ? toolActions
+            : undefined,
       },
     });
 
     reply.status(200).send({
-      reply: replyText,
+      reply: finalReply,
+      actionPayloads,
       toolActions,
     });
   } catch (err) {
