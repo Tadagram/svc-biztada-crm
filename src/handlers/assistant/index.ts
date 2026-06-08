@@ -81,8 +81,17 @@ Nếu bạn CẦN TRUY VẤN DỮ LIỆU (ví dụ lấy danh sách Playbook), h
 \`\`\`
 
 CÁCH TRẢ VỀ CẤU HÌNH (FRONTEND EXECUTION PAYLOAD):
-Khi bạn muốn tạo nội dung cho Frontend ứng dụng hiển thị hoặc gọi API lưu cấu hình (Brandlabs, Chatbot, Workflow), hãy viết văn bản giải thích cho User (Markdown) và MỘT khối JSON chứa Cấu hình/Payload hoàn chỉnh ở CUỐI cùng. Khối JSON này KHÔNG CHỨA "TOOL_CALL" mà chứa thẳng Payload API.
-Hệ thống Frontend sẽ tự động tách rời đoạn văn bản (để hiển thị) và đoạn JSON (để xử lý Data).
+BẠN BẮT BUỘC PHẢI TRẢ VỀ TOÀN BỘ CÂU TRẢ LỜI CỦA BẠN DƯỚI DẠNG MỘT KHỐI JSON DUY NHẤT. TUYỆT ĐỐI KHÔNG XUẤT RA BẤT KỲ VĂN BẢN NÀO BÊN NGOÀI KHỐI JSON NÀY.
+Cấu trúc JSON bắt buộc:
+\`\`\`json
+{
+  "reply": "Văn bản giải thích cho người dùng đọc (Dùng Markdown, KHÔNG chứa code block JSON Payload)",
+  "actionPayloads": [
+    { "Tên cấu hình/Payload API dựa trên Schema": "..." }
+  ]
+}
+\`\`\`
+Trường "actionPayloads" là một mảng các object. Nếu không có payload nào, hãy để mảng rỗng []. Khối JSON này KHÔNG CHỨA "TOOL_CALL" mà chứa thẳng Payload API.
 
 [LỊCH SỬ GẦN ĐÂY]
 ${historyText}`;
@@ -160,17 +169,29 @@ ${historyText}`;
     }
 
     let finalReply = replyText;
-    const actionPayloads: any[] = [];
-    const jsonRegex = /```(?:json)?\s*(\{[\s\S]*?\})\s*```/g;
-    let match;
-    while ((match = jsonRegex.exec(replyText)) !== null) {
-      try {
-        const parsed = JSON.parse(match[1]);
-        actionPayloads.push(parsed);
-        finalReply = finalReply.replace(match[0], '').trim();
-      } catch (e) {
-        // Ignore invalid JSON
+    let actionPayloads: any[] = [];
+
+    // Attempt to parse the structured JSON response
+    try {
+      // Find the JSON block if the LLM wrapped it in markdown code block
+      const jsonRegex = /```(?:json)?\s*(\{[\s\S]*?\})\s*```/;
+      const match = replyText.match(jsonRegex);
+
+      let jsonString = replyText;
+      if (match && match[1]) {
+        jsonString = match[1];
       }
+
+      const parsed = JSON.parse(jsonString);
+      if (parsed.reply) {
+        finalReply = parsed.reply;
+      }
+      if (parsed.actionPayloads && Array.isArray(parsed.actionPayloads)) {
+        actionPayloads = parsed.actionPayloads;
+      }
+    } catch (e) {
+      // Fallback: If AI fails to return structured JSON, we just use the raw text as reply
+      request.log.warn('Failed to parse structured AI output. Using raw text.');
     }
 
     // Save Assistant message
