@@ -24,9 +24,16 @@ export const chatAssistantSchema: FastifySchema = {
       type: 'object',
       properties: {
         reply: { type: 'string' },
-        toolActions: { 
+        actionPayloads: {
           type: 'array',
-          items: { type: 'string' }
+          items: {
+            type: 'object',
+            additionalProperties: true,
+          },
+        },
+        toolActions: {
+          type: 'array',
+          items: { type: 'string' },
         },
       },
     },
@@ -59,11 +66,11 @@ export const historyAssistantSchema: FastifySchema = {
               timestamp: { type: 'string' },
               toolActions: {
                 type: 'array',
-                items: { type: 'string' }
-              }
-            }
-          }
-        }
+                items: { type: 'string' },
+              },
+            },
+          },
+        },
       },
     },
   },
