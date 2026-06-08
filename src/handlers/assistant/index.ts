@@ -25,6 +25,25 @@ export async function chatHandler(request: FastifyRequest, reply: FastifyReply):
     return;
   }
 
+  // Setup SSE
+  reply.raw.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+  });
+
+  const sendSSE = (event: string, data: any) => {
+    reply.raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  };
+
+  // Keep connection alive to prevent Cloudflare timeout
+  const keepAliveInterval = setInterval(() => {
+    reply.raw.write(`:\n\n`);
+  }, 15000);
+
+  sendSSE('ping', { status: 'connected' });
+
   try {
     // 1. Fetch User Memory (Preferences)
     const memory = await prisma.userAssistantMemory.findUnique({ where: { user_id: userId } });
@@ -112,6 +131,7 @@ ${historyText}`;
 
     const MAX_STEPS = 3;
     for (let step = 0; step < MAX_STEPS; step++) {
+      sendSSE('progress', { message: `AI đang phân tích (Step ${step + 1}/${MAX_STEPS})...` });
       replyText = await generateAssistantText(currentPrompt, userId);
 
       let parsedToolCall: any = null;
@@ -148,6 +168,7 @@ ${historyText}`;
           const toolName = parsedToolCall.TOOL_CALL;
           toolActions.push(toolName);
           request.log.info({ toolName }, '[assistant] executing tool');
+          sendSSE('tool_call', { name: toolName, message: `Hệ thống đang truy xuất dữ liệu: ${toolName}...` });
 
           let toolResult: any = null;
           if (toolName === 'update_user_memory') {
@@ -242,15 +263,18 @@ ${historyText}`;
       },
     });
 
-    reply.status(200).send({
+    clearInterval(keepAliveInterval);
+    sendSSE('completed', {
       reply: finalReply,
       actionPayloads,
       toolActions,
     });
+    reply.raw.end();
   } catch (err) {
-    const errorMsg = err instanceof Error ? err.message : 'Chat failed';
-    request.log.error({ err }, '[assistant] chatHandler failed');
-    reply.status(500).send({ message: errorMsg });
+    request.log.error(err);
+    clearInterval(keepAliveInterval);
+    sendSSE('error', { error: 'Internal Server Error' });
+    reply.raw.end();
   }
 }
 

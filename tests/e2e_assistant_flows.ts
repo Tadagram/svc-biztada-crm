@@ -1,5 +1,5 @@
 const url = 'https://svc-biztada-crm.tadagram.com/assistant/chat';
-const authHeader = process.env.AUTH_TOKEN || 'Bearer eyJhb...';
+const authHeader = process.env.AUTH_TOKEN || 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNzI3YmJjN2QtNjc1Ny00MWJjLWE4ZmMtZDM2NDNkMzk1ZWJmIiwidGVsZWdyYW1faWQiOjY0NjE1NDExNzksInNlc3Npb25faWQiOiI4NmY4ODY4Ny00NjhhLTQ5ZjItOTcyYi0yZGZhMGM1NjlkNWIiLCJpc3MiOiJ0YWRhZ3JhbS1jb3JlLWFwaSIsImlhdCI6MTc4MDg5OTk0NCwiZXhwIjoxNzgwOTAzNTQ0fQ.bcISNo4KTWT4kgws4MbrnOz_QIVAOIUF__0DGtV9zks';
 const businessId = '52e03e27-d64b-48dd-a4ec-e6e763934187';
 
 const testCases = [
