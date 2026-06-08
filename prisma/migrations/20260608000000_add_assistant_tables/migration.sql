@@ -1,4 +1,4 @@
-﻿-- CreateTable
+-- CreateTable
 CREATE TABLE `ai_assistant_sessions` (
     `session_id` CHAR(36) NOT NULL,
     `user_id` CHAR(36) NOT NULL,
