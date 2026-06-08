@@ -72,7 +72,7 @@ Danh sách các Tools bạn có thể gọi:
 ${JSON.stringify(await mcpServer.getTools(authHeader), null, 2)}
 
 CÁCH GỌI TOOL NGẦM (BACKGROUND EXECUTION):
-Nếu bạn CẦN TRUY VẤN DỮ LIỆU (ví dụ lấy danh sách Playbook), hãy xuất ra DUY NHẤT một khối JSON chứa TOOL_CALL để hệ thống backend tự động gọi.
+Nếu bạn CẦN TRUY VẤN DỮ LIỆU (ví dụ lấy danh sách Playbook), BẠN BẮT BUỘC TRẢ VỀ DUY NHẤT một khối JSON như sau:
 \`\`\`json
 {
   "TOOL_CALL": "mcp_call_tool",
@@ -81,7 +81,7 @@ Nếu bạn CẦN TRUY VẤN DỮ LIỆU (ví dụ lấy danh sách Playbook), h
 \`\`\`
 
 CÁCH TRẢ VỀ CẤU HÌNH (FRONTEND EXECUTION PAYLOAD):
-BẠN BẮT BUỘC PHẢI TRẢ VỀ TOÀN BỘ CÂU TRẢ LỜI CỦA BẠN DƯỚI DẠNG MỘT KHỐI JSON DUY NHẤT. TUYỆT ĐỐI KHÔNG XUẤT RA BẤT KỲ VĂN BẢN NÀO BÊN NGOÀI KHỐI JSON NÀY.
+Nếu bạn ĐÃ TRUY VẤN XONG hoặc KHÔNG CẦN TRUY VẤN, BẠN BẮT BUỘC PHẢI TRẢ VỀ TOÀN BỘ CÂU TRẢ LỜI DƯỚI DẠNG MỘT KHỐI JSON DUY NHẤT. TUYỆT ĐỐI KHÔNG XUẤT RA BẤT KỲ VĂN BẢN NÀO BÊN NGOÀI KHỐI JSON NÀY.
 Cấu trúc JSON bắt buộc:
 \`\`\`json
 {
@@ -113,19 +113,46 @@ ${historyText}`;
     const MAX_STEPS = 3;
     for (let step = 0; step < MAX_STEPS; step++) {
       replyText = await generateAssistantText(currentPrompt, userId);
-      const toolMatch = replyText.match(/```json\s*(\{[\s\S]*?"TOOL_CALL"[\s\S]*?\})\s*```/);
 
-      if (toolMatch) {
+      let parsedToolCall: any = null;
+      let rawToolMatch = '';
+
+      // Extract JSON intelligently
+      const jsonRegex = /```(?:json)?\s*(\{[\s\S]*?\})\s*```/;
+      const match = replyText.match(jsonRegex);
+      let jsonString = replyText;
+      if (match && match[1]) {
+        jsonString = match[1];
+        rawToolMatch = match[0];
+      } else {
+        // Find the first { and last }
+        const startIdx = replyText.indexOf('{');
+        const endIdx = replyText.lastIndexOf('}');
+        if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+          jsonString = replyText.substring(startIdx, endIdx + 1);
+          rawToolMatch = jsonString;
+        }
+      }
+
+      try {
+        const parsedData = JSON.parse(jsonString);
+        if (parsedData.TOOL_CALL) {
+          parsedToolCall = parsedData;
+        }
+      } catch (e) {
+        // Not a valid JSON or doesn't have TOOL_CALL
+      }
+
+      if (parsedToolCall) {
         try {
-          const toolData = JSON.parse(toolMatch[1]);
-          const toolName = toolData.TOOL_CALL;
+          const toolName = parsedToolCall.TOOL_CALL;
           toolActions.push(toolName);
           request.log.info({ toolName }, '[assistant] executing tool');
 
           let toolResult: any = null;
           if (toolName === 'update_user_memory') {
             // Handle memory update
-            const prefs = toolData.TOOL_ARGS || {};
+            const prefs = parsedToolCall.TOOL_ARGS || {};
             await prisma.userAssistantMemory.upsert({
               where: { user_id: userId },
               update: { preferences: prefs },
@@ -143,8 +170,8 @@ ${historyText}`;
             else if (toolName === 'get_dashboard_activity')
               toolResult = await getDashboardActivity(authHeader);
             else if (toolName === 'mcp_call_tool') {
-              const name = toolData.TOOL_ARGS?.name;
-              const args = toolData.TOOL_ARGS?.arguments || {};
+              const name = parsedToolCall.TOOL_ARGS?.name;
+              const args = parsedToolCall.TOOL_ARGS?.arguments || {};
               if (!name) {
                 toolResult = { error: 'Missing tool name for mcp_call_tool' };
               } else {
@@ -157,7 +184,7 @@ ${historyText}`;
             } else toolResult = { error: 'Tool not found' };
           }
 
-          currentPrompt += `\n\n[ASSISTANT_TOOL_CALL]: ${toolMatch[0]}\n[TOOL_RESULT]: ${JSON.stringify(toolResult)}\n[SYSTEM]: Tiếp tục đưa ra câu trả lời cuối cùng cho người dùng.`;
+          currentPrompt += `\n\n[ASSISTANT_TOOL_CALL]: ${rawToolMatch}\n[TOOL_RESULT]: ${JSON.stringify(toolResult)}\n[SYSTEM]: Tiếp tục đưa ra câu trả lời cuối cùng cho người dùng.`;
           continue;
         } catch (e) {
           currentPrompt += `\n\n[TOOL_RESULT]: {"error": "Lỗi khi gọi tool"}\n[SYSTEM]: Hãy thông báo lỗi này cho người dùng.`;
@@ -180,6 +207,12 @@ ${historyText}`;
       let jsonString = replyText;
       if (match && match[1]) {
         jsonString = match[1];
+      } else {
+        const startIdx = replyText.indexOf('{');
+        const endIdx = replyText.lastIndexOf('}');
+        if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+          jsonString = replyText.substring(startIdx, endIdx + 1);
+        }
       }
 
       const parsed = JSON.parse(jsonString);
