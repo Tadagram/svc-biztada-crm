@@ -297,6 +297,7 @@ declare module '@fastify/jwt' {
 declare module 'fastify' {
   interface FastifyInstance {
     authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    optionalAuthenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
   }
 }
 
@@ -343,6 +344,20 @@ async function jwtPlugin(fastify: FastifyInstance, _options: FastifyPluginOption
           success: false,
           message: 'Unauthorized',
         });
+      }
+    });
+
+    // Thêm decorator optionalAuthenticate cho các route cho phép Guest
+    fastify.decorate('optionalAuthenticate', async (request: FastifyRequest) => {
+      try {
+        await request.jwtVerify();
+        await syncRequestUserFromDatabase(request);
+      } catch (err) {
+        try {
+          await authenticateTopupViaCoreToken(request);
+        } catch (fallbackErr) {
+          // Ignore error for optional auth
+        }
       }
     });
 

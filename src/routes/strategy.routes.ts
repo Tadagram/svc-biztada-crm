@@ -14,22 +14,52 @@ import { getFactoryHandler, upsertFactoryHandler } from '@handlers/strategyFacto
 import { getFactorySchema, upsertFactorySchema } from '@schemas/strategyFactory.schema';
 import { getSeedingHandler, upsertSeedingHandler } from '@handlers/strategySeeding';
 import { getSeedingSchema, upsertSeedingSchema } from '@schemas/strategySeeding.schema';
-import { getContentEngineHandler, upsertContentEngineHandler } from '@handlers/strategyContentEngine';
-import { getContentEngineSchema, upsertContentEngineSchema } from '@schemas/strategyContentEngine.schema';
-import { getSocialAmplificationHandler, upsertSocialAmplificationHandler } from '@handlers/strategySocialAmplification';
-import { getSocialAmplificationSchema, upsertSocialAmplificationSchema } from '@schemas/strategySocialAmplification.schema';
-import { getConversionGatewayHandler, upsertConversionGatewayHandler } from '@handlers/strategyConversionGateway';
-import { getConversionGatewaySchema, upsertConversionGatewaySchema } from '@schemas/strategyConversionGateway.schema';
-import { getPipelineEngineHandler, upsertPipelineEngineHandler } from '@handlers/strategyPipelineEngine';
-import { getPipelineEngineSchema, upsertPipelineEngineSchema } from '@schemas/strategyPipelineEngine.schema';
+import {
+  getContentEngineHandler,
+  upsertContentEngineHandler,
+} from '@handlers/strategyContentEngine';
+import {
+  getContentEngineSchema,
+  upsertContentEngineSchema,
+} from '@schemas/strategyContentEngine.schema';
+import {
+  getSocialAmplificationHandler,
+  upsertSocialAmplificationHandler,
+} from '@handlers/strategySocialAmplification';
+import {
+  getSocialAmplificationSchema,
+  upsertSocialAmplificationSchema,
+} from '@schemas/strategySocialAmplification.schema';
+import {
+  getConversionGatewayHandler,
+  upsertConversionGatewayHandler,
+} from '@handlers/strategyConversionGateway';
+import {
+  getConversionGatewaySchema,
+  upsertConversionGatewaySchema,
+} from '@schemas/strategyConversionGateway.schema';
+import {
+  getPipelineEngineHandler,
+  upsertPipelineEngineHandler,
+} from '@handlers/strategyPipelineEngine';
+import {
+  getPipelineEngineSchema,
+  upsertPipelineEngineSchema,
+} from '@schemas/strategyPipelineEngine.schema';
 import { getLoyaltyLoopHandler, upsertLoyaltyLoopHandler } from '@handlers/strategyLoyaltyLoop';
 import { getLoyaltyLoopSchema, upsertLoyaltyLoopSchema } from '@schemas/strategyLoyaltyLoop.schema';
-import { getContentNetworkHandler, upsertContentNetworkHandler } from '@handlers/strategyContentNetwork';
-import { getContentNetworkSchema, upsertContentNetworkSchema } from '@schemas/strategyContentNetwork.schema';
+import {
+  getContentNetworkHandler,
+  upsertContentNetworkHandler,
+} from '@handlers/strategyContentNetwork';
+import {
+  getContentNetworkSchema,
+  upsertContentNetworkSchema,
+} from '@schemas/strategyContentNetwork.schema';
 import { getDirectionHandler, upsertDirectionHandler } from '@handlers/strategyDirection';
 import { getDirectionSchema, upsertDirectionSchema } from '@schemas/strategyDirection.schema';
-import { consultHandler, feedbackHandler, historyHandler, claimGuestHandler } from '@handlers/strategySession';
-import { consultSchema, feedbackSchema, historySchema, claimGuestSchema } from '@schemas/strategySession.schema';
+import { feedbackHandler, historyHandler, claimGuestHandler } from '@handlers/strategySession';
+import { feedbackSchema, historySchema, claimGuestSchema } from '@schemas/strategySession.schema';
 
 async function strategyRoutes(fastify: FastifyInstance) {
   // Allow raw text/plain bodies for the AI endpoint.
@@ -45,11 +75,7 @@ async function strategyRoutes(fastify: FastifyInstance) {
   );
 
   // Public endpoint: login as existing guest (phone lookup → guestId + businessName)
-  fastify.get(
-    '/guest',
-    { schema: loginGuestSchema },
-    loginGuestHandler as RouteHandlerMethod,
-  );
+  fastify.get('/guest', { schema: loginGuestSchema }, loginGuestHandler as RouteHandlerMethod);
 
   // Public endpoint: AI text generation for strategy guests.
   // Accepts text/plain prompt, returns text/plain AI response.
@@ -93,11 +119,7 @@ async function strategyRoutes(fastify: FastifyInstance) {
     upsertActionPlanHandler as RouteHandlerMethod,
   );
 
-  fastify.get(
-    '/features',
-    { schema: getFeaturesSchema },
-    getFeaturesHandler as RouteHandlerMethod,
-  );
+  fastify.get('/features', { schema: getFeaturesSchema }, getFeaturesHandler as RouteHandlerMethod);
 
   fastify.post(
     '/features',
@@ -105,11 +127,7 @@ async function strategyRoutes(fastify: FastifyInstance) {
     upsertFeaturesHandler as RouteHandlerMethod,
   );
 
-  fastify.get(
-    '/matrix',
-    { schema: getMatrixSchema },
-    getMatrixHandler as RouteHandlerMethod,
-  );
+  fastify.get('/matrix', { schema: getMatrixSchema }, getMatrixHandler as RouteHandlerMethod);
 
   fastify.post(
     '/matrix',
@@ -117,11 +135,7 @@ async function strategyRoutes(fastify: FastifyInstance) {
     upsertMatrixHandler as RouteHandlerMethod,
   );
 
-  fastify.get(
-    '/factory',
-    { schema: getFactorySchema },
-    getFactoryHandler as RouteHandlerMethod,
-  );
+  fastify.get('/factory', { schema: getFactorySchema }, getFactoryHandler as RouteHandlerMethod);
 
   fastify.post(
     '/factory',
@@ -129,11 +143,7 @@ async function strategyRoutes(fastify: FastifyInstance) {
     upsertFactoryHandler as RouteHandlerMethod,
   );
 
-  fastify.get(
-    '/seeding',
-    { schema: getSeedingSchema },
-    getSeedingHandler as RouteHandlerMethod,
-  );
+  fastify.get('/seeding', { schema: getSeedingSchema }, getSeedingHandler as RouteHandlerMethod);
 
   fastify.post(
     '/seeding',
@@ -214,26 +224,18 @@ async function strategyRoutes(fastify: FastifyInstance) {
   );
 
   // ── RAG Consult + Session Logging ────────────────────────────────────────
-  // Calls svc-ai-controller internal endpoint; logs session for authenticated users.
-  fastify.post(
-    '/consult',
-    { schema: consultSchema },
-    consultHandler as RouteHandlerMethod,
-  );
+  // DEPRECATED: Unified Virtual Assistant logic has been merged into /assistant/chat.
+  // fastify.post(
+  //   '/consult',
+  //   { schema: consultSchema },
+  //   consultHandler as RouteHandlerMethod,
+  // );
 
   // Save 1–5 feedback score for a past consult session.
-  fastify.post(
-    '/feedback',
-    { schema: feedbackSchema },
-    feedbackHandler as RouteHandlerMethod,
-  );
+  fastify.post('/feedback', { schema: feedbackSchema }, feedbackHandler as RouteHandlerMethod);
 
   // Paginated consult session history for a user or guest.
-  fastify.get(
-    '/session-history',
-    { schema: historySchema },
-    historyHandler as RouteHandlerMethod,
-  );
+  fastify.get('/session-history', { schema: historySchema }, historyHandler as RouteHandlerMethod);
 
   // Claim guest strategy data for a newly registered user.
   // Atomic migration: all 5 strategy tables + session logs + soft-delete guest.

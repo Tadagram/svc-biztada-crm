@@ -7,7 +7,7 @@ async function assistantRoutes(fastify: FastifyInstance) {
     '/chat',
     {
       schema: chatAssistantSchema,
-      preHandler: [fastify.authenticate],
+      preHandler: [fastify.optionalAuthenticate],
     },
     chatHandler as RouteHandlerMethod,
   );

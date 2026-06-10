@@ -8,10 +8,22 @@ import {
 } from '@services/apiDispatcherClient';
 import { mcpServer } from '../../mcp/server';
 
+const AI_CONTROLLER_URL =
+  process.env.AI_CONTROLLER_URL ?? 'http://svc-ai-controller.tadagram.svc.cluster.local:3100';
+const STRATEGY_INTERNAL_TOKEN = process.env.STRATEGY_INTERNAL_TOKEN ?? '';
+
 export async function chatHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const { message } = request.body as { message: string };
   const businessId = request.headers['x-business-id'] as string | undefined;
-  const userId = (request as any).user?.userId || (request as any).user?.user_id;
+
+  // Auth resolution
+  const userPayload = request.user as any;
+  const userId = userPayload?.userId || userPayload?.user_id || null;
+  const guestId = !userId
+    ? (request.headers['x-guest-id'] as string) || (request.query as any).guestId || null
+    : null;
+  const isGuest = !userId;
+
   const authHeader = request.headers.authorization;
   const prisma = request.server.prisma;
 
@@ -20,8 +32,8 @@ export async function chatHandler(request: FastifyRequest, reply: FastifyReply):
     return;
   }
 
-  if (!userId) {
-    reply.status(401).send({ error: 'Unauthorized: User ID is required' });
+  if (!userId && !guestId) {
+    reply.status(401).send({ error: 'Unauthorized: User ID or Guest ID is required' });
     return;
   }
 
@@ -29,7 +41,7 @@ export async function chatHandler(request: FastifyRequest, reply: FastifyReply):
   reply.raw.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
+    Connection: 'keep-alive',
     'Access-Control-Allow-Origin': '*',
   });
 
@@ -45,32 +57,84 @@ export async function chatHandler(request: FastifyRequest, reply: FastifyReply):
   sendSSE('ping', { status: 'connected' });
 
   try {
-    // 1. Fetch User Memory (Preferences)
-    const memory = await prisma.userAssistantMemory.findUnique({ where: { user_id: userId } });
-    const userPreferences = memory?.preferences
-      ? JSON.stringify(memory.preferences)
-      : 'Chưa có thông tin.';
+    // 1. Fetch User Memory (Preferences) - Only for Authenticated Users
+    let userPreferences = 'Chưa có thông tin.';
+    let historyText = '';
 
-    // 2. Fetch Recent Chat History (Last 10 messages)
-    const recentMessages = await prisma.assistantMessage.findMany({
-      where: { user_id: userId, business_id: businessId || null },
-      orderBy: { created_at: 'desc' },
-      take: 10,
-    });
-    const historyText = recentMessages
-      .reverse()
-      .map((m) => `[${m.role.toUpperCase()}]: ${m.content}`)
-      .join('\n');
+    if (!isGuest && userId) {
+      const memory = await prisma.userAssistantMemory.findUnique({ where: { user_id: userId } });
+      if (memory?.preferences) {
+        userPreferences = JSON.stringify(memory.preferences);
+      }
+
+      // 2. Fetch Recent Chat History (Last 10 messages)
+      const recentMessages = await prisma.assistantMessage.findMany({
+        where: { user_id: userId, business_id: businessId || null },
+        orderBy: { created_at: 'desc' },
+        take: 10,
+      });
+      historyText = recentMessages
+        .reverse()
+        .map((m) => `[${m.role.toUpperCase()}]: ${m.content}`)
+        .join('\n');
+    }
+
+    // 3. Fetch Strategy Context (Chunks + Capabilities) from AI Controller
+    let strategyContextText = '';
+    let capabilitiesText = '';
+
+    if (STRATEGY_INTERNAL_TOKEN) {
+      try {
+        const retrieveRes = await fetch(`${AI_CONTROLLER_URL}/internal/strategy/retrieve-context`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Internal-Strategy-Token': STRATEGY_INTERNAL_TOKEN,
+          },
+          body: JSON.stringify({ question: message, context: {} }),
+        });
+
+        if (retrieveRes.ok) {
+          const retrieveData = await retrieveRes.json();
+          const chunks = retrieveData.chunks || [];
+          const caps = retrieveData.capabilities || [];
+
+          if (chunks.length > 0) {
+            strategyContextText =
+              '--- TRI THỨC TƯ VẤN ---\n' +
+              chunks
+                .map((c: any, i: number) => `[${i + 1}] ${c.title}\n${c.summary}`)
+                .join('\n\n') +
+              '\n';
+          }
+          if (caps.length > 0) {
+            capabilitiesText =
+              '--- ĐẶC TẢ API PAYLOAD ---\n' +
+              caps
+                .map(
+                  (c: any) =>
+                    `• [${c.capability_id}] ${c.display_name}\n  Schema: ${JSON.stringify(c.parameter_schema)}\n  Example Input: ${JSON.stringify(c.example_input)}`,
+                )
+                .join('\n\n') +
+              '\n';
+          }
+        }
+      } catch (err) {
+        request.log.error({ err }, '[assistant] Failed to retrieve strategy context');
+      }
+    }
+
+    const guestInstruction = isGuest
+      ? `\nTƯ CÁCH NGƯỜI DÙNG: GUEST (Khách viếng thăm chưa đăng nhập).\nBẠN BỊ CẤM GỌI CÔNG CỤ (MCP Tools) VÀ CẤM TRẢ VỀ \`actionPayloads\`. Bạn CHỈ được phép tư vấn, đưa ra lời khuyên và lên kế hoạch (Plan) dựa trên Tri thức có sẵn. Nếu có ActionPayload, hãy để mảng \`actionPayloads\` rỗng.`
+      : `\nTƯ CÁCH NGƯỜI DÙNG: AUTHENTICATED USER.\nBạn có toàn quyền gọi Tools và trả về \`actionPayloads\` thực tế dựa trên Schema đặc tả để cài đặt hệ thống.`;
 
     const systemPrompt = `[SYSTEM]: Bạn là **Enterprise Solutions Architect (Giám đốc Vận hành & Giải pháp)** của hệ sinh thái Biztada (business ID: ${businessId || 'N/A'}).
-Thông tin ghi nhớ về người dùng này: ${userPreferences}
-SỨ MỆNH: Khi người dùng đưa ra một mục tiêu kinh doanh (VD: Xây kênh tự động, Tăng doanh số, Chăm sóc khách hàng), TUYỆT ĐỐI KHÔNG làm ngay một bước đơn lẻ. Bạn PHẢI dùng tư duy Kiến trúc sư để phân tích và đề xuất một Quy trình Tự động hóa (Workflow Pipeline) kết hợp nhiều công cụ của Biztada.
-QUY TRÌNH BẮT BUỘC KHI TƯ VẤN GIẢI PHÁP:
-1. Gọi tool "mcp_call_tool" với name là "get_business_playbooks" để lấy danh sách các cẩm nang (Templates) thực tế của Biztada.
-2. Dựa vào Cẩm nang đó, vẽ ra lộ trình các bước (Ví dụ: Bước 1 tạo nhân vật ở BrandLabs, Bước 2 dùng Marketing Workflow để cào TikTok -> Remake AI -> Đăng Facebook).
-3. ĐỐI VỚI CÁC MCP TOOL: BẠN PHẢI TUÂN THỦ TẠO JSON PAYLOAD DỰA TRÊN ĐẶC TẢ SCHEMA CỦA CÔNG CỤ (Ví dụ: Nodes của workflow hay Steps của chatbot). TUYỆT ĐỐI KHÔNG ĐƯỢC TỰ BỊA (Hallucinate) CÁC TRƯỜNG HAY CÁC LOẠI NODE KHÔNG CÓ TRONG SCHEMA.
-4. Hỏi ý kiến người dùng xem họ có đồng ý với Lộ trình và cung cấp đủ tham số (như link nguồn, ID tài khoản) chưa.
-5. CHỈ KHI người dùng đồng ý và đủ tham số, bạn mới tạo ra Payload JSON CỰC KỲ CHÍNH XÁC để setup hệ thống.
+Thông tin ghi nhớ về người dùng này: ${userPreferences}${guestInstruction}
+
+SỨ MỆNH: Khi người dùng đưa ra một mục tiêu kinh doanh, TUYỆT ĐỐI KHÔNG làm ngay một bước đơn lẻ. Bạn PHẢI dùng tư duy Kiến trúc sư để phân tích và đề xuất một Quy trình Tự động hóa.
+
+${strategyContextText}
+${capabilitiesText}
 
 Bạn có khả năng trả về văn bản dùng Markdown. CÓ THỂ sử dụng Table, Danh sách (List) hoặc in đậm.
 ĐẶC BIỆT: Nếu muốn hiển thị Biểu đồ (Chart), hãy trả về một code block dạng JSON với type="chart". Ví dụ:
@@ -119,15 +183,17 @@ ${historyText}`;
     let replyText = '';
     const toolActions: string[] = [];
 
-    // Save User message
-    await prisma.assistantMessage.create({
-      data: {
-        user_id: userId,
-        business_id: businessId || null,
-        role: 'user',
-        content: message,
-      },
-    });
+    // Save User message (only for authenticated users)
+    if (!isGuest && userId) {
+      await prisma.assistantMessage.create({
+        data: {
+          user_id: userId,
+          business_id: businessId || null,
+          role: 'user',
+          content: message,
+        },
+      });
+    }
 
     const MAX_STEPS = 3;
     for (let step = 0; step < MAX_STEPS; step++) {
@@ -168,7 +234,10 @@ ${historyText}`;
           const toolName = parsedToolCall.TOOL_CALL;
           toolActions.push(toolName);
           request.log.info({ toolName }, '[assistant] executing tool');
-          sendSSE('tool_call', { name: toolName, message: `Hệ thống đang truy xuất dữ liệu: ${toolName}...` });
+          sendSSE('tool_call', {
+            name: toolName,
+            message: `Hệ thống đang truy xuất dữ liệu: ${toolName}...`,
+          });
 
           let toolResult: any = null;
           if (toolName === 'update_user_memory') {
@@ -248,20 +317,22 @@ ${historyText}`;
       request.log.warn('Failed to parse structured AI output. Using raw text.');
     }
 
-    // Save Assistant message
-    await prisma.assistantMessage.create({
-      data: {
-        user_id: userId,
-        business_id: businessId || null,
-        role: 'assistant',
-        content: finalReply,
-        tool_actions: actionPayloads.length
-          ? actionPayloads
-          : toolActions.length
-            ? toolActions
-            : undefined,
-      },
-    });
+    // Save Assistant message (only for authenticated users)
+    if (!isGuest && userId) {
+      await prisma.assistantMessage.create({
+        data: {
+          user_id: userId,
+          business_id: businessId || null,
+          role: 'assistant',
+          content: finalReply,
+          tool_actions: actionPayloads.length
+            ? actionPayloads
+            : toolActions.length
+              ? toolActions
+              : undefined,
+        },
+      });
+    }
 
     clearInterval(keepAliveInterval);
     sendSSE('completed', {
