@@ -1,6 +1,5 @@
-const MARKETING_API_URL =
-  process.env.SVC_BUSINESS_MARKETING_URL ?? 'http://svc-business-marketing:8080';
-const CHATBOT_API_URL = process.env.SVC_BUSINESS_CHATBOT_URL ?? 'http://svc-business-chatbot:8080';
+const MARKETING_API_URL = process.env.SVC_BUSINESS_MARKETING_URL ?? 'http://svc-business-marketing';
+const CHATBOT_API_URL = process.env.SVC_BUSINESS_CHATBOT_URL ?? 'http://svc-business-chatbot';
 
 function getServiceUrl(service: string): string {
   if (service === 'chatbot') return CHATBOT_API_URL;
