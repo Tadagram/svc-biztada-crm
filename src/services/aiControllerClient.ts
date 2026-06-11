@@ -133,7 +133,7 @@ function extractText(payload: WorkerResultPayload): string {
   return '';
 }
 
-export async function pollTextResult(taskId: string, timeoutMs = 80_000): Promise<string> {
+export async function pollTextResult(taskId: string, timeoutMs = 180_000): Promise<string> {
   const deadline = Date.now() + timeoutMs;
 
   while (Date.now() < deadline) {
