@@ -85,6 +85,74 @@ const MCP_TOOLS_REGISTRY_BASE: McpToolSchema[] = [
       required: ['workflow_id'],
     },
   },
+  {
+    name: 'marketing_create_campaign',
+    description:
+      'Tạo một chiến dịch marketing tự động mới (lên lịch nội dung, chỉ định seeding accounts).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Tên chiến dịch' },
+      },
+      required: ['name'],
+    },
+  },
+  {
+    name: 'marketing_configure_tiktok_harvest',
+    description: 'Cấu hình quét và tự động tải video từ kênh TikTok vào BrandLabs Vault.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        channel_url: { type: 'string', description: 'URL kênh TikTok cần quét' },
+        schedule: { type: 'string', description: 'Lịch chạy cron (VD: 0 0 * * *)' },
+      },
+      required: ['channel_url', 'schedule'],
+    },
+  },
+  {
+    name: 'marketing_configure_fb_harvest',
+    description: 'Cấu hình quét tự động bài viết, hình ảnh, reels từ trang/Profile Facebook.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        target_url: { type: 'string', description: 'URL trang Facebook/Profile cần quét' },
+        schedule: { type: 'string', description: 'Lịch chạy cron (VD: 0 0 * * *)' },
+      },
+      required: ['target_url', 'schedule'],
+    },
+  },
+  {
+    name: 'marketing_scan_leads',
+    description:
+      'Kích hoạt luồng quét khách hàng (Lead Scan) từ các bài đăng Facebook để đưa về CRM.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        post_url: { type: 'string', description: 'Link bài đăng Facebook cần quét bình luận' },
+      },
+      required: ['post_url'],
+    },
+  },
+  {
+    name: 'marketing_manage_fanpage',
+    description:
+      'Danh sách chức năng tương tác Fanpage (đồng bộ bài đăng, trả lời bình luận, tin nhắn).',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
+    name: 'marketing_create_funnel',
+    description: 'Tạo một phễu bán hàng (landing page) mới để thu thập thông tin khách hàng.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Tên phễu' },
+      },
+      required: ['name'],
+    },
+  },
 
   // ── BrandLabs Tools ──
   {
