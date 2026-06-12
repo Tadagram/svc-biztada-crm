@@ -3,8 +3,7 @@ import crypto from 'crypto';
 import { Prisma } from '@prisma/client';
 
 const AI_CONTROLLER_URL =
-  process.env.AI_CONTROLLER_URL ??
-  'http://svc-ai-controller.tadagram.svc.cluster.local:3100';
+  process.env.AI_CONTROLLER_URL ?? 'http://svc-ai-controller.tadagram.svc.cluster.local:3100';
 
 const STRATEGY_INTERNAL_TOKEN = process.env.STRATEGY_INTERNAL_TOKEN ?? '';
 
@@ -22,14 +21,14 @@ interface ConsultBody {
 
 interface AiControllerResponse {
   session_id?: string;
-  advice?: string;                        // main advice text (markdown)
+  advice?: string; // main advice text (markdown)
   plan?: {
     short_term?: string[];
     mid_term?: string[];
     kpis?: string[];
   };
-  recommended_actions?: unknown[];        // []StrategyRecommendedAction
-  chunks_used?: string[];                 // chunk_ids used as context
+  recommended_actions?: unknown[]; // []StrategyRecommendedAction
+  chunks_used?: string[]; // chunk_ids used as context
   model?: string;
   [key: string]: unknown;
 }
@@ -56,8 +55,12 @@ export async function consultHandler(
   const { question, context } = request.body;
 
   const authUser = request.user as { userId?: string } | undefined;
-  const userId = authUser?.userId ?? request.query.userId ?? null;
+  const userId =
+    authUser?.userId ?? request.query.userId ?? (request.headers['x-user-id'] as string) ?? null;
   const guestId = userId ? null : (request.query.guestId ?? null);
+
+  const businessId = (request.headers['x-business-id'] as string) || '';
+  const telegramId = (request.headers['x-telegram-id'] as string) || '';
 
   if (!STRATEGY_INTERNAL_TOKEN) {
     request.log.warn('[strategySession] STRATEGY_INTERNAL_TOKEN not configured');
@@ -73,7 +76,13 @@ export async function consultHandler(
         'Content-Type': 'application/json',
         'X-Internal-Strategy-Token': STRATEGY_INTERNAL_TOKEN,
       },
-      body: JSON.stringify({ question, context: context ?? {} }),
+      body: JSON.stringify({
+        user_id: userId ?? '',
+        business_id: businessId,
+        telegram_id: telegramId,
+        question,
+        context: context ?? {},
+      }),
     });
 
     if (!resp.ok) {
@@ -121,4 +130,3 @@ export async function consultHandler(
 
   reply.status(200).send(hasIdentity ? { ...aiResult, session_id: sessionId } : aiResult);
 }
-
