@@ -176,10 +176,7 @@ export async function generateText(prompt: string): Promise<string> {
   return pollTextResult(task_id);
 }
 
-export async function createAssistantTextTask(
-  prompt: string,
-  userUuid: string,
-): Promise<TaskAssignment> {
+export async function createAssistantTextTask(prompt: string): Promise<TaskAssignment> {
   const token = signWorkerJwt();
 
   const response = await fetch(`${AI_CONTROLLER_URL}/api/v1/tasks`, {
@@ -216,7 +213,7 @@ export async function createAssistantTextTask(
   return data as TaskAssignment;
 }
 
-export async function generateAssistantText(prompt: string, userUuid: string): Promise<string> {
-  const { task_id } = await createAssistantTextTask(prompt, userUuid);
+export async function generateAssistantText(prompt: string): Promise<string> {
+  const { task_id } = await createAssistantTextTask(prompt);
   return pollTextResult(task_id);
 }

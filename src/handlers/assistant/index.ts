@@ -200,7 +200,7 @@ ${historyText}`;
     const MAX_STEPS = 6;
     for (let step = 0; step < MAX_STEPS; step++) {
       sendSSE('progress', { message: `AI đang phân tích (Step ${step + 1}/${MAX_STEPS})...` });
-      replyText = await generateAssistantText(currentPrompt, userId);
+      replyText = await generateAssistantText(currentPrompt);
 
       let parsedData: any = null;
       let rawToolMatch = '';
