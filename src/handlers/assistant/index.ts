@@ -18,7 +18,13 @@ export async function chatHandler(request: FastifyRequest, reply: FastifyReply):
 
   // Auth resolution
   const userPayload = request.user as any;
-  const userId = userPayload?.userId || userPayload?.user_id || null;
+  let userId = userPayload?.userId || userPayload?.user_id || null;
+
+  if (!userId) {
+    // Fallback to x-user-id header if JWT auth fails (matching consultHandler logic)
+    userId = (request.headers['x-user-id'] as string) || null;
+  }
+
   const guestId = !userId
     ? (request.headers['x-guest-id'] as string) || (request.query as any).guestId || null
     : null;
