@@ -47,6 +47,60 @@ export class McpServer {
             `/api/v1/workflows/${args.workflow_id}/run-now`,
           );
           break;
+        case 'marketing_create_campaign':
+          result = await executeDynamicAPI(
+            authHeader,
+            'marketing',
+            'POST',
+            '/api/v1/campaigns',
+            args,
+          );
+          break;
+        case 'marketing_configure_tiktok_harvest':
+          result = await executeDynamicAPI(
+            authHeader,
+            'marketing',
+            'POST',
+            '/api/v1/harvest/tiktok',
+            args,
+          );
+          break;
+        case 'marketing_configure_fb_harvest':
+          result = await executeDynamicAPI(
+            authHeader,
+            'marketing',
+            'POST',
+            '/api/v1/harvest/facebook',
+            args,
+          );
+          break;
+        case 'marketing_scan_leads':
+          result = await executeDynamicAPI(
+            authHeader,
+            'marketing',
+            'POST',
+            '/api/v1/leads/scan',
+            args,
+          );
+          break;
+        case 'marketing_manage_fanpage':
+          result = await executeDynamicAPI(
+            authHeader,
+            'marketing',
+            'GET',
+            '/api/v1/fanpage/status',
+            args,
+          );
+          break;
+        case 'marketing_create_funnel':
+          result = await executeDynamicAPI(
+            authHeader,
+            'marketing',
+            'POST',
+            '/api/v1/funnels',
+            args,
+          );
+          break;
 
         // -- BrandLabs --
         case 'brandlabs_get_media_assets':
