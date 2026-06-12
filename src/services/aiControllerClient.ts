@@ -187,15 +187,14 @@ export async function createAssistantTextTask(
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
-      // Route to user's portals (any type: private or hosted) by explicitly targeting the user via user_uuid
-      'X-Tadagram-Portal-Scope': 'user',
+      // Route to platform-hosted wkr-ai-controller workers only (mode=hosted portals).
+      'X-Tadagram-Portal-Scope': 'hosted',
     },
     body: JSON.stringify({
       task_type: 'text.generate',
       provider: 'gemini',
       model: 'gemini-2.0-flash-exp',
       prompt,
-      user_uuid: userUuid, // Pass user UUID to target their registered worker
       parameters: {
         input: { prompt, service: 'text2text' },
       },
