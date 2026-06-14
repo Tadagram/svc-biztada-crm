@@ -371,8 +371,7 @@ export async function historyHandler(request: FastifyRequest, reply: FastifyRepl
   const prisma = request.server.prisma;
 
   if (!userId) {
-    reply.status(401).send({ error: 'Unauthorized' });
-    return;
+    return reply.status(401).send({ error: 'Unauthorized' });
   }
 
   const query = request.query as any;
@@ -390,7 +389,7 @@ export async function historyHandler(request: FastifyRequest, reply: FastifyRepl
 
     const orderedMessages = messages.reverse();
 
-    reply.status(200).send({
+    return reply.status(200).send({
       messages: orderedMessages.map((m) => ({
         role: m.role,
         content: m.content,
@@ -400,6 +399,6 @@ export async function historyHandler(request: FastifyRequest, reply: FastifyRepl
     });
   } catch (err) {
     request.log.error({ err }, '[assistant] historyHandler failed');
-    reply.status(500).send({ error: 'Failed to fetch history' });
+    return reply.status(500).send({ error: 'Failed to fetch history' });
   }
 }
