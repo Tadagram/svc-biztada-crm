@@ -65,12 +65,18 @@ export async function chatHandler(request: FastifyRequest, reply: FastifyReply):
   try {
     // 1. Fetch User Memory (Preferences) - Only for Authenticated Users
     let userPreferences = 'Chưa có thông tin.';
+    let workingMemoryStr = 'Không có.';
+    let existingPrefs: any = {};
     let historyText = '';
 
     if (!isGuest && userId) {
       const memory = await prisma.userAssistantMemory.findUnique({ where: { user_id: userId } });
       if (memory?.preferences) {
-        userPreferences = JSON.stringify(memory.preferences);
+        existingPrefs = typeof memory.preferences === 'string' ? JSON.parse(memory.preferences) : memory.preferences;
+        userPreferences = JSON.stringify(existingPrefs);
+        if (existingPrefs.working_memory) {
+          workingMemoryStr = JSON.stringify(existingPrefs.working_memory);
+        }
       }
 
       // 2. Fetch Recent Chat History (Last 10 messages)
@@ -137,8 +143,11 @@ export async function chatHandler(request: FastifyRequest, reply: FastifyReply):
 const orchestratorPrompt = `[SYSTEM]: Bạn là **Quản đốc Phân tích (Orchestrator Agent)** của hệ sinh thái Biztada (business ID: ${businessId || 'N/A'}).
 Thông tin người dùng: ${userPreferences}${guestInstruction}
 
-SỨ MỆNH: Đọc Lịch sử Trò chuyện và Yêu cầu hiện tại của người dùng. Phân loại yêu cầu thành 1 trong 3 quyết định:
-1. "CHAT": Trả lời thông thường (Tư vấn, giải thích, trò chuyện).
+[BỘ NHỚ LÀM VIỆC HIỆN TẠI (WORKING MEMORY)]:
+${workingMemoryStr}
+
+SỨ MỆNH: Đọc Lịch sử Trò chuyện, Bộ nhớ làm việc và Yêu cầu hiện tại của người dùng. Phân loại yêu cầu thành 1 trong 3 quyết định:
+1. "CHAT": Trả lời thông thường (Tư vấn, giải thích, trò chuyện). Phải cập nhật lại Bộ nhớ làm việc nếu ngữ cảnh đổi.
 2. "ASK_USER": Yêu cầu người dùng cung cấp thêm thông tin BẮT BUỘC để chạy công cụ.
 3. "EXECUTE_TOOL": Chạy API công cụ (Chỉ khi ĐÃ ĐỦ thông tin).
 
@@ -156,13 +165,18 @@ CÁCH TRẢ VỀ KẾT QUẢ: Bắt buộc trả về duy nhất 1 khối JSON c
   "reasoning": "Lý do ngắn gọn",
   "tool_name": "Tên tool (nếu EXECUTE_TOOL)",
   "tool_payload": { /* arguments object */ } (nếu EXECUTE_TOOL),
+  "working_memory": {
+    "current_objective": "Mục tiêu hiện tại của người dùng là gì?",
+    "context_summary": "Tóm tắt các dữ liệu ĐÃ thu thập được và CÒN THIẾU (không quá 3 câu)"
+  },
   "reply": "Văn bản Markdown để nói với người dùng (nếu CHAT hoặc ASK_USER)"
 }
 \`\`\`
 
-LUẬT CẤM KỴ: 
-- Nếu bạn cần gọi Tool nhưng trong Lịch sử trò chuyện NGƯỜI DÙNG CHƯA CUNG CẤP ĐỦ THÔNG TIN (ví dụ: tạo tài khoản thì phải có username/password, tạo campaign phải có tên...), TUYỆT ĐỐI KHÔNG TỰ BỊA RA DỮ LIỆU ĐỂ GỌI TOOL.
-- Trong trường hợp thiếu dữ liệu, phải chọn \`ASK_USER\` và đặt câu hỏi lịch sự vào \`reply\` để thu thập dữ liệu từ người dùng.
+LUẬT CẤM KỴ (SLOT-FILLING - RẤT QUAN TRỌNG): 
+- Nếu bạn cần gọi Tool nhưng trong Lịch sử trò chuyện NGƯỜI DÙNG CHƯA CUNG CẤP ĐỦ THÔNG TIN (ví dụ: tạo tài khoản thì phải có cả username và password; upload ảnh thì phải có files...), TUYỆT ĐỐI KHÔNG TỰ BỊA RA DỮ LIỆU ĐỂ GỌI TOOL.
+- Trong trường hợp thiếu dữ liệu bắt buộc (Required Fields), bạn PHẢI chọn \`ASK_USER\` và đặt câu hỏi rõ ràng vào \`reply\` để thu thập dữ liệu còn thiếu từ người dùng.
+- Chỉ khi nhận ĐỦ tất cả required fields thì mới được chọn \`EXECUTE_TOOL\`.
 
 === LỊCH SỬ TRÒ CHUYỆN (Sử dụng làm ngữ cảnh) ===
 ${historyText || 'Chưa có lịch sử.'}
@@ -206,6 +220,16 @@ ${historyText || 'Chưa có lịch sử.'}
     // --- PHASE 1: ORCHESTRATOR ---
     let orchestratorResponse = await generateAssistantText(orchestratorPrompt);
     let decisionData = parseJSON(orchestratorResponse);
+
+    // Upsert working_memory asynchronously
+    if (!isGuest && userId && decisionData?.working_memory) {
+      existingPrefs.working_memory = decisionData.working_memory;
+      prisma.userAssistantMemory.upsert({
+        where: { user_id: userId },
+        update: { preferences: existingPrefs },
+        create: { user_id: userId, preferences: existingPrefs }
+      }).catch(err => request.log.error({err}, 'Failed to upsert working memory'));
+    }
 
     // Fallback if LLM failed to return JSON
     if (!decisionData) {
