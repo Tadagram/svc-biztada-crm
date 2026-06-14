@@ -153,6 +153,24 @@ const MCP_TOOLS_REGISTRY_BASE: McpToolSchema[] = [
       required: ['name'],
     },
   },
+  {
+    name: 'marketing_get_schedules',
+    description:
+      'Lấy lịch trình (schedules) tổng quát (master calendar) từ tất cả các worker tự động đang hoạt động của user.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
+    name: 'marketing_get_reports',
+    description:
+      'Lấy danh sách các báo cáo thực thi (reports) gần đây từ tất cả các worker tự động đang hoạt động của user.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
 
   // ── BrandLabs Tools ──
   {
