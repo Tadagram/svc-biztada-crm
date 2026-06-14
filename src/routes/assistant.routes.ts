@@ -1,6 +1,10 @@
 import { FastifyInstance, RouteHandlerMethod } from 'fastify';
-import { chatHandler, historyHandler } from '@handlers/assistant';
-import { chatAssistantSchema, historyAssistantSchema } from '@schemas/assistant.schema';
+import { chatHandler, historyHandler, clearHistoryHandler } from '@handlers/assistant';
+import {
+  chatAssistantSchema,
+  historyAssistantSchema,
+  clearHistoryAssistantSchema,
+} from '@schemas/assistant.schema';
 
 async function assistantRoutes(fastify: FastifyInstance) {
   fastify.post(
@@ -19,6 +23,15 @@ async function assistantRoutes(fastify: FastifyInstance) {
       preHandler: [fastify.authenticate],
     },
     historyHandler as RouteHandlerMethod,
+  );
+
+  fastify.delete(
+    '/history',
+    {
+      schema: clearHistoryAssistantSchema,
+      preHandler: [fastify.authenticate],
+    },
+    clearHistoryHandler as RouteHandlerMethod,
   );
 }
 

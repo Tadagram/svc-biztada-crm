@@ -75,3 +75,25 @@ export const historyAssistantSchema: FastifySchema = {
     },
   },
 };
+
+export const clearHistoryAssistantSchema: FastifySchema = {
+  description: 'Clear chat history with Biztada Virtual Assistant',
+  tags: ['Assistant'],
+  summary: 'Delete all chat history for the current user and business',
+  headers: {
+    type: 'object',
+    required: ['x-business-id'],
+    properties: {
+      'x-business-id': { type: 'string' },
+    },
+  },
+  response: {
+    200: {
+      description: 'Successful response',
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+      },
+    },
+  },
+};

@@ -402,3 +402,28 @@ export async function historyHandler(request: FastifyRequest, reply: FastifyRepl
     return reply.status(500).send({ error: 'Failed to fetch history' });
   }
 }
+
+export async function clearHistoryHandler(
+  request: FastifyRequest,
+  reply: FastifyReply,
+): Promise<void> {
+  const userPayload = (request as any).user;
+  const userId = userPayload?.userId || userPayload?.user_id;
+  const businessId = request.headers['x-business-id'] as string | undefined;
+  const prisma = request.server.prisma;
+
+  if (!userId) {
+    return reply.status(401).send({ error: 'Unauthorized' });
+  }
+
+  try {
+    await prisma.assistantMessage.deleteMany({
+      where: { user_id: userId, business_id: businessId || null },
+    });
+
+    return reply.status(200).send({ success: true });
+  } catch (err) {
+    request.log.error({ err }, '[assistant] clearHistoryHandler failed');
+    return reply.status(500).send({ error: 'Failed to clear history' });
+  }
+}
