@@ -204,13 +204,11 @@ ${historyText || 'Chưa có lịch sử.'}
     }
 
     // --- PHASE 1: ORCHESTRATOR ---
-    sendSSE('progress', { message: 'Đang đánh giá yêu cầu và phân tích thông tin hiện có...' });
     let orchestratorResponse = await generateAssistantText(orchestratorPrompt);
     let decisionData = parseJSON(orchestratorResponse);
 
     // Fallback if LLM failed to return JSON
     if (!decisionData) {
-      sendSSE('progress', { message: 'Khôi phục lỗi định dạng AI, đang thử lại...' });
       const fixPrompt = orchestratorPrompt + `\n\n[LỖI]: Bạn đã trả về văn bản thường thay vì JSON. Hãy output lại đúng chuẩn JSON.`;
       orchestratorResponse = await generateAssistantText(fixPrompt);
       decisionData = parseJSON(orchestratorResponse);
@@ -221,7 +219,6 @@ ${historyText || 'Chưa có lịch sử.'}
     } else {
       if (decisionData.decision === 'ASK_USER') {
         // --- PHASE 2A: ASK USER (SLOT FILLING) ---
-        sendSSE('progress', { message: 'Ghi chú: Cần thu thập thêm thông tin từ người dùng.' });
         finalReply = decisionData.reply || 'Để tôi hỗ trợ bạn tốt nhất, vui lòng cung cấp thêm thông tin.';
       } 
       else if (decisionData.decision === 'EXECUTE_TOOL' && decisionData.tool_name) {
@@ -280,7 +277,6 @@ LƯU Ý: Nếu kết quả API có báo "error", hãy giải thích lỗi đó m
       } 
       else {
         // --- PHASE 2C: CHAT ---
-        sendSSE('progress', { message: 'Ghi chú: Đang soạn thảo câu trả lời tư vấn...' });
         finalReply = decisionData.reply || orchestratorResponse;
       }
     }
