@@ -72,7 +72,10 @@ export async function chatHandler(request: FastifyRequest, reply: FastifyReply):
     if (!isGuest && userId) {
       const memory = await prisma.userAssistantMemory.findUnique({ where: { user_id: userId } });
       if (memory?.preferences) {
-        existingPrefs = typeof memory.preferences === 'string' ? JSON.parse(memory.preferences) : memory.preferences;
+        existingPrefs =
+          typeof memory.preferences === 'string'
+            ? JSON.parse(memory.preferences)
+            : memory.preferences;
         userPreferences = JSON.stringify(existingPrefs);
         if (existingPrefs.working_memory) {
           workingMemoryStr = JSON.stringify(existingPrefs.working_memory);
@@ -91,106 +94,9 @@ export async function chatHandler(request: FastifyRequest, reply: FastifyReply):
         .join('\n');
     }
 
-    // 3. Fetch Strategy Context (Chunks + Capabilities) from AI Controller
-    let strategyContextText = '';
-    let capabilitiesText = '';
-
-    if (STRATEGY_INTERNAL_TOKEN) {
-      try {
-        const retrieveRes = await fetch(`${AI_CONTROLLER_URL}/internal/strategy/retrieve-context`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Internal-Strategy-Token': STRATEGY_INTERNAL_TOKEN,
-          },
-          body: JSON.stringify({ question: message, context: {} }),
-        });
-
-        if (retrieveRes.ok) {
-          const retrieveData = await retrieveRes.json();
-          const chunks = retrieveData.chunks || [];
-          const caps = retrieveData.capabilities || [];
-
-          if (chunks.length > 0) {
-            strategyContextText =
-              '--- TRI THỨC TƯ VẤN ---\n' +
-              chunks
-                .map((c: any, i: number) => `[${i + 1}] ${c.title}\n${c.summary}`)
-                .join('\n\n') +
-              '\n';
-          }
-          if (caps.length > 0) {
-            capabilitiesText =
-              '--- ĐẶC TẢ API PAYLOAD ---\n' +
-              caps
-                .map(
-                  (c: any) =>
-                    `• [${c.capability_id}] ${c.display_name}\n  Schema: ${JSON.stringify(c.parameter_schema)}\n  Example Input: ${JSON.stringify(c.example_input)}`,
-                )
-                .join('\n\n') +
-              '\n';
-          }
-        }
-      } catch (err) {
-        request.log.error({ err }, '[assistant] Failed to retrieve strategy context');
-      }
-    }
-
-    const guestInstruction = isGuest
-      ? `\nTƯ CÁCH NGƯỜI DÙNG: GUEST (Khách viếng thăm chưa đăng nhập).\nBẠN BỊ CẤM GỌI CÔNG CỤ (MCP Tools) VÀ CẤM TRẢ VỀ \`actionPayloads\`. Bạn CHỈ được phép tư vấn, đưa ra lời khuyên và lên kế hoạch (Plan) dựa trên Tri thức có sẵn. Nếu có ActionPayload, hãy để mảng \`actionPayloads\` rỗng.`
-      : `\nTƯ CÁCH NGƯỜI DÙNG: AUTHENTICATED USER.\nBạn có toàn quyền gọi Tools và trả về \`actionPayloads\` thực tế dựa trên Schema đặc tả để cài đặt hệ thống.`;
-
-const orchestratorPrompt = `[SYSTEM]: Bạn là **Quản đốc Phân tích (Orchestrator Agent)** của hệ sinh thái Biztada (business ID: ${businessId || 'N/A'}).
-Thông tin người dùng: ${userPreferences}${guestInstruction}
-
-[BỘ NHỚ LÀM VIỆC HIỆN TẠI (WORKING MEMORY)]:
-${workingMemoryStr}
-
-SỨ MỆNH: Đọc Lịch sử Trò chuyện, Bộ nhớ làm việc và Yêu cầu hiện tại của người dùng. Phân loại yêu cầu thành 1 trong 3 quyết định:
-1. "CHAT": Trả lời thông thường (Tư vấn, giải thích, trò chuyện). Phải cập nhật lại Bộ nhớ làm việc nếu ngữ cảnh đổi.
-2. "ASK_USER": Yêu cầu người dùng cung cấp thêm thông tin BẮT BUỘC để chạy công cụ.
-3. "EXECUTE_TOOL": Chạy API công cụ (Chỉ khi ĐÃ ĐỦ thông tin).
-
-${strategyContextText}
-${capabilitiesText}
-
-Danh sách các Tools hệ thống:
-${JSON.stringify(await mcpServer.getTools(authHeader), null, 2)}
-Công cụ nội bộ: get_marketing_dashboard, get_worker_stats, get_active_workflows, get_dashboard_activity, update_user_memory.
-
-CÁCH TRẢ VỀ KẾT QUẢ: Bắt buộc trả về duy nhất 1 khối JSON chuẩn xác:
-\`\`\`json
-{
-  "decision": "CHAT" | "ASK_USER" | "EXECUTE_TOOL",
-  "reasoning": "Lý do ngắn gọn",
-  "tool_name": "Tên tool (nếu EXECUTE_TOOL)",
-  "tool_payload": { /* arguments object */ } (nếu EXECUTE_TOOL),
-  "working_memory": {
-    "current_objective": "Mục tiêu hiện tại của người dùng là gì?",
-    "context_summary": "Tóm tắt các dữ liệu ĐÃ thu thập được và CÒN THIẾU (không quá 3 câu)"
-  },
-  "reply": "Văn bản Markdown để nói với người dùng (nếu CHAT hoặc ASK_USER)"
-}
-\`\`\`
-
-LUẬT CẤM KỴ (SLOT-FILLING - RẤT QUAN TRỌNG): 
-- Nếu bạn cần gọi Tool nhưng trong Lịch sử trò chuyện NGƯỜI DÙNG CHƯA CUNG CẤP ĐỦ THÔNG TIN (ví dụ: tạo tài khoản thì phải có cả username và password; upload ảnh thì phải có files...), TUYỆT ĐỐI KHÔNG TỰ BỊA RA DỮ LIỆU ĐỂ GỌI TOOL.
-- Trong trường hợp thiếu dữ liệu bắt buộc (Required Fields), bạn PHẢI chọn \`ASK_USER\` và đặt câu hỏi rõ ràng vào \`reply\` để thu thập dữ liệu còn thiếu từ người dùng.
-- Chỉ khi nhận ĐỦ tất cả required fields thì mới được chọn \`EXECUTE_TOOL\`.
-
-=== LỊCH SỬ TRÒ CHUYỆN (Sử dụng làm ngữ cảnh) ===
-${historyText || 'Chưa có lịch sử.'}
-==========================
-
-[USER'S CURRENT REQUEST]: ${message}`;
-
-    let finalReply = '';
-    const toolActions: string[] = [];
-    let actionPayloads: any[] = [];
-
     // Helper: Parse JSON
     const parseJSON = (text: string) => {
-      const jsonRegex = /\`\`\`(?:json)?\s*(\{[\s\S]*?\})\s*\`\`\`/;
+      const jsonRegex = /```(?:json)?\s*(\{[\s\S]*?\})\s*```/;
       const match = text.match(jsonRegex);
       let jsonString = text;
       if (match && match[1]) {
@@ -202,7 +108,11 @@ ${historyText || 'Chưa có lịch sử.'}
           jsonString = text.substring(startIdx, endIdx + 1);
         }
       }
-      try { return JSON.parse(jsonString); } catch (e) { return null; }
+      try {
+        return JSON.parse(jsonString);
+      } catch (e) {
+        return null;
+      }
     };
 
     // Save User message
@@ -217,43 +127,202 @@ ${historyText || 'Chưa có lịch sử.'}
       });
     }
 
-    // --- PHASE 1: ORCHESTRATOR ---
-    let orchestratorResponse = await generateAssistantText(orchestratorPrompt);
-    let decisionData = parseJSON(orchestratorResponse);
+    const guestInstruction = isGuest
+      ? `\nTƯ CÁCH NGƯỜI DÙNG: GUEST (Khách viếng thăm chưa đăng nhập).\nBạn CHỈ được phép tư vấn và trả lời thông thường (CHAT). KHÔNG CÓ QUYỀN thực thi TASK.`
+      : `\nTƯ CÁCH NGƯỜI DÙNG: AUTHENTICATED USER.\nBạn có toàn quyền phân loại yêu cầu thành TASK nếu cần thiết.`;
 
-    // Upsert working_memory asynchronously
-    if (!isGuest && userId && decisionData?.working_memory) {
-      existingPrefs.working_memory = decisionData.working_memory;
-      prisma.userAssistantMemory.upsert({
-        where: { user_id: userId },
-        update: { preferences: existingPrefs },
-        create: { user_id: userId, preferences: existingPrefs }
-      }).catch(err => request.log.error({err}, 'Failed to upsert working memory'));
+    // --- PHASE 1: ROUTER AGENT (INTENT DETECTION) ---
+    const routerPrompt = `[SYSTEM]: Bạn là **Điều phối viên (Router Agent)** của hệ sinh thái Biztada.
+Bạn có nhiệm vụ đọc Lịch sử trò chuyện và Yêu cầu mới nhất của người dùng để phân loại ý định của họ.
+
+Thông tin người dùng: ${userPreferences}${guestInstruction}
+
+[BỘ NHỚ LÀM VIỆC HIỆN TẠI (WORKING MEMORY)]:
+${workingMemoryStr}
+
+PHÂN LOẠI YÊU CẦU:
+1. "CHAT": Trả lời thông thường (Tư vấn chung chung, giải thích, trò chuyện, chào hỏi, hoặc người dùng chỉ đang trả lời câu hỏi mà không có ý định bắt đầu/thực hiện một tác vụ phần mềm/công cụ nào rõ ràng).
+2. "TASK": Người dùng yêu cầu thực hiện MỘT NHIỆM VỤ CỤ THỂ liên quan đến hệ thống phần mềm (vd: tạo tài khoản, tạo chiến dịch, thu thập thông tin, cấu hình worker, đăng bài, lấy dữ liệu bảng điều khiển...).
+
+CÁCH TRẢ VỀ KẾT QUẢ: Bắt buộc trả về JSON:
+\`\`\`json
+{
+  "intent": "CHAT" | "TASK",
+  "reasoning": "Lý do ngắn gọn",
+  "task_summary": "Tóm tắt chính xác người dùng muốn làm gì và các thông tin họ ĐÃ CUNG CẤP (chỉ điền nếu intent là TASK. Nếu CHAT hãy để trống)",
+  "reply": "Câu trả lời ngay cho người dùng nếu intent là CHAT. (bỏ trống nếu TASK)"
+}
+\`\`\`
+
+=== LỊCH SỬ TRÒ CHUYỆN ===
+${historyText || 'Chưa có lịch sử.'}
+==========================
+
+[USER'S CURRENT REQUEST]: ${message}`;
+
+    let finalReply = '';
+    const toolActions: string[] = [];
+    let actionPayloads: any[] = [];
+
+    let routerResponse = await generateAssistantText(routerPrompt);
+    let routerData = parseJSON(routerResponse);
+
+    if (!routerData) {
+      routerResponse = await generateAssistantText(
+        routerPrompt + `\n\n[LỖI]: Vui lòng trả về đúng chuẩn JSON.`,
+      );
+      routerData = parseJSON(routerResponse);
     }
 
-    // Fallback if LLM failed to return JSON
-    if (!decisionData) {
-      const fixPrompt = orchestratorPrompt + `\n\n[LỖI]: Bạn đã trả về văn bản thường thay vì JSON. Hãy output lại đúng chuẩn JSON.`;
-      orchestratorResponse = await generateAssistantText(fixPrompt);
-      decisionData = parseJSON(orchestratorResponse);
-    }
-
-    if (!decisionData) {
-      finalReply = 'Lỗi hệ thống: Không thể khởi tạo quy trình tư duy. Vui lòng thử lại sau.';
+    if (!routerData) {
+      finalReply = 'Lỗi hệ thống: Không thể khởi tạo quy trình phân loại. Vui lòng thử lại sau.';
+    } else if (routerData.intent === 'CHAT') {
+      // Intent CHAT -> Stop here and return the reply directly
+      finalReply = routerData.reply || 'Dạ, tôi nghe đây ạ.';
     } else {
-      if (decisionData.decision === 'ASK_USER') {
+      // --- PHASE 2: ORCHESTRATOR AGENT (CONTEXT & SLOT FILLING) ---
+      sendSSE('progress', {
+        message: `Đã nhận diện yêu cầu: ${routerData.task_summary || 'Tác vụ'}. Đang truy xuất công cụ...`,
+      });
+
+      // 3. Fetch Strategy Context (Chunks + Capabilities) from AI Controller using the task summary
+      let strategyContextText = '';
+      let capabilitiesText = '';
+
+      if (STRATEGY_INTERNAL_TOKEN) {
+        try {
+          const retrieveRes = await fetch(
+            `${AI_CONTROLLER_URL}/internal/strategy/retrieve-context`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Internal-Strategy-Token': STRATEGY_INTERNAL_TOKEN,
+              },
+              body: JSON.stringify({ question: routerData.task_summary || message, context: {} }),
+            },
+          );
+
+          if (retrieveRes.ok) {
+            const retrieveData = await retrieveRes.json();
+            const chunks = retrieveData.chunks || [];
+            const caps = retrieveData.capabilities || [];
+
+            if (chunks.length > 0) {
+              strategyContextText =
+                '--- TRI THỨC TƯ VẤN ---\n' +
+                chunks
+                  .map((c: any, i: number) => `[${i + 1}] ${c.title}\n${c.summary}`)
+                  .join('\n\n') +
+                '\n';
+            }
+            if (caps.length > 0) {
+              capabilitiesText =
+                '--- ĐẶC TẢ API PAYLOAD ---\n' +
+                caps
+                  .map(
+                    (c: any) =>
+                      `• [${c.capability_id}] ${c.display_name}\n  Schema: ${JSON.stringify(c.parameter_schema)}\n  Example Input: ${JSON.stringify(c.example_input)}`,
+                  )
+                  .join('\n\n') +
+                '\n';
+            }
+          }
+        } catch (err) {
+          request.log.error({ err }, '[assistant] Failed to retrieve strategy context');
+        }
+      }
+
+      const mcpTools = await mcpServer.getTools(authHeader);
+
+      const orchestratorPrompt = `[SYSTEM]: Bạn là **Quản đốc Phân tích (Orchestrator Agent)** của hệ sinh thái Biztada (business ID: ${businessId || 'N/A'}).
+Nhiệm vụ của bạn là kiểm tra xem chúng ta đã đủ thông tin để gọi Công cụ (Tool) hay chưa.
+
+[BỘ NHỚ LÀM VIỆC HIỆN TẠI (WORKING MEMORY)]:
+${workingMemoryStr}
+
+${strategyContextText}
+${capabilitiesText}
+
+Danh sách các Tools hệ thống:
+${JSON.stringify(mcpTools, null, 2)}
+Công cụ nội bộ: get_marketing_dashboard, get_worker_stats, get_active_workflows, get_dashboard_activity, update_user_memory.
+
+SỨ MỆNH: Phân loại yêu cầu thành 1 trong 2 quyết định:
+1. "ASK_USER": Yêu cầu người dùng cung cấp thêm thông tin BẮT BUỘC để chạy công cụ.
+2. "EXECUTE_TOOL": Chạy API công cụ (Chỉ khi ĐÃ ĐỦ thông tin theo Schema).
+
+CÁCH TRẢ VỀ KẾT QUẢ: Bắt buộc trả về duy nhất 1 khối JSON chuẩn xác:
+\`\`\`json
+{
+  "decision": "ASK_USER" | "EXECUTE_TOOL",
+  "reasoning": "Lý do ngắn gọn",
+  "tool_name": "Tên tool (nếu EXECUTE_TOOL)",
+  "tool_payload": { /* arguments object */ } (nếu EXECUTE_TOOL),
+  "working_memory": {
+    "current_objective": "Mục tiêu hiện tại của người dùng là gì?",
+    "context_summary": "Tóm tắt các dữ liệu ĐÃ thu thập được và CÒN THIẾU (không quá 3 câu)"
+  },
+  "reply": "Văn bản Markdown để hỏi lại người dùng thông tin bị thiếu (chỉ điền nếu ASK_USER)"
+}
+\`\`\`
+
+LUẬT CẤM KỴ (SLOT-FILLING - RẤT QUAN TRỌNG): 
+- TUYỆT ĐỐI KHÔNG TỰ BỊA RA DỮ LIỆU ĐỂ GỌI TOOL.
+- Trong trường hợp thiếu dữ liệu bắt buộc (Required Fields), bạn PHẢI chọn \`ASK_USER\` và đặt câu hỏi rõ ràng vào \`reply\` để thu thập dữ liệu còn thiếu từ người dùng.
+- Chỉ khi nhận ĐỦ tất cả required fields thì mới được chọn \`EXECUTE_TOOL\`.
+
+=== LỊCH SỬ TRÒ CHUYỆN ===
+${historyText || 'Chưa có lịch sử.'}
+==========================
+
+[USER'S CURRENT REQUEST]: ${message}
+[TASK SUMMARY TỪ ROUTER]: ${routerData.task_summary}`;
+
+      let orchestratorResponse = await generateAssistantText(orchestratorPrompt);
+      let decisionData = parseJSON(orchestratorResponse);
+
+      // Fallback if LLM failed to return JSON
+      if (!decisionData) {
+        const fixPrompt =
+          orchestratorPrompt +
+          `\n\n[LỖI]: Bạn đã trả về văn bản thường thay vì JSON. Hãy output lại đúng chuẩn JSON.`;
+        orchestratorResponse = await generateAssistantText(fixPrompt);
+        decisionData = parseJSON(orchestratorResponse);
+      }
+
+      // Upsert working_memory asynchronously
+      if (!isGuest && userId && decisionData?.working_memory) {
+        existingPrefs.working_memory = decisionData.working_memory;
+        prisma.userAssistantMemory
+          .upsert({
+            where: { user_id: userId },
+            update: { preferences: existingPrefs },
+            create: { user_id: userId, preferences: existingPrefs },
+          })
+          .catch((err) => request.log.error({ err }, 'Failed to upsert working memory'));
+      }
+
+      if (!decisionData) {
+        finalReply = 'Lỗi hệ thống: Không thể khởi tạo quy trình thực thi. Vui lòng thử lại sau.';
+      } else if (decisionData.decision === 'ASK_USER') {
         // --- PHASE 2A: ASK USER (SLOT FILLING) ---
-        finalReply = decisionData.reply || 'Để tôi hỗ trợ bạn tốt nhất, vui lòng cung cấp thêm thông tin.';
-      } 
-      else if (decisionData.decision === 'EXECUTE_TOOL' && decisionData.tool_name) {
+        finalReply =
+          decisionData.reply || 'Để tôi hỗ trợ bạn tốt nhất, vui lòng cung cấp thêm thông tin.';
+      } else if (decisionData.decision === 'EXECUTE_TOOL' && decisionData.tool_name) {
         // --- PHASE 2B: EXECUTION AGENT ---
         const toolName = decisionData.tool_name;
         const toolArgs = decisionData.tool_payload || {};
         toolActions.push(toolName);
-        
-        sendSSE('progress', { message: `Ghi chú: Đang tổng hợp dữ liệu để gọi lệnh ${toolName}...` });
-        sendSSE('tool_call', { name: toolName, message: `Hệ thống đang truy xuất dữ liệu: ${toolName}...` });
-        
+
+        sendSSE('progress', {
+          message: `Ghi chú: Đang tổng hợp dữ liệu để gọi lệnh ${toolName}...`,
+        });
+        sendSSE('tool_call', {
+          name: toolName,
+          message: `Hệ thống đang truy xuất dữ liệu: ${toolName}...`,
+        });
+
         let toolResult: any = null;
         if (toolName === 'update_user_memory') {
           const prefs = toolArgs || {};
@@ -269,7 +338,8 @@ ${historyText || 'Chưa có lịch sử.'}
           try {
             if (toolName === 'get_marketing_dashboard')
               toolResult = await getMarketingDashboard(authHeader, businessId);
-            else if (toolName === 'get_worker_stats') toolResult = await getWorkerStats(authHeader, businessId);
+            else if (toolName === 'get_worker_stats')
+              toolResult = await getWorkerStats(authHeader, businessId);
             else if (toolName === 'get_active_workflows')
               toolResult = await getActiveWorkflows(authHeader, businessId);
             else if (toolName === 'get_dashboard_activity')
@@ -296,10 +366,9 @@ Nhiệm vụ của bạn là dịch kết quả này thành câu trả lời d�
 [CÂU HỎI BAN ĐẦU CỦA USER]: ${message}
 
 LƯU Ý: Nếu kết quả API có báo "error", hãy giải thích lỗi đó một cách nhẹ nhàng và hướng dẫn người dùng cách khắc phục.`;
-        
+
         finalReply = await generateAssistantText(summarizerPrompt);
-      } 
-      else {
+      } else {
         // --- PHASE 2C: CHAT ---
         finalReply = decisionData.reply || orchestratorResponse;
       }
@@ -311,11 +380,11 @@ LƯU Ý: Nếu kết quả API có báo "error", hãy giải thích lỗi đó m
       actionPayloads = finalParsed.actionPayloads;
       if (finalParsed.reply) finalReply = finalParsed.reply;
     } else if (finalParsed && finalParsed.reply) {
-       finalReply = finalParsed.reply;
+      finalReply = finalParsed.reply;
     }
 
     // Clean up finalReply if it still contains JSON markdown
-    finalReply = finalReply.replace(/\`\`\`(?:json)?\s*\{[\s\S]*?\}\s*\`\`\`/g, '').trim();
+    finalReply = finalReply.replace(/```(?:json)?\s*\{[\s\S]*?\}\s*```/g, '').trim();
     if (!finalReply) finalReply = 'Hệ thống đã xử lý xong yêu cầu của bạn.';
 
     // Save Assistant message
