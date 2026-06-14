@@ -365,7 +365,8 @@ ${historyText}`;
 }
 
 export async function historyHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const userId = (request as any).user?.user_id;
+  const userPayload = (request as any).user;
+  const userId = userPayload?.userId || userPayload?.user_id;
   const businessId = request.headers['x-business-id'] as string | undefined;
   const prisma = request.server.prisma;
 
@@ -374,14 +375,23 @@ export async function historyHandler(request: FastifyRequest, reply: FastifyRepl
     return;
   }
 
+  const query = request.query as any;
+  const page = parseInt(query.page, 10) || 1;
+  const limit = parseInt(query.limit, 10) || 20;
+  const skip = (page - 1) * limit;
+
   try {
     const messages = await prisma.assistantMessage.findMany({
       where: { user_id: userId, business_id: businessId || null },
-      orderBy: { created_at: 'asc' },
+      orderBy: { created_at: 'desc' },
+      skip,
+      take: limit,
     });
 
+    const orderedMessages = messages.reverse();
+
     reply.status(200).send({
-      messages: messages.map((m) => ({
+      messages: orderedMessages.map((m) => ({
         role: m.role,
         content: m.content,
         timestamp: m.created_at,
