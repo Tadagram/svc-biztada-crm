@@ -838,32 +838,3 @@ model AiBusinessPlaybooks {
   @@map("ai_business_playbooks")
 }
 
-model AiToolRegistry {
-  tool_id        String   @id @default(uuid()) @db.Char(36)
-  business_id    String   @db.VarChar(64)
-  name           String   @db.VarChar(120)
-  description    String   @db.Text
-  api_endpoint   String   @db.VarChar(255)
-  api_method     String   @db.VarChar(10)
-  payload_schema Json?
-  is_active      Boolean  @default(true)
-  created_at     DateTime @default(now()) @db.DateTime(0)
-  updated_at     DateTime @default(now()) @updatedAt @db.DateTime(0)
-
-  @@index([business_id, is_active])
-  @@map("ai_tool_registry")
-}
-
-model AiSkillKnowledge {
-  knowledge_id String   @id @default(uuid()) @db.Char(36)
-  business_id  String   @db.VarChar(64)
-  category     String   @db.VarChar(50)
-  title        String   @db.VarChar(255)
-  content      String   @db.Text
-  is_active    Boolean  @default(true)
-  created_at   DateTime @default(now()) @db.DateTime(0)
-  updated_at   DateTime @default(now()) @updatedAt @db.DateTime(0)
-
-  @@index([business_id, is_active])
-  @@map("ai_skill_knowledge")
-}

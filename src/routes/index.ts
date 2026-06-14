@@ -17,7 +17,6 @@ import marketplaceRoutes from './marketplace.routes';
 import marketplaceAdminRoutes from './marketplaceAdmin.routes';
 import assistantRoutes from './assistant.routes';
 import mcpRoutes from './mcp.routes';
-import aiManagementRoutes from './aiManagement.routes';
 
 async function routes(fastify: FastifyInstance, _options: FastifyPluginOptions) {
   fastify.register(userRoutes, { prefix: '/users' });
@@ -36,7 +35,6 @@ async function routes(fastify: FastifyInstance, _options: FastifyPluginOptions) 
   fastify.register(strategyRoutes, { prefix: '/strategy' });
   fastify.register(marketplaceRoutes, { prefix: '/marketplace' });
   fastify.register(marketplaceAdminRoutes, { prefix: '/admin/marketplace' });
-  fastify.register(aiManagementRoutes, { prefix: '/admin/ai-library' });
   fastify.register(assistantRoutes, { prefix: '/assistant' });
   fastify.register(mcpRoutes, { prefix: '/mcp' });
 
