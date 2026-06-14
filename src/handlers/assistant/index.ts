@@ -134,62 +134,64 @@ export async function chatHandler(request: FastifyRequest, reply: FastifyReply):
       ? `\nTƯ CÁCH NGƯỜI DÙNG: GUEST (Khách viếng thăm chưa đăng nhập).\nBẠN BỊ CẤM GỌI CÔNG CỤ (MCP Tools) VÀ CẤM TRẢ VỀ \`actionPayloads\`. Bạn CHỈ được phép tư vấn, đưa ra lời khuyên và lên kế hoạch (Plan) dựa trên Tri thức có sẵn. Nếu có ActionPayload, hãy để mảng \`actionPayloads\` rỗng.`
       : `\nTƯ CÁCH NGƯỜI DÙNG: AUTHENTICATED USER.\nBạn có toàn quyền gọi Tools và trả về \`actionPayloads\` thực tế dựa trên Schema đặc tả để cài đặt hệ thống.`;
 
-const systemPrompt = `[SYSTEM]: Bạn là **Enterprise Solutions Architect (Giám đốc Vận hành & Giải pháp)** của hệ sinh thái Biztada (business ID: ${businessId || 'N/A'}).
-Thông tin ghi nhớ về người dùng này: ${userPreferences}${guestInstruction}
+const orchestratorPrompt = `[SYSTEM]: Bạn là **Quản đốc Phân tích (Orchestrator Agent)** của hệ sinh thái Biztada (business ID: ${businessId || 'N/A'}).
+Thông tin người dùng: ${userPreferences}${guestInstruction}
 
-SỨ MỆNH: Khi người dùng đưa ra một mục tiêu kinh doanh, TUYỆT ĐỐI KHÔNG làm ngay một bước đơn lẻ. Bạn PHẢI dùng tư duy Kiến trúc sư để phân tích và đề xuất một Quy trình Tự động hóa.
+SỨ MỆNH: Đọc Lịch sử Trò chuyện và Yêu cầu hiện tại của người dùng. Phân loại yêu cầu thành 1 trong 3 quyết định:
+1. "CHAT": Trả lời thông thường (Tư vấn, giải thích, trò chuyện).
+2. "ASK_USER": Yêu cầu người dùng cung cấp thêm thông tin BẮT BUỘC để chạy công cụ.
+3. "EXECUTE_TOOL": Chạy API công cụ (Chỉ khi ĐÃ ĐỦ thông tin).
 
 ${strategyContextText}
 ${capabilitiesText}
 
-Bạn có khả năng trả về văn bản dùng Markdown. CÓ THỂ sử dụng Table, Danh sách (List) hoặc in đậm.
-ĐẶC BIỆT: Nếu muốn hiển thị Biểu đồ (Chart), hãy trả về một code block dạng JSON với type="chart". Ví dụ:
-\`\`\`json
-{ "type": "chart", "chartType": "bar", "data": [ {"name": "A", "value": 10} ] }
-\`\`\`
-
-Bạn có thể tự động lấy dữ liệu thời gian thực từ các công cụ Marketing của user bằng cách gọi (call) các Tool.
-Danh sách các Tools bạn có thể gọi:
-1. "get_marketing_dashboard": Lấy dữ liệu tổng quan
-2. "get_worker_stats": Lấy trạng thái hoạt động của worker
-3. "get_active_workflows": Lấy danh sách workflow
-4. "get_dashboard_activity": Lấy báo cáo hoạt động chạy seeding
-5. "update_user_memory": Gọi tool này với tham số để CẬP NHẬT GHI NHỚ nếu người dùng yêu cầu bạn thay đổi cách trả lời.
-6. "mcp_call_tool": THỰC THI MỌI API KHÁC trong hệ thống của người dùng (bao gồm lấy Playbooks, Marketing, BrandLabs, Chatbot) theo giao thức MCP.
-
-[MCP TOOLS LIST (Dành cho mcp_call_tool)]
+Danh sách các Tools hệ thống:
 ${JSON.stringify(await mcpServer.getTools(authHeader), null, 2)}
+Công cụ nội bộ: get_marketing_dashboard, get_worker_stats, get_active_workflows, get_dashboard_activity, update_user_memory.
 
-CÁCH TRẢ VỀ KẾT QUẢ (BẮT BUỘC):
-TRONG MỌI TRƯỜNG HỢP, BẠN BẮT BUỘC PHẢI TRẢ VỀ DUY NHẤT 1 KHỐI JSON (TUYỆT ĐỐI KHÔNG VIẾT VĂN BẢN NÀO BÊN NGOÀI KHỐI JSON NÀY). Khối JSON phải tuân thủ Schema sau:
+CÁCH TRẢ VỀ KẾT QUẢ: Bắt buộc trả về duy nhất 1 khối JSON chuẩn xác:
 \`\`\`json
 {
-  "blackboard": {
-    "current_objective": "Mục tiêu hiện tại đang giải quyết là gì?",
-    "gathered_info": "Bạn đã biết được những thông tin gì từ lịch sử?",
-    "next_step": "Bạn định làm gì tiếp theo (Gọi tool hay Trả lời user?)"
-  },
-  "TOOL_CALL": "Tên tool nếu bạn cần gọi (để rỗng hoặc xoá nếu không gọi)",
-  "TOOL_ARGS": { "name": "...", "arguments": {} },
-  "reply": "Văn bản giải thích cho người dùng đọc (chỉ dùng khi ĐÃ GỌI XONG tool hoặc KHÔNG CẦN gọi tool. Dùng Markdown, KHÔNG chứa JSON Payload kỹ thuật)",
-  "actionPayloads": [
-    { "Tên cấu hình/Payload API dựa trên Schema": "..." }
-  ]
+  "decision": "CHAT" | "ASK_USER" | "EXECUTE_TOOL",
+  "reasoning": "Lý do ngắn gọn",
+  "tool_name": "Tên tool (nếu EXECUTE_TOOL)",
+  "tool_payload": { /* arguments object */ } (nếu EXECUTE_TOOL),
+  "reply": "Văn bản Markdown để nói với người dùng (nếu CHAT hoặc ASK_USER)"
 }
 \`\`\`
-Lưu ý:
-- Nếu bạn cần GỌI TOOL (như mcp_call_tool), hãy điền \`TOOL_CALL\` và để rỗng \`reply\`. Hệ thống sẽ trả kết quả tool cho bạn phân tích tiếp.
-- Nếu bạn đã đủ thông tin và muốn ĐƯA RA CÂU TRẢ LỜI cho user, hãy bỏ trống \`TOOL_CALL\` và điền vào \`reply\`, cùng với \`actionPayloads\` nếu cần thực thi các cấu hình API.
 
-=== LỊCH SỬ TRÒ CHUYỆN ===
+LUẬT CẤM KỴ: 
+- Nếu bạn cần gọi Tool nhưng trong Lịch sử trò chuyện NGƯỜI DÙNG CHƯA CUNG CẤP ĐỦ THÔNG TIN (ví dụ: tạo tài khoản thì phải có username/password, tạo campaign phải có tên...), TUYỆT ĐỐI KHÔNG TỰ BỊA RA DỮ LIỆU ĐỂ GỌI TOOL.
+- Trong trường hợp thiếu dữ liệu, phải chọn \`ASK_USER\` và đặt câu hỏi lịch sự vào \`reply\` để thu thập dữ liệu từ người dùng.
+
+=== LỊCH SỬ TRÒ CHUYỆN (Sử dụng làm ngữ cảnh) ===
 ${historyText || 'Chưa có lịch sử.'}
-==========================`;
+==========================
 
-    let currentPrompt = `${systemPrompt}\n\n[USER'S CURRENT REQUEST]: ${message}\nLƯU Ý QUAN TRỌNG: Hãy tập trung giải quyết CHÍNH XÁC "USER'S CURRENT REQUEST". Lịch sử chỉ dùng để tham khảo ngữ cảnh. Đừng để lịch sử làm lệch hướng câu trả lời.`;
-    let replyText = '';
+[USER'S CURRENT REQUEST]: ${message}`;
+
+    let finalReply = '';
     const toolActions: string[] = [];
+    let actionPayloads: any[] = [];
 
-    // Save User message (only for authenticated users)
+    // Helper: Parse JSON
+    const parseJSON = (text: string) => {
+      const jsonRegex = /\`\`\`(?:json)?\s*(\{[\s\S]*?\})\s*\`\`\`/;
+      const match = text.match(jsonRegex);
+      let jsonString = text;
+      if (match && match[1]) {
+        jsonString = match[1];
+      } else {
+        const startIdx = text.indexOf('{');
+        const endIdx = text.lastIndexOf('}');
+        if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+          jsonString = text.substring(startIdx, endIdx + 1);
+        }
+      }
+      try { return JSON.parse(jsonString); } catch (e) { return null; }
+    };
+
+    // Save User message
     if (!isGuest && userId) {
       await prisma.assistantMessage.create({
         data: {
@@ -201,70 +203,49 @@ ${historyText || 'Chưa có lịch sử.'}
       });
     }
 
-    let finalReply = replyText;
-    let actionPayloads: any[] = [];
+    // --- PHASE 1: ORCHESTRATOR ---
+    sendSSE('progress', { message: 'Đang đánh giá yêu cầu và phân tích thông tin hiện có...' });
+    let orchestratorResponse = await generateAssistantText(orchestratorPrompt);
+    let decisionData = parseJSON(orchestratorResponse);
 
-    const MAX_STEPS = 6;
-    for (let step = 0; step < MAX_STEPS; step++) {
-      sendSSE('progress', { message: `AI đang phân tích (Step ${step + 1}/${MAX_STEPS})...` });
-      replyText = await generateAssistantText(currentPrompt);
+    // Fallback if LLM failed to return JSON
+    if (!decisionData) {
+      sendSSE('progress', { message: 'Khôi phục lỗi định dạng AI, đang thử lại...' });
+      const fixPrompt = orchestratorPrompt + `\n\n[LỖI]: Bạn đã trả về văn bản thường thay vì JSON. Hãy output lại đúng chuẩn JSON.`;
+      orchestratorResponse = await generateAssistantText(fixPrompt);
+      decisionData = parseJSON(orchestratorResponse);
+    }
 
-      let parsedData: any = null;
-      let rawToolMatch = '';
-
-      // Extract JSON intelligently
-      const jsonRegex = /```(?:json)?\s*(\{[\s\S]*?\})\s*```/;
-      const match = replyText.match(jsonRegex);
-      let jsonString = replyText;
-      if (match && match[1]) {
-        jsonString = match[1];
-        rawToolMatch = match[0];
-      } else {
-        // Find the first { and last }
-        const startIdx = replyText.indexOf('{');
-        const endIdx = replyText.lastIndexOf('}');
-        if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-          jsonString = replyText.substring(startIdx, endIdx + 1);
-          rawToolMatch = jsonString;
-        }
-      }
-
-      try {
-        parsedData = JSON.parse(jsonString);
-      } catch (e: any) {
-        // Self-Correction Trigger
-        currentPrompt += `\n\n[SYSTEM_ERROR]: Lỗi định dạng JSON (Error: ${e.message}). Phản hồi của bạn không phải là một chuỗi JSON hợp lệ. Hãy kiểm tra lại cấu trúc, tự sửa lỗi ngoặc/dấu phẩy và xuất lại duy nhất JSON chuẩn xác theo Schema quy định.`;
-        continue;
-      }
-
-      if (parsedData.TOOL_CALL) {
-        try {
-          // Gửi thông báo đang suy nghĩ gì cho Frontend (issue #2)
-          if (parsedData.blackboard?.next_step) {
-            sendSSE('progress', { message: `Ghi chú: ${parsedData.blackboard.next_step}` });
-          }
-
-          const toolName = parsedData.TOOL_CALL;
-          toolActions.push(toolName);
-          request.log.info({ toolName }, '[assistant] executing tool');
-          sendSSE('tool_call', {
-            name: toolName,
-            message: `Hệ thống đang truy xuất dữ liệu: ${toolName}...`,
+    if (!decisionData) {
+      finalReply = 'Lỗi hệ thống: Không thể khởi tạo quy trình tư duy. Vui lòng thử lại sau.';
+    } else {
+      if (decisionData.decision === 'ASK_USER') {
+        // --- PHASE 2A: ASK USER (SLOT FILLING) ---
+        sendSSE('progress', { message: 'Ghi chú: Cần thu thập thêm thông tin từ người dùng.' });
+        finalReply = decisionData.reply || 'Để tôi hỗ trợ bạn tốt nhất, vui lòng cung cấp thêm thông tin.';
+      } 
+      else if (decisionData.decision === 'EXECUTE_TOOL' && decisionData.tool_name) {
+        // --- PHASE 2B: EXECUTION AGENT ---
+        const toolName = decisionData.tool_name;
+        const toolArgs = decisionData.tool_payload || {};
+        toolActions.push(toolName);
+        
+        sendSSE('progress', { message: `Ghi chú: Đang tổng hợp dữ liệu để gọi lệnh ${toolName}...` });
+        sendSSE('tool_call', { name: toolName, message: `Hệ thống đang truy xuất dữ liệu: ${toolName}...` });
+        
+        let toolResult: any = null;
+        if (toolName === 'update_user_memory') {
+          const prefs = toolArgs || {};
+          await prisma.userAssistantMemory.upsert({
+            where: { user_id: userId },
+            update: { preferences: prefs },
+            create: { user_id: userId, preferences: prefs },
           });
-
-          let toolResult: any = null;
-          if (toolName === 'update_user_memory') {
-            // Handle memory update
-            const prefs = parsedData.TOOL_ARGS || {};
-            await prisma.userAssistantMemory.upsert({
-              where: { user_id: userId },
-              update: { preferences: prefs },
-              create: { user_id: userId, preferences: prefs },
-            });
-            toolResult = { success: true, message: 'Memory updated successfully.' };
-          } else if (!authHeader) {
-            toolResult = { error: 'Missing authorization token to call tools.' };
-          } else {
+          toolResult = { success: true, message: 'Memory updated successfully.' };
+        } else if (!authHeader) {
+          toolResult = { error: 'Missing authorization token to call tools.' };
+        } else {
+          try {
             if (toolName === 'get_marketing_dashboard')
               toolResult = await getMarketingDashboard(authHeader, businessId);
             else if (toolName === 'get_worker_stats') toolResult = await getWorkerStats(authHeader, businessId);
@@ -272,78 +253,52 @@ ${historyText || 'Chưa có lịch sử.'}
               toolResult = await getActiveWorkflows(authHeader, businessId);
             else if (toolName === 'get_dashboard_activity')
               toolResult = await getDashboardActivity(authHeader, businessId);
-            else if (toolName === 'mcp_call_tool') {
-              const name = parsedData.TOOL_ARGS?.name;
-              const args = parsedData.TOOL_ARGS?.arguments || {};
-              if (!name) {
-                toolResult = { error: 'Missing tool name for mcp_call_tool' };
-              } else {
-                toolResult = await mcpServer.callTool(
-                  authHeader,
-                  { name, arguments: args },
-                  prisma,
-                  businessId,
-                );
-              }
-            } else toolResult = { error: 'Tool not found' };
+            else {
+              toolResult = await mcpServer.callTool(
+                authHeader,
+                { name: toolName, arguments: toolArgs },
+                prisma,
+                businessId,
+              );
+            }
+          } catch (e: any) {
+            toolResult = { error: e.message || 'Lỗi khi thực thi công cụ' };
           }
-
-          currentPrompt += `\n\n[ASSISTANT_TOOL_CALL]: ${rawToolMatch}\n[TOOL_RESULT]: ${JSON.stringify(toolResult)}\n[SYSTEM]: Dựa vào kết quả trên, hãy tiếp tục cập nhật Blackboard và phân tích. Nếu cần gọi tool tiếp thì trả về \`TOOL_CALL\`, nếu xong thì trả về \`reply\`.`;
-          continue;
-        } catch (e) {
-          currentPrompt += `\n\n[TOOL_RESULT]: {"error": "Lỗi khi gọi tool"}\n[SYSTEM]: Hãy thông báo lỗi này cho người dùng hoặc tự phân tích nguyên nhân.`;
-          continue;
         }
-      } else {
-        // No TOOL_CALL, check if we have a reply
-        if (parsedData.reply) {
-          if (parsedData.blackboard?.next_step) {
-            sendSSE('progress', { message: `Ghi chú: ${parsedData.blackboard.next_step}` });
-          }
 
-          finalReply = parsedData.reply;
-          if (parsedData.actionPayloads && Array.isArray(parsedData.actionPayloads)) {
-            actionPayloads = parsedData.actionPayloads;
-          }
-          break; // Done
-        } else {
-          // Empty TOOL_CALL and empty reply -> Invalid response
-          currentPrompt += `\n\n[SYSTEM_ERROR]: Lỗi Logic. Bạn đã trả về JSON nhưng thiếu cả \`TOOL_CALL\` và \`reply\`. Hãy cập nhật lại Blackboard, nếu cần gọi Tool thì điền \`TOOL_CALL\`, nếu muốn tư vấn thì điền \`reply\`.`;
-          continue;
-        }
+        // --- PHASE 3: SUMMARIZER AGENT ---
+        sendSSE('progress', { message: 'Đang tổng hợp kết quả để báo cáo cho bạn...' });
+        const summarizerPrompt = `[SYSTEM]: Bạn là Kế toán Báo cáo. Kỹ sư vừa gọi xong API và trả về kết quả dưới đây. 
+Nhiệm vụ của bạn là dịch kết quả này thành câu trả lời dễ hiểu, lịch sự, và có format Markdown rõ ràng cho người dùng (có thể dùng Table, List, Đậm nhạt). Tuyệt đối không để lộ mã code hay raw JSON cho user.
+
+[KẾT QUẢ API]: ${JSON.stringify(toolResult)}
+[CÂU HỎI BAN ĐẦU CỦA USER]: ${message}
+
+LƯU Ý: Nếu kết quả API có báo "error", hãy giải thích lỗi đó một cách nhẹ nhàng và hướng dẫn người dùng cách khắc phục.`;
+        
+        finalReply = await generateAssistantText(summarizerPrompt);
+      } 
+      else {
+        // --- PHASE 2C: CHAT ---
+        sendSSE('progress', { message: 'Ghi chú: Đang soạn thảo câu trả lời tư vấn...' });
+        finalReply = decisionData.reply || orchestratorResponse;
       }
     }
 
-    // Attempt to parse the structured JSON response as fallback in case we exit the loop without a proper break
-    // This handles the case where it maxes out at 6 steps
-    if (finalReply === replyText) {
-      try {
-        const jsonRegex = /```(?:json)?\s*(\{[\s\S]*?\})\s*```/;
-        const match = replyText.match(jsonRegex);
-        let jsonString = replyText;
-        if (match && match[1]) {
-          jsonString = match[1];
-        } else {
-          const startIdx = replyText.indexOf('{');
-          const endIdx = replyText.lastIndexOf('}');
-          if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-            jsonString = replyText.substring(startIdx, endIdx + 1);
-          }
-        }
-
-        const parsed = JSON.parse(jsonString);
-        if (parsed.reply) {
-          finalReply = parsed.reply;
-        }
-        if (parsed.actionPayloads && Array.isArray(parsed.actionPayloads)) {
-          actionPayloads = parsed.actionPayloads;
-        }
-      } catch (e) {
-        request.log.warn('Failed to parse structured AI output at the end. Using raw text.');
-      }
+    // Attempt to extract action payloads from final reply if any
+    const finalParsed = parseJSON(finalReply);
+    if (finalParsed && finalParsed.actionPayloads) {
+      actionPayloads = finalParsed.actionPayloads;
+      if (finalParsed.reply) finalReply = finalParsed.reply;
+    } else if (finalParsed && finalParsed.reply) {
+       finalReply = finalParsed.reply;
     }
 
-    // Save Assistant message (only for authenticated users)
+    // Clean up finalReply if it still contains JSON markdown
+    finalReply = finalReply.replace(/\`\`\`(?:json)?\s*\{[\s\S]*?\}\s*\`\`\`/g, '').trim();
+    if (!finalReply) finalReply = 'Hệ thống đã xử lý xong yêu cầu của bạn.';
+
+    // Save Assistant message
     if (!isGuest && userId) {
       await prisma.assistantMessage.create({
         data: {
