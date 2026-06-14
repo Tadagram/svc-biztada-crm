@@ -18,11 +18,10 @@ interface KnowledgeBody {
   is_active?: boolean;
 }
 
-// Giả lập lấy business_id từ authentication, giống như các endpoint khác
 // Tạm thời hardcode cho việc testing nếu không có auth, nhưng thực tế sẽ lấy từ request.user
+// UPDATE: AI Tools & Knowledge are GLOBAL data shared across the platform.
 function getBusinessId(request: FastifyRequest): string {
-  // TODO: extract actual business_id from user's active portal
-  return (request.headers['x-business-id'] as string) || 'default-business-id';
+  return 'GLOBAL';
 }
 
 /**
