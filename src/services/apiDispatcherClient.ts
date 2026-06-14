@@ -19,7 +19,7 @@ async function parseJsonSafely<T>(response: Response): Promise<T | null> {
  * @param path The API path starting with / (e.g. /api/v1/dashboard/activity)
  * @param authHeader The original Authorization header (Bearer <token>)
  */
-export async function fetchMarketingData(path: string, authHeader: string): Promise<any> {
+export async function fetchMarketingData(path: string, authHeader: string, businessId?: string): Promise<any> {
   if (!authHeader) {
     throw new Error('Missing Authorization header for marketing API call');
   }
@@ -30,6 +30,7 @@ export async function fetchMarketingData(path: string, authHeader: string): Prom
     headers: {
       'Content-Type': 'application/json',
       Authorization: authHeader,
+      ...(businessId ? { 'X-Business-ID': businessId } : {}),
     },
     signal: AbortSignal.timeout(15_000),
   });
@@ -42,20 +43,20 @@ export async function fetchMarketingData(path: string, authHeader: string): Prom
   return body;
 }
 
-export async function getMarketingDashboard(authHeader: string): Promise<any> {
-  return fetchMarketingData('/api/v1/dashboard', authHeader);
+export async function getMarketingDashboard(authHeader: string, businessId?: string): Promise<any> {
+  return fetchMarketingData('/api/v1/dashboard', authHeader, businessId);
 }
 
-export async function getWorkerStats(authHeader: string): Promise<any> {
-  return fetchMarketingData('/api/v1/my-workers/stats', authHeader);
+export async function getWorkerStats(authHeader: string, businessId?: string): Promise<any> {
+  return fetchMarketingData('/api/v1/my-workers/stats', authHeader, businessId);
 }
 
-export async function getActiveWorkflows(authHeader: string): Promise<any> {
-  return fetchMarketingData('/api/v1/workflows', authHeader);
+export async function getActiveWorkflows(authHeader: string, businessId?: string): Promise<any> {
+  return fetchMarketingData('/api/v1/workflows', authHeader, businessId);
 }
 
-export async function getDashboardActivity(authHeader: string): Promise<any> {
-  return fetchMarketingData('/api/v1/dashboard/activity', authHeader);
+export async function getDashboardActivity(authHeader: string, businessId?: string): Promise<any> {
+  return fetchMarketingData('/api/v1/dashboard/activity', authHeader, businessId);
 }
 
 export async function executeDynamicAPI(
@@ -64,6 +65,7 @@ export async function executeDynamicAPI(
   method: string,
   endpoint: string,
   payload?: any,
+  businessId?: string,
 ): Promise<any> {
   if (!authHeader) {
     throw new Error('Missing Authorization header for API call');
@@ -77,6 +79,7 @@ export async function executeDynamicAPI(
     headers: {
       'Content-Type': 'application/json',
       Authorization: authHeader,
+      ...(businessId ? { 'X-Business-ID': businessId } : {}),
     },
     signal: AbortSignal.timeout(20_000),
   };

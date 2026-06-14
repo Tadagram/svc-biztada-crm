@@ -134,7 +134,7 @@ export async function chatHandler(request: FastifyRequest, reply: FastifyReply):
       ? `\nTƯ CÁCH NGƯỜI DÙNG: GUEST (Khách viếng thăm chưa đăng nhập).\nBẠN BỊ CẤM GỌI CÔNG CỤ (MCP Tools) VÀ CẤM TRẢ VỀ \`actionPayloads\`. Bạn CHỈ được phép tư vấn, đưa ra lời khuyên và lên kế hoạch (Plan) dựa trên Tri thức có sẵn. Nếu có ActionPayload, hãy để mảng \`actionPayloads\` rỗng.`
       : `\nTƯ CÁCH NGƯỜI DÙNG: AUTHENTICATED USER.\nBạn có toàn quyền gọi Tools và trả về \`actionPayloads\` thực tế dựa trên Schema đặc tả để cài đặt hệ thống.`;
 
-    const systemPrompt = `[SYSTEM]: Bạn là **Enterprise Solutions Architect (Giám đốc Vận hành & Giải pháp)** của hệ sinh thái Biztada (business ID: ${businessId || 'N/A'}).
+const systemPrompt = `[SYSTEM]: Bạn là **Enterprise Solutions Architect (Giám đốc Vận hành & Giải pháp)** của hệ sinh thái Biztada (business ID: ${businessId || 'N/A'}).
 Thông tin ghi nhớ về người dùng này: ${userPreferences}${guestInstruction}
 
 SỨ MỆNH: Khi người dùng đưa ra một mục tiêu kinh doanh, TUYỆT ĐỐI KHÔNG làm ngay một bước đơn lẻ. Bạn PHẢI dùng tư duy Kiến trúc sư để phân tích và đề xuất một Quy trình Tự động hóa.
@@ -181,10 +181,11 @@ Lưu ý:
 - Nếu bạn cần GỌI TOOL (như mcp_call_tool), hãy điền \`TOOL_CALL\` và để rỗng \`reply\`. Hệ thống sẽ trả kết quả tool cho bạn phân tích tiếp.
 - Nếu bạn đã đủ thông tin và muốn ĐƯA RA CÂU TRẢ LỜI cho user, hãy bỏ trống \`TOOL_CALL\` và điền vào \`reply\`, cùng với \`actionPayloads\` nếu cần thực thi các cấu hình API.
 
-[LỊCH SỬ GẦN ĐÂY]
-${historyText}`;
+=== LỊCH SỬ TRÒ CHUYỆN ===
+${historyText || 'Chưa có lịch sử.'}
+==========================`;
 
-    let currentPrompt = `${systemPrompt}\n\n[USER]: ${message}`;
+    let currentPrompt = `${systemPrompt}\n\n[USER'S CURRENT REQUEST]: ${message}\nLƯU Ý QUAN TRỌNG: Hãy tập trung giải quyết CHÍNH XÁC "USER'S CURRENT REQUEST". Lịch sử chỉ dùng để tham khảo ngữ cảnh. Đừng để lịch sử làm lệch hướng câu trả lời.`;
     let replyText = '';
     const toolActions: string[] = [];
 
@@ -238,6 +239,11 @@ ${historyText}`;
 
       if (parsedData.TOOL_CALL) {
         try {
+          // Gửi thông báo đang suy nghĩ gì cho Frontend (issue #2)
+          if (parsedData.blackboard?.next_step) {
+            sendSSE('progress', { message: `Ghi chú: ${parsedData.blackboard.next_step}` });
+          }
+
           const toolName = parsedData.TOOL_CALL;
           toolActions.push(toolName);
           request.log.info({ toolName }, '[assistant] executing tool');
@@ -260,12 +266,12 @@ ${historyText}`;
             toolResult = { error: 'Missing authorization token to call tools.' };
           } else {
             if (toolName === 'get_marketing_dashboard')
-              toolResult = await getMarketingDashboard(authHeader);
-            else if (toolName === 'get_worker_stats') toolResult = await getWorkerStats(authHeader);
+              toolResult = await getMarketingDashboard(authHeader, businessId);
+            else if (toolName === 'get_worker_stats') toolResult = await getWorkerStats(authHeader, businessId);
             else if (toolName === 'get_active_workflows')
-              toolResult = await getActiveWorkflows(authHeader);
+              toolResult = await getActiveWorkflows(authHeader, businessId);
             else if (toolName === 'get_dashboard_activity')
-              toolResult = await getDashboardActivity(authHeader);
+              toolResult = await getDashboardActivity(authHeader, businessId);
             else if (toolName === 'mcp_call_tool') {
               const name = parsedData.TOOL_ARGS?.name;
               const args = parsedData.TOOL_ARGS?.arguments || {};
@@ -276,6 +282,7 @@ ${historyText}`;
                   authHeader,
                   { name, arguments: args },
                   prisma,
+                  businessId,
                 );
               }
             } else toolResult = { error: 'Tool not found' };
@@ -290,6 +297,10 @@ ${historyText}`;
       } else {
         // No TOOL_CALL, check if we have a reply
         if (parsedData.reply) {
+          if (parsedData.blackboard?.next_step) {
+            sendSSE('progress', { message: `Ghi chú: ${parsedData.blackboard.next_step}` });
+          }
+
           finalReply = parsedData.reply;
           if (parsedData.actionPayloads && Array.isArray(parsedData.actionPayloads)) {
             actionPayloads = parsedData.actionPayloads;
