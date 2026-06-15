@@ -7,6 +7,7 @@ import {
   getDashboardActivity,
 } from '@services/apiDispatcherClient';
 import { mcpServer } from '../../mcp/server';
+import { toolRAG } from '@services/toolRag';
 
 const AI_CONTROLLER_URL =
   process.env.AI_CONTROLLER_URL ?? 'http://svc-ai-controller.tadagram.svc.cluster.local:3100';
@@ -224,7 +225,13 @@ ${historyText || 'Chưa có lịch sử.'}
       }
 
       // Prepare Short List for Planner
-      const shortMcpTools = mcpTools.map((t) => ({ name: t.name, description: t.description }));
+      // Dynamically filter mcpTools to Top 10 using Tool RAG to prevent attention degradation
+      const filteredMcpTools = toolRAG.search(routerData.task_summary || message, mcpTools, 10);
+      const shortMcpTools = filteredMcpTools.map((t) => ({
+        name: t.name,
+        description: t.description,
+      }));
+
       const shortCapsTools = fullCaps.map((c) => ({
         name: c.capability_id,
         description: c.display_name,
@@ -304,8 +311,8 @@ ${JSON.stringify(selectedMcpTools, null, 2)}
 Công cụ nội bộ có thể dùng nếu có trong plan: ${selectedTools.filter((t) => internalTools.some((i) => i.name === t)).join(', ')}
 
 SỨ MỆNH: Phân loại yêu cầu thành 1 trong 2 quyết định:
-1. "ASK_USER": Yêu cầu người dùng cung cấp thêm thông tin BẮT BUỘC để chạy công cụ.
-2. "EXECUTE_TOOL": Chạy API công cụ (Chỉ khi ĐÃ ĐỦ thông tin theo Schema).
+1. "ASK_USER": Yêu cầu người dùng cung cấp thêm thông tin BẮT BUỘC để chạy công cụ hoặc để quyết định bước tiếp theo.
+2. "EXECUTE_TOOL": Chạy API công cụ (Chỉ khi ĐÃ ĐỦ thông tin theo Schema). LƯU Ý: Rất hoan nghênh việc chủ động chạy API (vd: gọi API lấy danh sách) rồi dùng kết quả đó để báo cáo/hỏi ý kiến người dùng.
 
 CÁCH TRẢ VỀ KẾT QUẢ: Bắt buộc trả về JSON chuẩn xác:
 \`\`\`json
@@ -315,10 +322,13 @@ CÁCH TRẢ VỀ KẾT QUẢ: Bắt buộc trả về JSON chuẩn xác:
   "tool_name": "Tên tool (nếu EXECUTE_TOOL)",
   "tool_payload": { /* arguments object */ } (nếu EXECUTE_TOOL),
   "working_memory": {
-    "current_objective": "Mục tiêu hiện tại của người dùng là gì?",
+    "main_objective": "Mục tiêu CHÍNH hiện tại của người dùng là gì? (vd: Tạo workflow seeding)",
+    "dag_stack": [
+      { "step": "Tên bước phụ đã/đang làm", "status": "completed | pending", "result": "Kết quả nếu có" }
+    ],
     "context_summary": "Tóm tắt các dữ liệu ĐÃ thu thập được và CÒN THIẾU"
   },
-  "reply": "Văn bản Markdown để hỏi lại người dùng thông tin bị thiếu (chỉ điền nếu ASK_USER)"
+  "reply": "Văn bản Markdown để hỏi/báo cáo người dùng (chỉ điền nếu ASK_USER)"
 }
 \`\`\`
 
@@ -590,7 +600,10 @@ CÁCH TRẢ VỀ KẾT QUẢ: Bắt buộc trả về JSON:
 \`\`\`json
 {
   "working_memory": {
-    "current_objective": "Mục tiêu lớn nhất hiện tại của người dùng là gì?",
+    "main_objective": "Mục tiêu CHÍNH hiện tại của người dùng là gì?",
+    "dag_stack": [
+      { "step": "Tên bước phụ", "status": "completed | pending", "result": "Tóm tắt kết quả" }
+    ],
     "context_summary": "Tóm tắt GỌN GÀNG những thông tin/dữ kiện quan trọng đã thảo luận từ trước đến nay."
   }
 }
