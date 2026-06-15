@@ -1,10 +1,13 @@
 import { executeDynamicAPI } from '../services/apiDispatcherClient';
+import { generatedTools } from './generated_tools';
+import { crmTools } from './generated_crm_tools';
+
 
 export interface McpToolSchema {
   name: string;
   description: string;
   inputSchema: {
-    type: 'object';
+    type: string | 'object';
     properties: Record<string, any>;
     required?: string[];
   };
@@ -25,6 +28,8 @@ export interface McpToolCallResponse {
 }
 
 const MCP_TOOLS_REGISTRY_BASE: McpToolSchema[] = [
+  ...(generatedTools as unknown as McpToolSchema[]),
+  ...(crmTools as unknown as McpToolSchema[]),
   // ── Marketing Tools ──
   {
     name: 'marketing_create_account',
