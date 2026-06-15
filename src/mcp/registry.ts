@@ -33,11 +33,11 @@ const MCP_TOOLS_REGISTRY_BASE: McpToolSchema[] = [
       type: 'object',
       properties: {
         platform: { type: 'string', description: 'Nền tảng (vd: facebook, tiktok)' },
-        account_name: { type: 'string', description: 'Tên tài khoản' },
+        username: { type: 'string', description: 'Tên tài khoản (username, email, or numeric ID)' },
         credentials: { type: 'object', description: 'Thông tin xác thực' },
         status: { type: 'string', description: 'Trạng thái ban đầu' },
       },
-      required: ['platform', 'account_name'],
+      required: ['platform', 'username'],
     },
   },
   {
