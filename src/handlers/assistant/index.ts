@@ -425,13 +425,15 @@ ${historyText || 'Chưa có lịch sử.'}
 
         // --- PHASE 3: SUMMARIZER AGENT ---
         sendSSE('progress', { message: 'Đang tổng hợp kết quả để báo cáo cho bạn...' });
-        const summarizerPrompt = `[SYSTEM]: Bạn là Trợ lý ảo BizTada chuyên nghiệp. Kỹ sư hệ thống vừa gọi API và trả về kết quả dưới đây. 
-Nhiệm vụ của bạn là dịch kết quả này thành câu trả lời dễ hiểu, lịch sự, và có format Markdown rõ ràng cho người dùng (có thể dùng Table, List, Đậm nhạt). Tuyệt đối không để lộ mã code hay raw JSON cho user.
+        const summarizerPrompt = `[SYSTEM]: Bạn là Trợ lý ảo BizTada. Bạn vừa gọi API và nhận được kết quả.
+Nhiệm vụ của bạn:
+1. Trả lời TRỰC TIẾP vào trọng tâm câu hỏi của người dùng. KHÔNG dài dòng, KHÔNG chào hỏi (như "Kính gửi Anh/Chị"), KHÔNG đóng vai phòng ban nào cả.
+2. NẾU kết quả là mảng danh sách, BẮT BUỘC phải dùng định dạng bảng Markdown (Markdown Table) chuẩn xác (ví dụ có \`|\` và \`---\` ngăn cách các cột) hoặc gạch đầu dòng (Bullet List). Tuyệt đối không in text phẳng liên tiếp gây rối mắt.
+3. Không để lộ mã code hay raw JSON cho user.
+4. Nếu kết quả API báo "error", giải thích ngắn gọn lỗi và cách khắc phục.
 
 [KẾT QUẢ API]: ${JSON.stringify(toolResult)}
-[CÂU HỎI BAN ĐẦU CỦA USER]: ${message}
-
-LƯU Ý: Nếu kết quả API có báo "error", hãy giải thích lỗi đó một cách nhẹ nhàng và hướng dẫn người dùng cách khắc phục.`;
+[CÂU HỎI BAN ĐẦU CỦA USER]: ${message}`;
 
         finalReply = await generateAssistantText(summarizerPrompt);
       } else {
