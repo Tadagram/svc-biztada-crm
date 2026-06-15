@@ -425,7 +425,7 @@ ${historyText || 'Chưa có lịch sử.'}
 
         // --- PHASE 3: SUMMARIZER AGENT ---
         sendSSE('progress', { message: 'Đang tổng hợp kết quả để báo cáo cho bạn...' });
-        const summarizerPrompt = `[SYSTEM]: Bạn là Kế toán Báo cáo. Kỹ sư vừa gọi xong API và trả về kết quả dưới đây. 
+        const summarizerPrompt = `[SYSTEM]: Bạn là Trợ lý ảo BizTada chuyên nghiệp. Kỹ sư hệ thống vừa gọi API và trả về kết quả dưới đây. 
 Nhiệm vụ của bạn là dịch kết quả này thành câu trả lời dễ hiểu, lịch sự, và có format Markdown rõ ràng cho người dùng (có thể dùng Table, List, Đậm nhạt). Tuyệt đối không để lộ mã code hay raw JSON cho user.
 
 [KẾT QUẢ API]: ${JSON.stringify(toolResult)}
