@@ -180,14 +180,15 @@ ${historyText || 'Chưa có lịch sử.'}
       // Intent CHAT -> Stop here and return the reply directly
       finalReply = routerData.reply || 'Dạ, tôi nghe đây ạ.';
     } else {
-      // --- PHASE 2: ORCHESTRATOR AGENT (CONTEXT & SLOT FILLING) ---
+      // --- PHASE 2: PLANNER AGENT (TOOL SELECTION) ---
       sendSSE('progress', {
-        message: `Đã nhận diện yêu cầu: ${routerData.task_summary || 'Tác vụ'}. Đang truy xuất công cụ...`,
+        message: `Đang lập kế hoạch thực thi cho: ${routerData.task_summary || 'Tác vụ'}...`,
       });
 
-      // 3. Fetch Strategy Context (Chunks + Capabilities) from AI Controller using the task summary
       let strategyContextText = '';
-      let capabilitiesText = '';
+      let chunksList: any[] = [];
+      let fullCaps: any[] = [];
+      const mcpTools = await mcpServer.getTools(authHeader);
 
       if (STRATEGY_INTERNAL_TOKEN) {
         try {
@@ -205,25 +206,14 @@ ${historyText || 'Chưa có lịch sử.'}
 
           if (retrieveRes.ok) {
             const retrieveData = await retrieveRes.json();
-            const chunks = retrieveData.chunks || [];
-            const caps = retrieveData.capabilities || [];
+            chunksList = retrieveData.chunks || [];
+            fullCaps = retrieveData.capabilities || [];
 
-            if (chunks.length > 0) {
+            if (chunksList.length > 0) {
               strategyContextText =
-                '--- TRI THỨC TƯ VẤN ---\n' +
-                chunks
+                '--- TRI THỨC TƯ VẤN (CÓ THỂ DÙNG ĐỂ THAM KHẢO) ---\n' +
+                chunksList
                   .map((c: any, i: number) => `[${i + 1}] ${c.title}\n${c.summary}`)
-                  .join('\n\n') +
-                '\n';
-            }
-            if (caps.length > 0) {
-              capabilitiesText =
-                '--- ĐẶC TẢ API PAYLOAD ---\n' +
-                caps
-                  .map(
-                    (c: any) =>
-                      `• [${c.capability_id}] ${c.display_name}\n  Schema: ${JSON.stringify(c.parameter_schema)}\n  Example Input: ${JSON.stringify(c.example_input)}`,
-                  )
                   .join('\n\n') +
                 '\n';
             }
@@ -233,10 +223,75 @@ ${historyText || 'Chưa có lịch sử.'}
         }
       }
 
-      const mcpTools = await mcpServer.getTools(authHeader);
+      // Prepare Short List for Planner
+      const shortMcpTools = mcpTools.map((t) => ({ name: t.name, description: t.description }));
+      const shortCapsTools = fullCaps.map((c) => ({
+        name: c.capability_id,
+        description: c.display_name,
+      }));
+      const allShortTools = [...shortMcpTools, ...shortCapsTools];
+
+      const internalTools = [
+        { name: 'get_marketing_dashboard', description: 'Lấy dữ liệu bảng điều khiển marketing' },
+        { name: 'get_worker_stats', description: 'Lấy thống kê worker' },
+        { name: 'get_active_workflows', description: 'Lấy danh sách workflow đang chạy' },
+        { name: 'get_dashboard_activity', description: 'Lấy hoạt động gần đây' },
+        { name: 'update_user_memory', description: 'Cập nhật bộ nhớ' },
+      ];
+
+      const plannerPrompt = `[SYSTEM]: Bạn là **Chuyên gia Lập Kế hoạch (Planner Agent)** của hệ sinh thái Biztada.
+Nhiệm vụ của bạn là đọc Tóm tắt yêu cầu của người dùng và Danh sách Công cụ (chỉ gồm Tên và Mô tả), sau đó chọn ra (các) công cụ phù hợp nhất để giải quyết yêu cầu.
+
+[USER'S TASK SUMMARY]: ${routerData.task_summary || message}
+
+DANH SÁCH CÔNG CỤ HIỆN CÓ:
+${JSON.stringify([...allShortTools, ...internalTools], null, 2)}
+
+CÁCH TRẢ VỀ KẾT QUẢ: Bắt buộc trả về duy nhất JSON:
+\`\`\`json
+{
+  "selected_tools": ["tên_công_cụ_1", "tên_công_cụ_2"],
+  "plan": "Giải thích ngắn gọn lý do chọn và các bước sẽ làm"
+}
+\`\`\`
+Nếu không có công cụ nào phù hợp, hãy trả về mảng \`selected_tools\` rỗng.`;
+
+      let plannerResponse = await generateAssistantText(plannerPrompt);
+      let plannerData = parseJSON(plannerResponse);
+
+      if (!plannerData || !Array.isArray(plannerData.selected_tools)) {
+        plannerResponse = await generateAssistantText(
+          plannerPrompt + `\n\n[LỖI]: Trả về JSON không hợp lệ.`,
+        );
+        plannerData = parseJSON(plannerResponse);
+      }
+
+      const selectedTools: string[] = plannerData?.selected_tools || [];
+
+      // --- PHASE 3: ORCHESTRATOR AGENT (SLOT FILLING & EXECUTION) ---
+      sendSSE('progress', {
+        message: `Đang đối chiếu dữ liệu để chuẩn bị gọi API...`,
+      });
+
+      // Lọc Full Schema cho các tool đã chọn
+      const selectedMcpTools = mcpTools.filter((t) => selectedTools.includes(t.name));
+      const selectedCaps = fullCaps.filter((c) => selectedTools.includes(c.capability_id));
+
+      let capabilitiesText = '';
+      if (selectedCaps.length > 0) {
+        capabilitiesText =
+          '--- ĐẶC TẢ API PAYLOAD TỪ BIZTADA ---\n' +
+          selectedCaps
+            .map(
+              (c: any) =>
+                `• [${c.capability_id}] ${c.display_name}\n  Schema: ${JSON.stringify(c.parameter_schema)}\n  Example Input: ${JSON.stringify(c.example_input)}`,
+            )
+            .join('\n\n') +
+          '\n';
+      }
 
       const orchestratorPrompt = `[SYSTEM]: Bạn là **Quản đốc Phân tích (Orchestrator Agent)** của hệ sinh thái Biztada (business ID: ${businessId || 'N/A'}).
-Nhiệm vụ của bạn là kiểm tra xem chúng ta đã đủ thông tin để gọi Công cụ (Tool) hay chưa.
+Nhiệm vụ của bạn là kiểm tra xem chúng ta đã đủ thông tin từ người dùng để gọi Công cụ (Tool) đã được chọn hay chưa.
 
 [BỘ NHỚ LÀM VIỆC HIỆN TẠI (WORKING MEMORY)]:
 ${workingMemoryStr}
@@ -244,15 +299,15 @@ ${workingMemoryStr}
 ${strategyContextText}
 ${capabilitiesText}
 
-Danh sách các Tools hệ thống:
-${JSON.stringify(mcpTools, null, 2)}
-Công cụ nội bộ: get_marketing_dashboard, get_worker_stats, get_active_workflows, get_dashboard_activity, update_user_memory.
+Danh sách các Tools hệ thống ĐƯỢC CHỌN CHO TÁC VỤ NÀY (Chỉ dùng các tool này):
+${JSON.stringify(selectedMcpTools, null, 2)}
+Công cụ nội bộ có thể dùng nếu có trong plan: ${selectedTools.filter((t) => internalTools.some((i) => i.name === t)).join(', ')}
 
 SỨ MỆNH: Phân loại yêu cầu thành 1 trong 2 quyết định:
 1. "ASK_USER": Yêu cầu người dùng cung cấp thêm thông tin BẮT BUỘC để chạy công cụ.
 2. "EXECUTE_TOOL": Chạy API công cụ (Chỉ khi ĐÃ ĐỦ thông tin theo Schema).
 
-CÁCH TRẢ VỀ KẾT QUẢ: Bắt buộc trả về duy nhất 1 khối JSON chuẩn xác:
+CÁCH TRẢ VỀ KẾT QUẢ: Bắt buộc trả về JSON chuẩn xác:
 \`\`\`json
 {
   "decision": "ASK_USER" | "EXECUTE_TOOL",
@@ -261,7 +316,7 @@ CÁCH TRẢ VỀ KẾT QUẢ: Bắt buộc trả về duy nhất 1 khối JSON c
   "tool_payload": { /* arguments object */ } (nếu EXECUTE_TOOL),
   "working_memory": {
     "current_objective": "Mục tiêu hiện tại của người dùng là gì?",
-    "context_summary": "Tóm tắt các dữ liệu ĐÃ thu thập được và CÒN THIẾU (không quá 3 câu)"
+    "context_summary": "Tóm tắt các dữ liệu ĐÃ thu thập được và CÒN THIẾU"
   },
   "reply": "Văn bản Markdown để hỏi lại người dùng thông tin bị thiếu (chỉ điền nếu ASK_USER)"
 }
@@ -269,7 +324,7 @@ CÁCH TRẢ VỀ KẾT QUẢ: Bắt buộc trả về duy nhất 1 khối JSON c
 
 LUẬT CẤM KỴ (SLOT-FILLING - RẤT QUAN TRỌNG): 
 - TUYỆT ĐỐI KHÔNG TỰ BỊA RA DỮ LIỆU ĐỂ GỌI TOOL.
-- Trong trường hợp thiếu dữ liệu bắt buộc (Required Fields), bạn PHẢI chọn \`ASK_USER\` và đặt câu hỏi rõ ràng vào \`reply\` để thu thập dữ liệu còn thiếu từ người dùng.
+- Trong trường hợp thiếu dữ liệu bắt buộc (Required Fields), bạn PHẢI chọn \`ASK_USER\` và đặt câu hỏi rõ ràng vào \`reply\` để thu thập dữ liệu còn thiếu.
 - Chỉ khi nhận ĐỦ tất cả required fields thì mới được chọn \`EXECUTE_TOOL\`.
 
 === LỊCH SỬ TRÒ CHUYỆN ===
@@ -277,7 +332,8 @@ ${historyText || 'Chưa có lịch sử.'}
 ==========================
 
 [USER'S CURRENT REQUEST]: ${message}
-[TASK SUMMARY TỪ ROUTER]: ${routerData.task_summary}`;
+[TASK SUMMARY TỪ ROUTER]: ${routerData.task_summary}
+[PLANNER ĐỀ XUẤT]: ${plannerData?.plan || 'Không rõ'}`;
 
       let orchestratorResponse = await generateAssistantText(orchestratorPrompt);
       let decisionData = parseJSON(orchestratorResponse);
