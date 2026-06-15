@@ -34,7 +34,12 @@ const MCP_TOOLS_REGISTRY_BASE: McpToolSchema[] = [
       properties: {
         platform: { type: 'string', description: 'Nền tảng (vd: facebook, tiktok)' },
         username: { type: 'string', description: 'Tên tài khoản (username, email, or numeric ID)' },
-        credentials: { type: 'object', description: 'Thông tin xác thực' },
+        email: { type: 'string', description: 'Email của tài khoản (tuỳ chọn)' },
+        password: {
+          type: 'string',
+          description: 'Mật khẩu (bắt buộc cho facebook/instagram, bỏ trống nếu tiktok)',
+        },
+        two_fa_secret: { type: 'string', description: 'Mã bảo mật 2FA (nếu có)' },
         status: { type: 'string', description: 'Trạng thái ban đầu' },
       },
       required: ['platform', 'username'],
@@ -55,23 +60,34 @@ const MCP_TOOLS_REGISTRY_BASE: McpToolSchema[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        name: { type: 'string' },
-        description: { type: 'string' },
+        name: { type: 'string', description: 'Tên Workflow' },
+        description: { type: 'string', description: 'Mô tả về mục đích Workflow' },
+        campaign_id: {
+          type: 'string',
+          description: 'ID chiến dịch nếu thuộc một chiến dịch cụ thể',
+        },
+        category: { type: 'string', description: 'Phân loại workflow (general, lead_scan)' },
+        config: {
+          type: 'object',
+          description: 'Cấu hình chung (run_type, global_delay, execution_mode...)',
+        },
         nodes: {
           type: 'array',
           items: {
             oneOf: [],
           },
+          description: 'Danh sách các Nodes',
         },
         edges: {
           type: 'array',
           items: {
-            properties: { source_node_id: { type: 'string' }, target_node_id: { type: 'string' } },
-            required: ['source_node_id', 'target_node_id'],
+            properties: { source: { type: 'string' }, target: { type: 'string' } },
+            required: ['source', 'target'],
           },
+          description: 'Danh sách các Edges liên kết',
         },
       },
-      required: ['name', 'nodes'],
+      required: ['name', 'nodes', 'edges'],
     },
   },
   {
@@ -93,8 +109,13 @@ const MCP_TOOLS_REGISTRY_BASE: McpToolSchema[] = [
       type: 'object',
       properties: {
         name: { type: 'string', description: 'Tên chiến dịch' },
+        start_date: {
+          type: 'string',
+          description: 'Ngày bắt đầu theo chuẩn ISO 8601 (VD: 2026-06-15T00:00:00Z)',
+        },
+        description: { type: 'string', description: 'Mô tả chiến dịch' },
       },
-      required: ['name'],
+      required: ['name', 'start_date'],
     },
   },
   {
@@ -103,10 +124,17 @@ const MCP_TOOLS_REGISTRY_BASE: McpToolSchema[] = [
     inputSchema: {
       type: 'object',
       properties: {
+        account_id: { type: 'string', description: 'ID của tài khoản TikTok sẽ thực thi' },
         channel_url: { type: 'string', description: 'URL kênh TikTok cần quét' },
-        schedule: { type: 'string', description: 'Lịch chạy cron (VD: 0 0 * * *)' },
+        schedule_type: {
+          type: 'string',
+          description: 'Loại lịch chạy: manual, daily, hoặc weekly',
+        },
+        schedule_hour: { type: 'integer', description: 'Giờ chạy trong ngày (0-23)' },
+        schedule_weekday: { type: 'integer', description: 'Ngày trong tuần (0-6) nếu chạy weekly' },
+        max_videos: { type: 'integer', description: 'Số video tối đa mỗi lần tải' },
       },
-      required: ['channel_url', 'schedule'],
+      required: ['account_id', 'channel_url', 'schedule_type'],
     },
   },
   {
@@ -115,10 +143,17 @@ const MCP_TOOLS_REGISTRY_BASE: McpToolSchema[] = [
     inputSchema: {
       type: 'object',
       properties: {
+        account_id: { type: 'string', description: 'ID của tài khoản Facebook sẽ thực thi' },
         target_url: { type: 'string', description: 'URL trang Facebook/Profile cần quét' },
-        schedule: { type: 'string', description: 'Lịch chạy cron (VD: 0 0 * * *)' },
+        media_type: { type: 'string', description: 'Loại nội dung: photo hoặc reel' },
+        schedule_type: {
+          type: 'string',
+          description: 'Loại lịch chạy: manual, daily, hoặc weekly',
+        },
+        schedule_hour: { type: 'integer', description: 'Giờ chạy trong ngày (0-23)' },
+        schedule_weekday: { type: 'integer', description: 'Ngày trong tuần (0-6) nếu chạy weekly' },
       },
-      required: ['target_url', 'schedule'],
+      required: ['account_id', 'target_url', 'schedule_type'],
     },
   },
   {
@@ -149,8 +184,10 @@ const MCP_TOOLS_REGISTRY_BASE: McpToolSchema[] = [
       type: 'object',
       properties: {
         name: { type: 'string', description: 'Tên phễu' },
+        description: { type: 'string', description: 'Mô tả mục đích phễu' },
+        url: { type: 'string', description: 'Đường dẫn URL của landing page gốc' },
       },
-      required: ['name'],
+      required: ['name', 'url'],
     },
   },
   {
@@ -183,16 +220,17 @@ const MCP_TOOLS_REGISTRY_BASE: McpToolSchema[] = [
   },
   {
     name: 'brandlabs_create_brand_character',
-    description: 'Tạo hồ sơ tính cách thương hiệu cho AI.',
+    description: 'Tạo một Brand Character/Persona mới cho doanh nghiệp.',
     inputSchema: {
       type: 'object',
       properties: {
-        name: { type: 'string' },
-        description: { type: 'string' },
-        tone: { type: 'string' },
-        instructions: { type: 'string' },
+        name: { type: 'string', description: 'Tên nhân vật/Persona' },
+        description: { type: 'string', description: 'Mô tả chi tiết' },
+        tags: { type: 'array', items: { type: 'string' }, description: 'Danh sách nhãn/tags' },
+        folder_id: { type: 'string', description: 'ID thư mục chứa tài nguyên' },
+        folder_name: { type: 'string', description: 'Tên thư mục' },
       },
-      required: ['name', 'tone'],
+      required: ['name'],
     },
   },
   {
@@ -227,46 +265,23 @@ const MCP_TOOLS_REGISTRY_BASE: McpToolSchema[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        name: { type: 'string' },
-        triggers: {
-          type: 'array',
-          items: {
-            properties: {
-              type: { const: 'keyword_match' },
-              keywords: { type: 'array', items: { type: 'string' } },
-            },
-            required: ['type', 'keywords'],
-          },
+        name: { type: 'string', description: 'Tên kịch bản' },
+        description: { type: 'string', description: 'Mô tả kịch bản' },
+        trigger_type: {
+          type: 'string',
+          description: 'Loại trigger (keyword, greeting, menu, webhook, schedule)',
         },
-        steps: {
+        trigger_config: { type: 'object', description: 'Cấu hình chi tiết cho trigger' },
+        flow_definition: { type: 'object', description: 'Định nghĩa luồng kịch bản (Flow)' },
+        priority: { type: 'integer', description: 'Độ ưu tiên' },
+        is_active: { type: 'boolean', description: 'Kích hoạt ngay' },
+        platforms: {
           type: 'array',
-          items: {
-            oneOf: [
-              {
-                properties: { type: { const: 'send_text' }, text: { type: 'string' } },
-                required: ['type', 'text'],
-              },
-              {
-                properties: {
-                  type: { const: 'ask_phone' },
-                  validation_message: { type: 'string' },
-                },
-                required: ['type'],
-              },
-              {
-                properties: {
-                  type: { const: 'call_api' },
-                  endpoint: { type: 'string' },
-                  method: { type: 'string' },
-                },
-                required: ['type', 'endpoint'],
-              },
-            ],
-          },
+          items: { type: 'string' },
+          description: 'Danh sách nền tảng áp dụng',
         },
-        is_active: { type: 'boolean' },
       },
-      required: ['name', 'steps'],
+      required: ['name', 'trigger_type', 'trigger_config', 'flow_definition'],
     },
   },
   {
