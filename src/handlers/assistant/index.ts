@@ -458,6 +458,17 @@ LƯU Ý: Nếu kết quả API có báo "error", hãy giải thích lỗi đó m
               : undefined,
         },
       });
+
+      // --- BACKGROUND TASK: AUTO CONTEXT SUMMARIZATION ---
+      const totalMessages = await prisma.assistantMessage.count({
+        where: { user_id: userId, business_id: businessId || null },
+      });
+      // Run summarization every 5 messages
+      if (totalMessages > 0 && totalMessages % 5 === 0) {
+        runBackgroundSummarizer(userId, businessId || null, prisma, existingPrefs).catch((err) => {
+          request.log.error({ err }, 'Background summarizer failed');
+        });
+      }
     }
 
     clearInterval(keepAliveInterval);
@@ -536,5 +547,82 @@ export async function clearHistoryHandler(
   } catch (err) {
     request.log.error({ err }, '[assistant] clearHistoryHandler failed');
     return reply.status(500).send({ error: 'Failed to clear history' });
+  }
+}
+
+async function runBackgroundSummarizer(
+  userId: string,
+  businessId: string | null,
+  prisma: any,
+  existingPrefs: any,
+) {
+  try {
+    // 1. Fetch last 10 messages to summarize
+    const recentMessages = await prisma.assistantMessage.findMany({
+      where: { user_id: userId, business_id: businessId },
+      orderBy: { created_at: 'desc' },
+      take: 10,
+    });
+
+    if (recentMessages.length === 0) return;
+
+    const historyText = recentMessages
+      .reverse()
+      .map((m: any) => `[${m.role.toUpperCase()}]: ${m.content}`)
+      .join('\n');
+
+    let currentWorkingMemory = 'Không có.';
+    if (existingPrefs.working_memory) {
+      currentWorkingMemory = JSON.stringify(existingPrefs.working_memory);
+    }
+
+    const prompt = `[SYSTEM]: Bạn là Kỹ sư Tóm tắt Bối cảnh (Context Summarizer Agent).
+Nhiệm vụ của bạn là đọc Bộ nhớ hiện tại và Lịch sử 10 tin nhắn gần nhất, sau đó HỢP NHẤT chúng thành một bản tóm tắt ngắn gọn.
+Mục đích là để lưu lại các thông tin quan trọng (vấn đề đang bàn, quyết định đã đưa ra) tránh bị quên khi lịch sử quá dài.
+
+[BỘ NHỚ LÀM VIỆC HIỆN TẠI]:
+${currentWorkingMemory}
+
+[10 TIN NHẮN GẦN NHẤT]:
+${historyText}
+
+CÁCH TRẢ VỀ KẾT QUẢ: Bắt buộc trả về JSON:
+\`\`\`json
+{
+  "working_memory": {
+    "current_objective": "Mục tiêu lớn nhất hiện tại của người dùng là gì?",
+    "context_summary": "Tóm tắt GỌN GÀNG những thông tin/dữ kiện quan trọng đã thảo luận từ trước đến nay."
+  }
+}
+\`\`\`
+`;
+
+    let response = await generateAssistantText(prompt);
+
+    // Parse JSON
+    const jsonRegex = /```(?:json)?\s*(\{[\s\S]*?\})\s*```/;
+    const match = response.match(jsonRegex);
+    if (match && match[1]) {
+      response = match[1];
+    } else {
+      const startIdx = response.indexOf('{');
+      const endIdx = response.lastIndexOf('}');
+      if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+        response = response.substring(startIdx, endIdx + 1);
+      }
+    }
+
+    const parsed = JSON.parse(response);
+    if (parsed && parsed.working_memory) {
+      existingPrefs.working_memory = parsed.working_memory;
+      await prisma.userAssistantMemory.upsert({
+        where: { user_id: userId },
+        update: { preferences: existingPrefs },
+        create: { user_id: userId, preferences: existingPrefs },
+      });
+      console.log(`[Auto-Summarizer] Cập nhật thành công cho user: ${userId.substring(0, 8)}`);
+    }
+  } catch (error) {
+    console.error('[runBackgroundSummarizer] Error:', error);
   }
 }
