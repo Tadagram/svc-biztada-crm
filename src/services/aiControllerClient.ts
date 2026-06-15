@@ -143,7 +143,13 @@ export async function pollTextResult(taskId: string, timeoutMs = 180_000): Promi
       const token = signWorkerJwt();
       const res = await fetch(
         `${AI_CONTROLLER_URL}/api/v1/tasks/${encodeURIComponent(taskId)}/result`,
-        { headers: { Accept: 'application/json', Authorization: `Bearer ${token}` } },
+        {
+          headers: {
+            Accept: 'application/json',
+            Authorization: `Bearer ${token}`,
+            Connection: 'close',
+          },
+        },
       );
 
       if (res.status === 202) continue; // still processing
@@ -184,6 +190,7 @@ export async function createAssistantTextTask(prompt: string): Promise<TaskAssig
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
+      Connection: 'close',
       // Route to platform-hosted wkr-ai-controller workers only (mode=hosted portals).
       // This prevents strategy tasks from landing on customer-owned private workers.
       'X-Tadagram-Portal-Scope': 'hosted',
