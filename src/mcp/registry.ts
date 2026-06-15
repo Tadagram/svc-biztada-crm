@@ -208,6 +208,57 @@ const MCP_TOOLS_REGISTRY_BASE: McpToolSchema[] = [
       properties: {},
     },
   },
+  {
+    name: 'marketing_get_accounts',
+    description: 'Lấy danh sách các tài khoản cá nhân Facebook (seeding accounts) đang quản lý.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
+    name: 'marketing_get_campaigns',
+    description: 'Lấy danh sách các chiến dịch (campaigns) seeding/marketing hiện có.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
+    name: 'marketing_get_seeding_contents',
+    description:
+      'Lấy danh sách các bài viết mục tiêu (seeding contents) đang được theo dõi/tương tác.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
+    name: 'marketing_get_group_post_leads',
+    description:
+      'Lấy danh sách các bài viết thu thập được từ hội nhóm Facebook (Group Post Leads).',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
+    name: 'marketing_get_engagement_post_leads',
+    description:
+      'Lấy danh sách các bài viết có tương tác cao thu thập được (Engagement Post Leads).',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
+    name: 'marketing_get_fanpages',
+    description: 'Lấy danh sách các Fanpage Facebook đã kết nối.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
 
   // ── BrandLabs Tools ──
   {

@@ -9,7 +9,8 @@ export class McpServer {
   public async callTool(
     authHeader: string,
     request: McpToolCallRequest,
-    prisma?: any, businessId?: string,
+    prisma?: any,
+    businessId?: string,
   ): Promise<McpToolCallResponse> {
     const { name, arguments: args } = request;
 
@@ -25,10 +26,18 @@ export class McpServer {
             'POST',
             '/api/v1/accounts',
             args,
-           businessId);
+            businessId,
+          );
           break;
         case 'marketing_get_workflows':
-          result = await executeDynamicAPI(authHeader, 'marketing', 'GET', '/api/v1/workflows', undefined, businessId);
+          result = await executeDynamicAPI(
+            authHeader,
+            'marketing',
+            'GET',
+            '/api/v1/workflows',
+            undefined,
+            businessId,
+          );
           break;
         case 'marketing_create_workflow':
           result = await executeDynamicAPI(
@@ -37,7 +46,8 @@ export class McpServer {
             'POST',
             '/api/v1/workflows',
             args,
-           businessId);
+            businessId,
+          );
           break;
         case 'marketing_run_workflow':
           result = await executeDynamicAPI(
@@ -45,7 +55,9 @@ export class McpServer {
             'marketing',
             'POST',
             `/api/v1/workflows/${args.workflow_id}/run-now`,
-           undefined, businessId);
+            undefined,
+            businessId,
+          );
           break;
         case 'marketing_create_campaign':
           result = await executeDynamicAPI(
@@ -54,7 +66,8 @@ export class McpServer {
             'POST',
             '/api/v1/campaigns',
             args,
-           businessId);
+            businessId,
+          );
           break;
         case 'marketing_configure_tiktok_harvest':
           result = await executeDynamicAPI(
@@ -63,7 +76,8 @@ export class McpServer {
             'POST',
             '/api/v1/harvest/tiktok',
             args,
-           businessId);
+            businessId,
+          );
           break;
         case 'marketing_configure_fb_harvest':
           result = await executeDynamicAPI(
@@ -72,7 +86,8 @@ export class McpServer {
             'POST',
             '/api/v1/harvest/facebook',
             args,
-           businessId);
+            businessId,
+          );
           break;
         case 'marketing_scan_leads':
           result = await executeDynamicAPI(
@@ -81,7 +96,8 @@ export class McpServer {
             'POST',
             '/api/v1/leads/scan',
             args,
-           businessId);
+            businessId,
+          );
           break;
         case 'marketing_manage_fanpage':
           result = await executeDynamicAPI(
@@ -90,7 +106,8 @@ export class McpServer {
             'GET',
             '/api/v1/fanpage/status',
             args,
-           businessId);
+            businessId,
+          );
           break;
         case 'marketing_create_funnel':
           result = await executeDynamicAPI(
@@ -99,7 +116,68 @@ export class McpServer {
             'POST',
             '/api/v1/funnels',
             args,
-           businessId);
+            businessId,
+          );
+          break;
+        case 'marketing_get_accounts':
+          result = await executeDynamicAPI(
+            authHeader,
+            'marketing',
+            'GET',
+            '/api/v1/accounts',
+            undefined,
+            businessId,
+          );
+          break;
+        case 'marketing_get_campaigns':
+          result = await executeDynamicAPI(
+            authHeader,
+            'marketing',
+            'GET',
+            '/api/v1/campaigns',
+            undefined,
+            businessId,
+          );
+          break;
+        case 'marketing_get_seeding_contents':
+          result = await executeDynamicAPI(
+            authHeader,
+            'marketing',
+            'GET',
+            '/api/v1/seeding-contents',
+            undefined,
+            businessId,
+          );
+          break;
+        case 'marketing_get_group_post_leads':
+          result = await executeDynamicAPI(
+            authHeader,
+            'marketing',
+            'GET',
+            '/api/v1/group-post-leads',
+            undefined,
+            businessId,
+          );
+          break;
+        case 'marketing_get_engagement_post_leads':
+          result = await executeDynamicAPI(
+            authHeader,
+            'marketing',
+            'GET',
+            '/api/v1/engagement-post-leads',
+            undefined,
+            businessId,
+          );
+          break;
+        case 'marketing_get_fanpages':
+          result = await executeDynamicAPI(
+            authHeader,
+            'marketing',
+            'GET',
+            '/api/v1/fanpages',
+            undefined,
+            businessId,
+          );
           break;
         case 'marketing_get_schedules':
         case 'marketing_get_reports': {
@@ -109,7 +187,9 @@ export class McpServer {
             'marketing',
             'GET',
             '/api/v1/workers/pool-status',
-           undefined, businessId);
+            undefined,
+            businessId,
+          );
 
           if (
             !poolStatus ||
@@ -144,7 +224,9 @@ export class McpServer {
                 'marketing',
                 'GET',
                 `${endpointPath}?worker_uuid=${w.uuid}`,
-               undefined, businessId);
+                undefined,
+                businessId,
+              );
 
               if (workerAccess && workerAccess.success && workerAccess.jwt_token) {
                 // 3. Call the tunnel directly
@@ -193,7 +275,14 @@ export class McpServer {
 
         // -- BrandLabs --
         case 'brandlabs_get_media_assets':
-          result = await executeDynamicAPI(authHeader, 'marketing', 'GET', '/api/v1/media-assets', undefined, businessId);
+          result = await executeDynamicAPI(
+            authHeader,
+            'marketing',
+            'GET',
+            '/api/v1/media-assets',
+            undefined,
+            businessId,
+          );
           break;
         case 'brandlabs_create_brand_character':
           result = await executeDynamicAPI(
@@ -202,7 +291,8 @@ export class McpServer {
             'POST',
             '/api/v1/brand-characters',
             args,
-           businessId);
+            businessId,
+          );
           break;
         case 'brandlabs_get_prompt_libraries':
           result = await executeDynamicAPI(
@@ -210,15 +300,31 @@ export class McpServer {
             'marketing',
             'GET',
             '/api/v1/prompt-libraries',
-           undefined, businessId);
+            undefined,
+            businessId,
+          );
           break;
 
         // -- Chatbot --
         case 'chatbot_get_platforms':
-          result = await executeDynamicAPI(authHeader, 'chatbot', 'GET', '/api/v1/platforms', undefined, businessId);
+          result = await executeDynamicAPI(
+            authHeader,
+            'chatbot',
+            'GET',
+            '/api/v1/platforms',
+            undefined,
+            businessId,
+          );
           break;
         case 'chatbot_get_scenarios':
-          result = await executeDynamicAPI(authHeader, 'chatbot', 'GET', '/api/v1/scenarios', undefined, businessId);
+          result = await executeDynamicAPI(
+            authHeader,
+            'chatbot',
+            'GET',
+            '/api/v1/scenarios',
+            undefined,
+            businessId,
+          );
           break;
         case 'chatbot_create_scenario':
           result = await executeDynamicAPI(
@@ -227,10 +333,18 @@ export class McpServer {
             'POST',
             '/api/v1/scenarios',
             args,
-           businessId);
+            businessId,
+          );
           break;
         case 'chatbot_get_conversations':
-          result = await executeDynamicAPI(authHeader, 'chatbot', 'GET', '/api/v1/conversations', undefined, businessId);
+          result = await executeDynamicAPI(
+            authHeader,
+            'chatbot',
+            'GET',
+            '/api/v1/conversations',
+            undefined,
+            businessId,
+          );
           break;
 
         // -- Orchestration --
