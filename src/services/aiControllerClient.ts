@@ -60,10 +60,31 @@ interface TaskAssignment {
   worker_url: string;
 }
 
+/**
+ * fetchWithRetry wraps the global fetch to automatically retry once on 'other side closed'
+ * SocketErrors caused by undici's keep-alive TCP connection reuse race condition.
+ */
+async function fetchWithRetry(url: string | URL | Request, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch (err) {
+    if (
+      err instanceof TypeError &&
+      err.message.includes('fetch failed') &&
+      err.cause &&
+      (err.cause as Error).message.includes('other side closed')
+    ) {
+      // Retry once for undici keep-alive socket drops
+      return await fetch(url, init);
+    }
+    throw err;
+  }
+}
+
 export async function createTextTask(prompt: string): Promise<TaskAssignment> {
   const token = signWorkerJwt();
 
-  const response = await fetch(`${AI_CONTROLLER_URL}/api/v1/tasks`, {
+  const response = await fetchWithRetry(`${AI_CONTROLLER_URL}/api/v1/tasks`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -141,15 +162,9 @@ export async function pollTextResult(taskId: string, timeoutMs = 180_000): Promi
 
     try {
       const token = signWorkerJwt();
-      const res = await fetch(
+      const res = await fetchWithRetry(
         `${AI_CONTROLLER_URL}/api/v1/tasks/${encodeURIComponent(taskId)}/result`,
-        {
-          headers: {
-            Accept: 'application/json',
-            Authorization: `Bearer ${token}`,
-            Connection: 'close',
-          },
-        },
+        { headers: { Accept: 'application/json', Authorization: `Bearer ${token}` } },
       );
 
       if (res.status === 202) continue; // still processing
@@ -185,12 +200,11 @@ export async function generateText(prompt: string): Promise<string> {
 export async function createAssistantTextTask(prompt: string): Promise<TaskAssignment> {
   const token = signWorkerJwt();
 
-  const response = await fetch(`${AI_CONTROLLER_URL}/api/v1/tasks`, {
+  const response = await fetchWithRetry(`${AI_CONTROLLER_URL}/api/v1/tasks`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
-      Connection: 'close',
       // Route to platform-hosted wkr-ai-controller workers only (mode=hosted portals).
       // This prevents strategy tasks from landing on customer-owned private workers.
       'X-Tadagram-Portal-Scope': 'hosted',
