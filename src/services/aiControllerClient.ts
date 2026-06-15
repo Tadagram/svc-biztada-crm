@@ -176,51 +176,42 @@ export async function generateText(prompt: string): Promise<string> {
   return pollTextResult(task_id);
 }
 
-export async function createAssistantTextTask(
-  prompt: string,
-  maxRetries = 3,
-): Promise<TaskAssignment> {
+export async function createAssistantTextTask(prompt: string): Promise<TaskAssignment> {
   const token = signWorkerJwt();
 
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    const response = await fetch(`${AI_CONTROLLER_URL}/api/v1/tasks`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-        'X-Tadagram-Portal-Scope': 'hosted',
+  const response = await fetch(`${AI_CONTROLLER_URL}/api/v1/tasks`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      // Route to platform-hosted wkr-ai-controller workers only (mode=hosted portals).
+      // This prevents strategy tasks from landing on customer-owned private workers.
+      'X-Tadagram-Portal-Scope': 'hosted',
+    },
+    body: JSON.stringify({
+      task_type: 'text.generate',
+      provider: 'gemini',
+      model: 'gemini-2.0-flash-exp',
+      prompt,
+      parameters: {
+        input: { prompt, service: 'text2text' },
       },
-      body: JSON.stringify({
-        task_type: 'text.generate',
-        provider: 'gemini',
-        model: 'gemini-2.0-flash-exp',
-        prompt,
-        parameters: {
-          input: { prompt, service: 'text2text' },
-        },
-      }),
-    });
+    }),
+  });
 
-    if (!response.ok) {
-      if (response.status === 503 && attempt < maxRetries) {
-        // Wait 1.5 seconds and retry to allow worker state to clear in Orchestrator
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-        continue;
-      }
-      const body = await response.text().catch(() => '');
-      throw new Error(`ai-controller task creation failed: ${response.status} ${body}`);
-    }
-
-    const data = (await response.json()) as Partial<TaskAssignment>;
-    if (!data.task_id || !data.worker_url) {
-      throw new Error(
-        'ai-controller returned invalid task assignment (missing task_id or worker_url)',
-      );
-    }
-
-    return data as TaskAssignment;
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(`ai-controller task creation failed: ${response.status} ${body}`);
   }
-  throw new Error('ai-controller task creation failed: Max retries reached');
+
+  const data = (await response.json()) as Partial<TaskAssignment>;
+  if (!data.task_id || !data.worker_url) {
+    throw new Error(
+      'ai-controller returned invalid task assignment (missing task_id or worker_url)',
+    );
+  }
+
+  return data as TaskAssignment;
 }
 
 export async function generateAssistantText(prompt: string): Promise<string> {
