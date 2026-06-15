@@ -838,3 +838,16 @@ model AiBusinessPlaybooks {
   @@map("ai_business_playbooks")
 }
 
+model AiKnowledgeBase {
+  id         String   @id @default(uuid()) @db.Char(36)
+  category   String   @db.VarChar(100) // Ví dụ: "marketing_persona", "sales_script"
+  title      String   @db.VarChar(255) // Tiêu đề kiến thức
+  content    Json     // Nội dung chi tiết
+  keywords   Json?    // Các từ khóa liên quan (Mảng string)
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now()) @db.DateTime(0)
+  updated_at DateTime @default(now()) @updatedAt @db.DateTime(0)
+
+  @@index([category, is_active])
+  @@map("ai_knowledge_base")
+}

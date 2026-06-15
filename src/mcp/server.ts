@@ -359,6 +359,35 @@ export class McpServer {
           break;
         }
 
+        case 'query_ai_knowledge_base': {
+          if (!prisma) {
+            throw new Error('Prisma client not provided to fetch knowledge base');
+          }
+          const { category, search_keyword } = args;
+          // Tìm kiếm các knowledge base có chứa từ khoá (trong content hoặc keywords)
+          // Vì SQLite/MySQL có cú pháp khác nhau, nên ta load lên và filter trong JS cho chắc ăn,
+          // hoặc dùng contains tuỳ db. Ở đây ta lấy category trước.
+          const kbItems = await prisma.aiKnowledgeBase.findMany({
+            where: {
+              category: category,
+              is_active: true,
+            },
+          });
+
+          let matched = kbItems;
+          if (search_keyword) {
+            const kw = search_keyword.toLowerCase();
+            matched = kbItems.filter((item: any) => {
+              const kwStr = item.keywords ? JSON.stringify(item.keywords).toLowerCase() : '';
+              const contentStr = item.content ? JSON.stringify(item.content).toLowerCase() : '';
+              const titleStr = item.title ? item.title.toLowerCase() : '';
+              return kwStr.includes(kw) || contentStr.includes(kw) || titleStr.includes(kw);
+            });
+          }
+          result = { knowledge: matched };
+          break;
+        }
+
         case 'marketing_post_accounts':
           result = await executeDynamicAPI(
             authHeader,

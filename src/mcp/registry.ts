@@ -2,7 +2,6 @@ import { executeDynamicAPI } from '../services/apiDispatcherClient';
 import { generatedTools } from './generated_tools';
 import { crmTools } from './generated_crm_tools';
 
-
 export interface McpToolSchema {
   name: string;
   description: string;
@@ -357,6 +356,22 @@ const MCP_TOOLS_REGISTRY_BASE: McpToolSchema[] = [
     inputSchema: {
       type: 'object',
       properties: {},
+    },
+  },
+  {
+    name: 'query_ai_knowledge_base',
+    description:
+      'Truy vấn Thư viện Kiến thức AI (Knowledge Base) để lấy thông tin tư vấn (chân dung khách hàng, kịch bản mẫu, kỹ năng...).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        category: { type: 'string', description: 'Phân loại kiến thức (ví dụ: marketing_persona)' },
+        search_keyword: {
+          type: 'string',
+          description: 'Từ khóa cần tìm kiếm (ví dụ: mmo, khởi nghiệp)',
+        },
+      },
+      required: ['category', 'search_keyword'],
     },
   },
 ];
