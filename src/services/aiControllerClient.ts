@@ -102,6 +102,7 @@ export async function createTextTask(prompt: string): Promise<TaskAssignment> {
         input: { prompt, service: 'text2text' },
       },
     }),
+    signal: AbortSignal.timeout(15_000),
   });
 
   if (!response.ok) {
@@ -164,7 +165,10 @@ export async function pollTextResult(taskId: string, timeoutMs = 180_000): Promi
       const token = signWorkerJwt();
       const res = await fetchWithRetry(
         `${AI_CONTROLLER_URL}/api/v1/tasks/${encodeURIComponent(taskId)}/result`,
-        { headers: { Accept: 'application/json', Authorization: `Bearer ${token}` } },
+        {
+          headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
+          signal: AbortSignal.timeout(10_000),
+        },
       );
 
       if (res.status === 202) continue; // still processing
@@ -218,6 +222,7 @@ export async function createAssistantTextTask(prompt: string): Promise<TaskAssig
         input: { prompt, service: 'text2text' },
       },
     }),
+    signal: AbortSignal.timeout(15_000),
   });
 
   if (!response.ok) {
