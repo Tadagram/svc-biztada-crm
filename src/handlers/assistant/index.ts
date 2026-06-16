@@ -16,12 +16,14 @@ const BUSINESS_CRM_URL =
 const STRATEGY_INTERNAL_TOKEN = process.env.STRATEGY_INTERNAL_TOKEN ?? '';
 
 export async function chatHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const { message, attachments } = request.body as { message: string, attachments?: any[] };
+  const { message, attachments } = request.body as { message: string; attachments?: any[] };
   const businessId = request.headers['x-business-id'] as string | undefined;
 
   let messageWithAttachments = message;
   if (attachments && attachments.length > 0) {
-    const attachmentContext = attachments.map(a => `[Đã đính kèm ảnh: asset_id = ${a.asset_id}]`).join(' ');
+    const attachmentContext = attachments
+      .map((a) => `[Đã đính kèm ảnh: asset_id = ${a.asset_id}]`)
+      .join(' ');
     messageWithAttachments = `${message}\n${attachmentContext}`;
   }
 
@@ -83,7 +85,7 @@ export async function chatHandler(request: FastifyRequest, reply: FastifyReply):
       if (businessId) {
         try {
           const bizRes = await fetch(`${BUSINESS_CRM_URL}/api/business/me`, {
-            headers: { authorization: authHeader, 'x-business-id': businessId } as any
+            headers: { authorization: authHeader, 'x-business-id': businessId } as any,
           });
           if (bizRes.ok) {
             const bizData = await bizRes.json();
@@ -217,7 +219,7 @@ ${historyText || 'Chưa có lịch sử.'}
       let strategyContextText = '';
       let chunksList: any[] = [];
       let fullCaps: any[] = [];
-      const mcpTools = await mcpServer.getTools(authHeader);
+      const mcpTools = await mcpServer.getTools(authHeader, request.server.prisma);
 
       if (STRATEGY_INTERNAL_TOKEN) {
         try {
@@ -272,7 +274,11 @@ ${historyText || 'Chưa có lịch sử.'}
         { name: 'get_active_workflows', description: 'Lấy danh sách workflow đang chạy' },
         { name: 'get_dashboard_activity', description: 'Lấy hoạt động gần đây' },
         { name: 'update_user_memory', description: 'Cập nhật bộ nhớ' },
-        { name: 'update_business_info', description: 'Cập nhật thông tin doanh nghiệp (Ngành hàng, Khách hàng mục tiêu, Mục tiêu truyền thông)' },
+        {
+          name: 'update_business_info',
+          description:
+            'Cập nhật thông tin doanh nghiệp (Ngành hàng, Khách hàng mục tiêu, Mục tiêu truyền thông)',
+        },
       ];
 
       const plannerPrompt = `[SYSTEM]: Bạn là **Chuyên gia Lập Kế hoạch (Planner Agent)** của hệ sinh thái Biztada.
@@ -449,26 +455,30 @@ ${historyText || 'Chưa có lịch sử.'}
             });
             toolResult = { success: true, message: 'Memory updated successfully.' };
           } else if (toolName === 'update_business_info') {
-              try {
-                const bizUpdateRes = await fetch(`${BUSINESS_CRM_URL}/api/business`, {
-                  method: 'PATCH',
-                  headers: { 
-                    authorization: authHeader, 
-                    'Content-Type': 'application/json',
-                    'x-business-id': businessId
-                  } as any,
-                  body: JSON.stringify(toolArgs)
-                });
-                if (bizUpdateRes.ok) {
-                  const updatedData = await bizUpdateRes.json();
-                  toolResult = { success: true, message: 'Business info updated successfully.', data: updatedData };
-                } else {
-                  const errData = await bizUpdateRes.text();
-                  toolResult = { error: `Failed to update business info: ${errData}` };
-                }
-              } catch (err: any) {
-                toolResult = { error: err.message || 'Error calling business CRM' };
+            try {
+              const bizUpdateRes = await fetch(`${BUSINESS_CRM_URL}/api/business`, {
+                method: 'PATCH',
+                headers: {
+                  authorization: authHeader,
+                  'Content-Type': 'application/json',
+                  'x-business-id': businessId,
+                } as any,
+                body: JSON.stringify(toolArgs),
+              });
+              if (bizUpdateRes.ok) {
+                const updatedData = await bizUpdateRes.json();
+                toolResult = {
+                  success: true,
+                  message: 'Business info updated successfully.',
+                  data: updatedData,
+                };
+              } else {
+                const errData = await bizUpdateRes.text();
+                toolResult = { error: `Failed to update business info: ${errData}` };
               }
+            } catch (err: any) {
+              toolResult = { error: err.message || 'Error calling business CRM' };
+            }
           } else if (!authHeader) {
             toolResult = { error: 'Missing authorization token to call tools.' };
           } else {
