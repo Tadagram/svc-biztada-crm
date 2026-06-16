@@ -5,7 +5,7 @@ export default async function mcpRoutes(fastify: FastifyInstance, _options: Fast
   fastify.get('/tools', async (request, reply) => {
     try {
       const authHeader = request.headers.authorization;
-      const tools = await mcpServer.getTools(authHeader);
+      const tools = await mcpServer.getTools(authHeader, request.server.prisma);
       return reply.send({ tools });
     } catch (error: any) {
       return reply.status(500).send({ error: error.message });

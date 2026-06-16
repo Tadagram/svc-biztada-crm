@@ -376,8 +376,26 @@ const MCP_TOOLS_REGISTRY_BASE: McpToolSchema[] = [
   },
 ];
 
-export async function getMcpToolsRegistry(authHeader?: string): Promise<McpToolSchema[]> {
+export async function getMcpToolsRegistry(
+  authHeader?: string,
+  prisma?: any,
+): Promise<McpToolSchema[]> {
   const registry = JSON.parse(JSON.stringify(MCP_TOOLS_REGISTRY_BASE)) as McpToolSchema[];
+
+  if (prisma) {
+    try {
+      const dbTools = await prisma.aiMcpTools.findMany({ where: { is_active: true } });
+      for (const t of dbTools) {
+        registry.push({
+          name: t.name,
+          description: t.description,
+          inputSchema: (t.parameter_schema as any) || { type: 'object', properties: {} },
+        });
+      }
+    } catch (e) {
+      console.error('[MCP] Failed to fetch tools from DB', e);
+    }
+  }
 
   if (authHeader) {
     try {

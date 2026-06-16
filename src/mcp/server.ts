@@ -2,8 +2,8 @@ import { executeDynamicAPI } from '../services/apiDispatcherClient';
 import { McpToolCallRequest, McpToolCallResponse, getMcpToolsRegistry } from './registry';
 
 export class McpServer {
-  public async getTools(authHeader?: string) {
-    return await getMcpToolsRegistry(authHeader);
+  public async getTools(authHeader?: string, prisma?: any) {
+    return await getMcpToolsRegistry(authHeader, prisma);
   }
 
   public async callTool(
@@ -16,6 +16,7 @@ export class McpServer {
 
     try {
       let result: any;
+      let matchedInSwitch = true;
 
       switch (name) {
         // -- Marketing --
@@ -2332,15 +2333,47 @@ export class McpServer {
           break;
 
         default:
-          throw new Error(`Tool not found: ${name}`);
+          matchedInSwitch = false;
+          break;
+      }
+
+      // If not matched in static switch, check dynamic DB tools
+      if (!matchedInSwitch && prisma) {
+        const dbTool = await prisma.aiMcpTools.findUnique({ where: { name } });
+        if (dbTool && dbTool.is_active) {
+          result = await executeDynamicAPI(
+            authHeader,
+            dbTool.service,
+            dbTool.http_method,
+            dbTool.endpoint,
+            args,
+            businessId,
+          );
+        } else {
+          return {
+            content: [{ type: 'text', text: `Tool ${name} not found or inactive` }],
+            isError: true,
+          };
+        }
       }
 
       return {
-        content: [{ type: 'json', json: result }],
+        content: [
+          {
+            type: 'json',
+            json: result || { success: true },
+          },
+        ],
       };
-    } catch (err: any) {
+    } catch (error: any) {
+      console.error(`[MCP] Error executing tool ${name}:`, error);
       return {
-        content: [{ type: 'text', text: err.message || 'Unknown error' }],
+        content: [
+          {
+            type: 'text',
+            text: `Error: ${error.message || String(error)}`,
+          },
+        ],
         isError: true,
       };
     }

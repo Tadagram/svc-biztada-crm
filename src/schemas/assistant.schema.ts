@@ -16,6 +16,13 @@ export const chatAssistantSchema: FastifySchema = {
     required: ['message'],
     properties: {
       message: { type: 'string' },
+      attachments: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: true,
+        },
+      },
     },
   },
   response: {

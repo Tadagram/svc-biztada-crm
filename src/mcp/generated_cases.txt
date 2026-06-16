@@ -1,0 +1,234 @@
+    case 'marketing_post_accounts':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'POST', `/api/v1/accounts`, args.body, businessId);
+      break;
+    case 'marketing_get_accounts_id':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'GET', `/api/v1/accounts/${args.id}`, undefined, businessId);
+      break;
+    case 'marketing_get_accounts':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'GET', `/api/v1/accounts`, undefined, businessId);
+      break;
+    case 'marketing_get_accounts_my_accounts':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'GET', `/api/v1/accounts/my-accounts`, undefined, businessId);
+      break;
+    case 'marketing_put_accounts_id':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'PUT', `/api/v1/accounts/${args.id}`, args.body, businessId);
+      break;
+    case 'marketing_get_accounts_id_credentials':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'GET', `/api/v1/accounts/${args.id}/credentials`, undefined, businessId);
+      break;
+    case 'marketing_delete_accounts_id':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'DELETE', `/api/v1/accounts/${args.id}`, undefined, businessId);
+      break;
+    case 'marketing_put_accounts_id_cookies':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'PUT', `/api/v1/accounts/${args.id}/cookies`, args.body, businessId);
+      break;
+    case 'marketing_get_accounts_available':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'GET', `/api/v1/accounts/available`, undefined, businessId);
+      break;
+    case 'marketing_post_accounts_id_release':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'POST', `/api/v1/accounts/${args.id}/release`, args.body, businessId);
+      break;
+    case 'marketing_post_accounts_id_increment':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'POST', `/api/v1/accounts/${args.id}/increment`, args.body, businessId);
+      break;
+    case 'marketing_patch_accounts_account_id_behavior_profile':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'PATCH', `/api/v1/accounts/${args.account_id}/behavior-profile`, args.body, businessId);
+      break;
+    case 'marketing_post_ai_tools_worker_schedules':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'POST', `/api/v1/ai-tools/worker-schedules`, args.body, businessId);
+      break;
+    case 'marketing_post_ai_tools_worker_reports':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'POST', `/api/v1/ai-tools/worker-reports`, args.body, businessId);
+      break;
+    case 'marketing_get_dashboard':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'GET', `/api/v1/dashboard`, undefined, businessId);
+      break;
+    case 'marketing_put_accounts_id_demographics':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'PUT', `/api/v1/accounts/${args.id}/demographics`, args.body, businessId);
+      break;
+    case 'marketing_put_accounts_id_personality':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'PUT', `/api/v1/accounts/${args.id}/personality`, args.body, businessId);
+      break;
+    case 'marketing_put_accounts_id_interests':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'PUT', `/api/v1/accounts/${args.id}/interests`, args.body, businessId);
+      break;
+    case 'marketing_post_accounts_id_generate_ai_profile':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'POST', `/api/v1/accounts/${args.id}/generate-ai-profile`, args.body, businessId);
+      break;
+    case 'marketing_get_accounts_id_demographics':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'GET', `/api/v1/accounts/${args.id}/demographics`, undefined, businessId);
+      break;
+    case 'marketing_post_accounts_generate_from_template':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'POST', `/api/v1/accounts/generate-from-template`, args.body, businessId);
+      break;
+    case 'marketing_post_funnels':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'POST', `/api/v1/funnels`, args.body, businessId);
+      break;
+    case 'marketing_get_funnels_id_link':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'GET', `/api/v1/funnels/${args.id}/link`, undefined, businessId);
+      break;
+    case 'marketing_get_funnels':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'GET', `/api/v1/funnels`, undefined, businessId);
+      break;
+    case 'marketing_delete_funnels_id':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'DELETE', `/api/v1/funnels/${args.id}`, undefined, businessId);
+      break;
+    case 'marketing_get_funnels_id_analytics':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'GET', `/api/v1/funnels/${args.id}/analytics`, undefined, businessId);
+      break;
+    case 'marketing_post_groups':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'POST', `/api/v1/groups`, args.body, businessId);
+      break;
+    case 'marketing_get_groups_id':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'GET', `/api/v1/groups/${args.id}`, undefined, businessId);
+      break;
+    case 'marketing_get_groups':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'GET', `/api/v1/groups`, undefined, businessId);
+      break;
+    case 'marketing_put_groups_id':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'PUT', `/api/v1/groups/${args.id}`, args.body, businessId);
+      break;
+    case 'marketing_delete_groups_id':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'DELETE', `/api/v1/groups/${args.id}`, undefined, businessId);
+      break;
+    case 'marketing_post_groups_id_increment':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'POST', `/api/v1/groups/${args.id}/increment`, args.body, businessId);
+      break;
+    case 'marketing_post_groups_bulk':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'POST', `/api/v1/groups/bulk`, args.body, businessId);
+      break;
+    case 'marketing_post_posts':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'POST', `/api/v1/posts`, args.body, businessId);
+      break;
+    case 'marketing_get_posts_id':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'GET', `/api/v1/posts/${args.id}`, undefined, businessId);
+      break;
+    case 'marketing_get_posts':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'GET', `/api/v1/posts`, undefined, businessId);
+      break;
+    case 'marketing_put_posts_id':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'PUT', `/api/v1/posts/${args.id}`, args.body, businessId);
+      break;
+    case 'marketing_delete_posts_id':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'DELETE', `/api/v1/posts/${args.id}`, undefined, businessId);
+      break;
+    case 'marketing_get_posts_random':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'GET', `/api/v1/posts/random`, undefined, businessId);
+      break;
+    case 'marketing_post_qa':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'POST', `/api/v1/qa`, args.body, businessId);
+      break;
+    case 'marketing_get_qa_id':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'GET', `/api/v1/qa/${args.id}`, undefined, businessId);
+      break;
+    case 'marketing_get_qa':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'GET', `/api/v1/qa`, undefined, businessId);
+      break;
+    case 'marketing_put_qa_id':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'PUT', `/api/v1/qa/${args.id}`, args.body, businessId);
+      break;
+    case 'marketing_delete_qa_id':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'DELETE', `/api/v1/qa/${args.id}`, undefined, businessId);
+      break;
+    case 'marketing_get_qa_search':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'GET', `/api/v1/qa/search`, undefined, businessId);
+      break;
+    case 'marketing_get_reports_worker_url':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'GET', `/api/v1/reports/worker-url`, undefined, businessId);
+      break;
+    case 'marketing_get_schedules_worker_url':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'GET', `/api/v1/schedules/worker-url`, undefined, businessId);
+      break;
+    case 'marketing_get_schedules_workers':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'GET', `/api/v1/schedules/workers`, undefined, businessId);
+      break;
+    case 'marketing_get_tasks_weekly':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'GET', `/api/v1/tasks/weekly`, undefined, businessId);
+      break;
+    case 'marketing_get_tasks_statistics':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'GET', `/api/v1/tasks/statistics`, undefined, businessId);
+      break;
+    case 'marketing_get_my_workers':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'GET', `/api/v1/my-workers`, undefined, businessId);
+      break;
+    case 'marketing_post_workflows':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'POST', `/api/v1/workflows`, args.body, businessId);
+      break;
+    case 'marketing_get_workflows_id':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'GET', `/api/v1/workflows/${args.id}`, undefined, businessId);
+      break;
+    case 'marketing_get_workflows':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'GET', `/api/v1/workflows`, undefined, businessId);
+      break;
+    case 'marketing_get_workflows_worker_worker_uuid':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'GET', `/api/v1/workflows/worker/${args.worker_uuid}`, undefined, businessId);
+      break;
+    case 'marketing_put_workflows_id':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'PUT', `/api/v1/workflows/${args.id}`, args.body, businessId);
+      break;
+    case 'marketing_delete_workflows_id':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'DELETE', `/api/v1/workflows/${args.id}`, undefined, businessId);
+      break;
+    case 'marketing_post_workflows_id_duplicate':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'POST', `/api/v1/workflows/${args.id}/duplicate`, args.body, businessId);
+      break;
+    case 'marketing_post_workflows_id_activate':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'POST', `/api/v1/workflows/${args.id}/activate`, args.body, businessId);
+      break;
+    case 'marketing_post_workflows_id_deactivate':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'POST', `/api/v1/workflows/${args.id}/deactivate`, args.body, businessId);
+      break;
+    case 'marketing_post_workflows_id_execute':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'POST', `/api/v1/workflows/${args.id}/execute`, args.body, businessId);
+      break;
+    case 'marketing_post_workflows_id_run_now':
+      result = await executeDynamicAPI(authHeader, 'marketing', 'POST', `/api/v1/workflows/${args.id}/run-now`, args.body, businessId);
+      break;
+    case 'chatbot_get_browser_accounts':
+      result = await executeDynamicAPI(authHeader, 'chatbot', 'GET', `/api/v1/browser-accounts`, undefined, businessId);
+      break;
+    case 'chatbot_post_browser_accounts':
+      result = await executeDynamicAPI(authHeader, 'chatbot', 'POST', `/api/v1/browser-accounts`, args.body, businessId);
+      break;
+    case 'chatbot_get_browser_accounts_id':
+      result = await executeDynamicAPI(authHeader, 'chatbot', 'GET', `/api/v1/browser-accounts/${args.id}`, undefined, businessId);
+      break;
+    case 'chatbot_put_browser_accounts_id':
+      result = await executeDynamicAPI(authHeader, 'chatbot', 'PUT', `/api/v1/browser-accounts/${args.id}`, args.body, businessId);
+      break;
+    case 'chatbot_delete_browser_accounts_id':
+      result = await executeDynamicAPI(authHeader, 'chatbot', 'DELETE', `/api/v1/browser-accounts/${args.id}`, undefined, businessId);
+      break;
+    case 'chatbot_get_my_chatbots':
+      result = await executeDynamicAPI(authHeader, 'chatbot', 'GET', `/api/v1/my-chatbots`, undefined, businessId);
+      break;
+    case 'chatbot_get_platforms':
+      result = await executeDynamicAPI(authHeader, 'chatbot', 'GET', `/api/v1/platforms`, undefined, businessId);
+      break;
+    case 'chatbot_post_platforms':
+      result = await executeDynamicAPI(authHeader, 'chatbot', 'POST', `/api/v1/platforms`, args.body, businessId);
+      break;
+    case 'chatbot_get_platforms_id':
+      result = await executeDynamicAPI(authHeader, 'chatbot', 'GET', `/api/v1/platforms/${args.id}`, undefined, businessId);
+      break;
+    case 'chatbot_put_platforms_id':
+      result = await executeDynamicAPI(authHeader, 'chatbot', 'PUT', `/api/v1/platforms/${args.id}`, args.body, businessId);
+      break;
+    case 'chatbot_post_worker_allocate':
+      result = await executeDynamicAPI(authHeader, 'chatbot', 'POST', `/api/v1/worker/allocate`, args.body, businessId);
+      break;
+    case 'chatbot_delete_platforms_id':
+      result = await executeDynamicAPI(authHeader, 'chatbot', 'DELETE', `/api/v1/platforms/${args.id}`, undefined, businessId);
+      break;
+    case 'chatbot_get_scenarios':
+      result = await executeDynamicAPI(authHeader, 'chatbot', 'GET', `/api/v1/scenarios`, undefined, businessId);
+      break;
+    case 'chatbot_post_scenarios':
+      result = await executeDynamicAPI(authHeader, 'chatbot', 'POST', `/api/v1/scenarios`, args.body, businessId);
+      break;
+    case 'chatbot_put_scenarios_id':
+      result = await executeDynamicAPI(authHeader, 'chatbot', 'PUT', `/api/v1/scenarios/${args.id}`, args.body, businessId);
+      break;
+    case 'chatbot_delete_scenarios_id':
+      result = await executeDynamicAPI(authHeader, 'chatbot', 'DELETE', `/api/v1/scenarios/${args.id}`, undefined, businessId);
+      break;
