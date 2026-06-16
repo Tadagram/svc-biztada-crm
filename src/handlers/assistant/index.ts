@@ -11,11 +11,19 @@ import { toolRAG } from '@services/toolRag';
 
 const AI_CONTROLLER_URL =
   process.env.AI_CONTROLLER_URL ?? 'http://svc-ai-controller.tadagram.svc.cluster.local:3100';
+const BUSINESS_CRM_URL =
+  process.env.SVC_BUSINESS_CRM_URL ?? 'http://svc-business-crm.tadagram.svc.cluster.local:80';
 const STRATEGY_INTERNAL_TOKEN = process.env.STRATEGY_INTERNAL_TOKEN ?? '';
 
 export async function chatHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const { message } = request.body as { message: string };
+  const { message, attachments } = request.body as { message: string, attachments?: any[] };
   const businessId = request.headers['x-business-id'] as string | undefined;
+
+  let messageWithAttachments = message;
+  if (attachments && attachments.length > 0) {
+    const attachmentContext = attachments.map(a => `[Đã đính kèm ảnh: asset_id = ${a.asset_id}]`).join(' ');
+    messageWithAttachments = `${message}\n${attachmentContext}`;
+  }
 
   // Auth resolution
   const userPayload = request.user as any;
@@ -64,13 +72,31 @@ export async function chatHandler(request: FastifyRequest, reply: FastifyReply):
   sendSSE('ping', { status: 'connected' });
 
   try {
-    // 1. Fetch User Memory (Preferences) - Only for Authenticated Users
+    // 1. Fetch User Memory & Business Context
     let userPreferences = 'Chưa có thông tin.';
     let workingMemoryStr = 'Không có.';
+    let businessContextStr = 'Chưa có thông tin.';
     let existingPrefs: any = {};
     let historyText = '';
 
     if (!isGuest && userId) {
+      if (businessId) {
+        try {
+          const bizRes = await fetch(`${BUSINESS_CRM_URL}/api/business/me`, {
+            headers: { authorization: authHeader, 'x-business-id': businessId } as any
+          });
+          if (bizRes.ok) {
+            const bizData = await bizRes.json();
+            const b = bizData.data?.business;
+            if (b) {
+              businessContextStr = `Ngành hàng: ${b.industry || 'Chưa rõ'} | Khách hàng mục tiêu (Target Audience): ${b.targetAudience || 'CHƯA CUNG CẤP'} | Mục tiêu truyền thông (Media Goals): ${b.mediaGoals || 'CHƯA CUNG CẤP'}`;
+            }
+          }
+        } catch (err) {
+          request.log.error({ err }, 'Failed to fetch business info');
+        }
+      }
+
       const memory = await prisma.userAssistantMemory.findUnique({ where: { user_id: userId } });
       if (memory?.preferences) {
         existingPrefs =
@@ -123,7 +149,7 @@ export async function chatHandler(request: FastifyRequest, reply: FastifyReply):
           user_id: userId,
           business_id: businessId || null,
           role: 'user',
-          content: message,
+          content: messageWithAttachments,
         },
       });
     }
@@ -137,6 +163,8 @@ export async function chatHandler(request: FastifyRequest, reply: FastifyReply):
 Bạn có nhiệm vụ đọc Lịch sử trò chuyện và Yêu cầu mới nhất của người dùng để phân loại ý định của họ.
 
 Thông tin người dùng: ${userPreferences}${guestInstruction}
+[THÔNG TIN DOANH NGHIỆP HIỆN TẠI]:
+${businessContextStr}
 
 [BỘ NHỚ LÀM VIỆC HIỆN TẠI (WORKING MEMORY)]:
 ${workingMemoryStr}
@@ -159,7 +187,7 @@ CÁCH TRẢ VỀ KẾT QUẢ: Bắt buộc trả về JSON:
 ${historyText || 'Chưa có lịch sử.'}
 ==========================
 
-[USER'S CURRENT REQUEST]: ${message}`;
+[USER'S CURRENT REQUEST]: ${messageWithAttachments}`;
 
     let finalReply = '';
     const toolActions: string[] = [];
@@ -244,12 +272,22 @@ ${historyText || 'Chưa có lịch sử.'}
         { name: 'get_active_workflows', description: 'Lấy danh sách workflow đang chạy' },
         { name: 'get_dashboard_activity', description: 'Lấy hoạt động gần đây' },
         { name: 'update_user_memory', description: 'Cập nhật bộ nhớ' },
+        { name: 'update_business_info', description: 'Cập nhật thông tin doanh nghiệp (Ngành hàng, Khách hàng mục tiêu, Mục tiêu truyền thông)' },
       ];
 
       const plannerPrompt = `[SYSTEM]: Bạn là **Chuyên gia Lập Kế hoạch (Planner Agent)** của hệ sinh thái Biztada.
 Nhiệm vụ của bạn là đọc Tóm tắt yêu cầu của người dùng và Danh sách Công cụ (chỉ gồm Tên và Mô tả), sau đó chọn ra (các) công cụ phù hợp nhất để giải quyết yêu cầu.
 
-[USER'S TASK SUMMARY]: ${routerData.task_summary || message}
+[THÔNG TIN DOANH NGHIỆP HIỆN TẠI]:
+${businessContextStr}
+
+[USER'S TASK SUMMARY]: ${routerData.task_summary || messageWithAttachments}
+
+LƯU Ý DÀNH CHO PLANNER:
+- NẾU yêu cầu của người dùng là thực hiện "chiến dịch", "seeding", "kế hoạch", BẮT BUỘC bạn phải CÓ CHỌN tool \`query_ai_knowledge_base\` để tra cứu "ai_skills" (Kỹ năng).
+- Hướng dẫn AI Agent (Orchestrator) tìm kiếm \`ai_skills\` để đọc các bước cần làm. Orchestrator có khả năng tự động thực hiện liên tiếp các công cụ (auto_next) nếu có Text Skill hướng dẫn.
+- Nếu task liên quan đến "tạo nhân vật", "brand character", "seeding", hãy ưu tiên CHỌN THÊM tool \`query_ai_knowledge_base\` để Agent có thể tự tra cứu thông tin đối tượng khách hàng mục tiêu (\`marketing_persona\`).
+- Nếu thông tin Khách hàng mục tiêu (Target Audience) hoặc Mục tiêu truyền thông (Media Goals) ĐANG TRỐNG ("CHƯA CUNG CẤP") và User yêu cầu lập kế hoạch/workflow Marketing, HÃY ƯU TIÊN yêu cầu user cập nhật thông tin này TRƯỚC khi tiến hành các Node Workflow. Dùng tool cập nhật business info (nếu có) hoặc thông báo ASK_USER.
 
 DANH SÁCH CÔNG CỤ HIỆN CÓ:
 ${JSON.stringify([...allShortTools, ...internalTools], null, 2)}
@@ -275,29 +313,37 @@ Nếu không có công cụ nào phù hợp, hãy trả về mảng \`selected_t
 
       const selectedTools: string[] = plannerData?.selected_tools || [];
 
-      // --- PHASE 3: ORCHESTRATOR AGENT (SLOT FILLING & EXECUTION) ---
-      sendSSE('progress', {
-        message: `Đang đối chiếu dữ liệu để chuẩn bị gọi API...`,
-      });
+      // --- PHASE 3: ORCHESTRATOR AGENT (SLOT FILLING & AUTO-EXECUTION LOOP) ---
+      let loopCount = 0;
+      const MAX_LOOPS = 5;
+      let isDone = false;
+      let lastToolResultStr = '';
 
-      // Lọc Full Schema cho các tool đã chọn
-      const selectedMcpTools = mcpTools.filter((t) => selectedTools.includes(t.name));
-      const selectedCaps = fullCaps.filter((c) => selectedTools.includes(c.capability_id));
+      while (loopCount < MAX_LOOPS && !isDone) {
+        loopCount++;
 
-      let capabilitiesText = '';
-      if (selectedCaps.length > 0) {
-        capabilitiesText =
-          '--- ĐẶC TẢ API PAYLOAD TỪ BIZTADA ---\n' +
-          selectedCaps
-            .map(
-              (c: any) =>
-                `• [${c.capability_id}] ${c.display_name}\n  Schema: ${JSON.stringify(c.parameter_schema)}\n  Example Input: ${JSON.stringify(c.example_input)}`,
-            )
-            .join('\n\n') +
-          '\n';
-      }
+        sendSSE('progress', {
+          message: `Đang đối chiếu dữ liệu để chuẩn bị thực thi (Bước ${loopCount})...`,
+        });
 
-      const orchestratorPrompt = `[SYSTEM]: Bạn là **Quản đốc Phân tích (Orchestrator Agent)** của hệ sinh thái Biztada (business ID: ${businessId || 'N/A'}).
+        // Lọc Full Schema cho các tool đã chọn
+        const selectedMcpTools = mcpTools.filter((t) => selectedTools.includes(t.name));
+        const selectedCaps = fullCaps.filter((c) => selectedTools.includes(c.capability_id));
+
+        let capabilitiesText = '';
+        if (selectedCaps.length > 0) {
+          capabilitiesText =
+            '--- ĐẶC TẢ API PAYLOAD TỪ BIZTADA ---\n' +
+            selectedCaps
+              .map(
+                (c: any) =>
+                  `• [${c.capability_id}] ${c.display_name}\n  Schema: ${JSON.stringify(c.parameter_schema)}\n  Example Input: ${JSON.stringify(c.example_input)}`,
+              )
+              .join('\n\n') +
+            '\n';
+        }
+
+        const orchestratorPrompt = `[SYSTEM]: Bạn là **Quản đốc Phân tích (Orchestrator Agent)** của hệ sinh thái Biztada (business ID: ${businessId || 'N/A'}).
 Nhiệm vụ của bạn là kiểm tra xem chúng ta đã đủ thông tin từ người dùng để gọi Công cụ (Tool) đã được chọn hay chưa.
 
 [BỘ NHỚ LÀM VIỆC HIỆN TẠI (WORKING MEMORY)]:
@@ -310,136 +356,169 @@ Danh sách các Tools hệ thống ĐƯỢC CHỌN CHO TÁC VỤ NÀY (Chỉ dù
 ${JSON.stringify(selectedMcpTools, null, 2)}
 Công cụ nội bộ có thể dùng nếu có trong plan: ${selectedTools.filter((t) => internalTools.some((i) => i.name === t)).join(', ')}
 
-SỨ MỆNH: Phân loại yêu cầu thành 1 trong 2 quyết định:
-1. "ASK_USER": Yêu cầu người dùng cung cấp thêm thông tin BẮT BUỘC để chạy công cụ hoặc để quyết định bước tiếp theo.
-2. "EXECUTE_TOOL": Chạy API công cụ (Chỉ khi ĐÃ ĐỦ thông tin theo Schema). LƯU Ý: Rất hoan nghênh việc chủ động chạy API (vd: gọi API lấy danh sách) rồi dùng kết quả đó để báo cáo/hỏi ý kiến người dùng.
+${lastToolResultStr ? `[KẾT QUẢ TỪ TOOL VỪA THỰC THI GẦN NHẤT]:\n${lastToolResultStr}\n\n` : ''}
 
-CÁCH TRẢ VỀ KẾT QUẢ: Bắt buộc trả về JSON chuẩn xác:
+CÁCH TRẢ VỀ KẾT QUẢ: Bắt buộc trả về duy nhất JSON:
 \`\`\`json
 {
-  "decision": "ASK_USER" | "EXECUTE_TOOL",
-  "reasoning": "Lý do ngắn gọn",
-  "tool_name": "Tên tool (nếu EXECUTE_TOOL)",
-  "tool_payload": { /* arguments object */ } (nếu EXECUTE_TOOL),
+  "decision": "EXECUTE_TOOL" | "ASK_USER" | "FINISHED",
+  "tool_name": "tên_công_cụ_nếu_chọn_EXECUTE",
+  "tool_payload": {},
+  "auto_next": true_hoặc_false,
   "working_memory": {
-    "main_objective": "Mục tiêu CHÍNH hiện tại của người dùng là gì? (vd: Tạo workflow seeding)",
-    "dag_stack": [
-      { "step": "Tên bước phụ đã/đang làm", "status": "completed | pending", "result": "Kết quả nếu có" }
-    ],
-    "context_summary": "Tóm tắt các dữ liệu ĐÃ thu thập được và CÒN THIẾU"
+    "dag_stack": "Cập nhật lại trạng thái các bước đã làm"
   },
-  "reply": "Văn bản Markdown để hỏi/báo cáo người dùng (chỉ điền nếu ASK_USER)"
+  "reply": "Văn bản Markdown để hỏi/báo cáo người dùng (chỉ điền nếu ASK_USER hoặc FINISHED)"
 }
 \`\`\`
 
 LUẬT CẤM KỴ (SLOT-FILLING - RẤT QUAN TRỌNG): 
 - TUYỆT ĐỐI KHÔNG TỰ BỊA RA DỮ LIỆU ĐỂ GỌI TOOL.
-- Trong trường hợp thiếu dữ liệu bắt buộc (Required Fields), bạn PHẢI chọn \`ASK_USER\` và đặt câu hỏi rõ ràng vào \`reply\` để thu thập dữ liệu còn thiếu.
-- Chỉ khi nhận ĐỦ tất cả required fields thì mới được chọn \`EXECUTE_TOOL\`.
+- QUY TẮC TEXT SKILL (SKILL TEXT): Nếu người dùng yêu cầu thực hiện Playbook/Skill Text (ví dụ: Thiết lập seeding):
+  + Hãy tra cứu Skill bằng Tool \`query_ai_knowledge_base\` nếu bạn chưa biết cách làm.
+  + Nếu bạn đã tra cứu được \`ai_skill_instructions\` (hoặc đã có trong bộ nhớ / context): Hãy đọc và làm TUẦN TỰ từng bước.
+  + Sau khi hoàn thành một công cụ, CẬP NHẬT \`working_memory.dag_stack\` và GÁN \`"auto_next": true\` ĐỂ TIẾP TỤC BƯỚC SAU NGAY LẬP TỨC mà không cần dừng lại hỏi User (Loop tự động).
+  + NẾU người dùng CÓ ĐÍNH KÈM ẢNH (asset_id), HÃY SỬ DỤNG \`asset_id\` ĐÓ cho trường \`avatar_asset_id\`.
+- Trong trường hợp thiếu dữ liệu bắt buộc KHÔNG THỂ TỰ TÌM (vd: ID tài khoản, Ngành hàng, Target Audience), bạn PHẢI chọn \`ASK_USER\` và đặt câu hỏi rõ ràng.
+- NẾU TẤT CẢ CÁC BƯỚC ĐÃ XONG, chọn \`FINISHED\` và trả về \`reply\` là báo cáo tổng kết.
 
 === LỊCH SỬ TRÒ CHUYỆN ===
 ${historyText || 'Chưa có lịch sử.'}
 ==========================
 
-[USER'S CURRENT REQUEST]: ${message}
+[USER'S CURRENT REQUEST]: ${messageWithAttachments}
 [TASK SUMMARY TỪ ROUTER]: ${routerData.task_summary}
 [PLANNER ĐỀ XUẤT]: ${plannerData?.plan || 'Không rõ'}`;
 
-      let orchestratorResponse = await generateAssistantText(orchestratorPrompt);
-      let decisionData = parseJSON(orchestratorResponse);
+        let orchestratorResponse = await generateAssistantText(orchestratorPrompt);
+        let decisionData = parseJSON(orchestratorResponse);
 
-      // Fallback if LLM failed to return JSON
-      if (!decisionData) {
-        const fixPrompt =
-          orchestratorPrompt +
-          `\n\n[LỖI]: Bạn đã trả về văn bản thường thay vì JSON. Hãy output lại đúng chuẩn JSON.`;
-        orchestratorResponse = await generateAssistantText(fixPrompt);
-        decisionData = parseJSON(orchestratorResponse);
-      }
-
-      // Upsert working_memory asynchronously
-      if (!isGuest && userId && decisionData?.working_memory) {
-        existingPrefs.working_memory = decisionData.working_memory;
-        prisma.userAssistantMemory
-          .upsert({
-            where: { user_id: userId },
-            update: { preferences: existingPrefs },
-            create: { user_id: userId, preferences: existingPrefs },
-          })
-          .catch((err) => request.log.error({ err }, 'Failed to upsert working memory'));
-      }
-
-      if (!decisionData) {
-        finalReply = 'Lỗi hệ thống: Không thể khởi tạo quy trình thực thi. Vui lòng thử lại sau.';
-      } else if (decisionData.decision === 'ASK_USER') {
-        // --- PHASE 2A: ASK USER (SLOT FILLING) ---
-        finalReply =
-          decisionData.reply || 'Để tôi hỗ trợ bạn tốt nhất, vui lòng cung cấp thêm thông tin.';
-      } else if (decisionData.decision === 'EXECUTE_TOOL' && decisionData.tool_name) {
-        // --- PHASE 2B: EXECUTION AGENT ---
-        const toolName = decisionData.tool_name;
-        const toolArgs = decisionData.tool_payload || {};
-        toolActions.push(toolName);
-
-        sendSSE('progress', {
-          message: `Ghi chú: Đang tổng hợp dữ liệu để gọi lệnh ${toolName}...`,
-        });
-        sendSSE('tool_call', {
-          name: toolName,
-          message: `Hệ thống đang truy xuất dữ liệu: ${toolName}...`,
-        });
-
-        let toolResult: any = null;
-        if (toolName === 'update_user_memory') {
-          const prefs = toolArgs || {};
-          await prisma.userAssistantMemory.upsert({
-            where: { user_id: userId },
-            update: { preferences: prefs },
-            create: { user_id: userId, preferences: prefs },
-          });
-          toolResult = { success: true, message: 'Memory updated successfully.' };
-        } else if (!authHeader) {
-          toolResult = { error: 'Missing authorization token to call tools.' };
-        } else {
-          try {
-            if (toolName === 'get_marketing_dashboard')
-              toolResult = await getMarketingDashboard(authHeader, businessId);
-            else if (toolName === 'get_worker_stats')
-              toolResult = await getWorkerStats(authHeader, businessId);
-            else if (toolName === 'get_active_workflows')
-              toolResult = await getActiveWorkflows(authHeader, businessId);
-            else if (toolName === 'get_dashboard_activity')
-              toolResult = await getDashboardActivity(authHeader, businessId);
-            else {
-              toolResult = await mcpServer.callTool(
-                authHeader,
-                { name: toolName, arguments: toolArgs },
-                prisma,
-                businessId,
-              );
-            }
-          } catch (e: any) {
-            toolResult = { error: e.message || 'Lỗi khi thực thi công cụ' };
-          }
+        // Fallback if LLM failed to return JSON
+        if (!decisionData) {
+          const fixPrompt =
+            orchestratorPrompt +
+            `\n\n[LỖI]: Bạn đã trả về văn bản thường thay vì JSON. Hãy output lại đúng chuẩn JSON.`;
+          orchestratorResponse = await generateAssistantText(fixPrompt);
+          decisionData = parseJSON(orchestratorResponse);
         }
 
-        // --- PHASE 3: SUMMARIZER AGENT ---
-        sendSSE('progress', { message: 'Đang tổng hợp kết quả để báo cáo cho bạn...' });
-        const summarizerPrompt = `[SYSTEM]: Bạn là Trợ lý ảo BizTada. Bạn vừa gọi API và nhận được kết quả.
+        // Upsert working_memory asynchronously
+        if (!isGuest && userId && decisionData?.working_memory) {
+          workingMemoryStr = JSON.stringify(decisionData.working_memory);
+          existingPrefs.working_memory = decisionData.working_memory;
+          prisma.userAssistantMemory
+            .upsert({
+              where: { user_id: userId },
+              update: { preferences: existingPrefs },
+              create: { user_id: userId, preferences: existingPrefs },
+            })
+            .catch((err) => request.log.error({ err }, 'Failed to upsert working memory'));
+        }
+
+        if (!decisionData) {
+          finalReply = 'Lỗi hệ thống: Không thể khởi tạo quy trình thực thi. Vui lòng thử lại sau.';
+          isDone = true;
+        } else if (decisionData.decision === 'ASK_USER') {
+          // --- PHASE 2A: ASK USER (SLOT FILLING) ---
+          finalReply =
+            decisionData.reply || 'Để tôi hỗ trợ bạn tốt nhất, vui lòng cung cấp thêm thông tin.';
+          isDone = true;
+        } else if (decisionData.decision === 'EXECUTE_TOOL' && decisionData.tool_name) {
+          // --- PHASE 2B: EXECUTION AGENT ---
+          const toolName = decisionData.tool_name;
+          const toolArgs = decisionData.tool_payload || {};
+          toolActions.push(toolName);
+
+          sendSSE('progress', {
+            message: `Ghi chú: Đang tổng hợp dữ liệu để gọi lệnh ${toolName}...`,
+          });
+          sendSSE('tool_call', {
+            name: toolName,
+            message: `Hệ thống đang truy xuất dữ liệu: ${toolName}...`,
+          });
+
+          let toolResult: any = null;
+          if (toolName === 'update_user_memory') {
+            const prefs = toolArgs || {};
+            await prisma.userAssistantMemory.upsert({
+              where: { user_id: userId },
+              update: { preferences: prefs },
+              create: { user_id: userId, preferences: prefs },
+            });
+            toolResult = { success: true, message: 'Memory updated successfully.' };
+          } else if (toolName === 'update_business_info') {
+              try {
+                const bizUpdateRes = await fetch(`${BUSINESS_CRM_URL}/api/business`, {
+                  method: 'PATCH',
+                  headers: { 
+                    authorization: authHeader, 
+                    'Content-Type': 'application/json',
+                    'x-business-id': businessId
+                  } as any,
+                  body: JSON.stringify(toolArgs)
+                });
+                if (bizUpdateRes.ok) {
+                  const updatedData = await bizUpdateRes.json();
+                  toolResult = { success: true, message: 'Business info updated successfully.', data: updatedData };
+                } else {
+                  const errData = await bizUpdateRes.text();
+                  toolResult = { error: `Failed to update business info: ${errData}` };
+                }
+              } catch (err: any) {
+                toolResult = { error: err.message || 'Error calling business CRM' };
+              }
+          } else if (!authHeader) {
+            toolResult = { error: 'Missing authorization token to call tools.' };
+          } else {
+            try {
+              if (toolName === 'get_marketing_dashboard')
+                toolResult = await getMarketingDashboard(authHeader, businessId);
+              else if (toolName === 'get_worker_stats')
+                toolResult = await getWorkerStats(authHeader, businessId);
+              else if (toolName === 'get_active_workflows')
+                toolResult = await getActiveWorkflows(authHeader, businessId);
+              else if (toolName === 'get_dashboard_activity')
+                toolResult = await getDashboardActivity(authHeader, businessId);
+              else {
+                toolResult = await mcpServer.callTool(
+                  authHeader,
+                  { name: toolName, arguments: toolArgs },
+                  prisma,
+                  businessId,
+                );
+              }
+            } catch (e: any) {
+              toolResult = { error: e.message || 'Lỗi khi thực thi công cụ' };
+            }
+          }
+
+          lastToolResultStr = JSON.stringify(toolResult);
+
+          if (!decisionData.auto_next) {
+            // --- PHASE 3: SUMMARIZER AGENT ---
+            sendSSE('progress', { message: 'Đang tổng hợp kết quả để báo cáo cho bạn...' });
+            const summarizerPrompt = `[SYSTEM]: Bạn là Trợ lý ảo BizTada. Bạn vừa gọi API và nhận được kết quả.
 Nhiệm vụ của bạn:
 1. Trả lời TRỰC TIẾP vào trọng tâm câu hỏi của người dùng. KHÔNG dài dòng, KHÔNG chào hỏi (như "Kính gửi Anh/Chị"), KHÔNG đóng vai phòng ban nào cả.
 2. NẾU kết quả là mảng danh sách, BẮT BUỘC phải dùng định dạng bảng Markdown (Markdown Table) chuẩn xác (ví dụ có \`|\` và \`---\` ngăn cách các cột) hoặc gạch đầu dòng (Bullet List). Tuyệt đối không in text phẳng liên tiếp gây rối mắt.
 3. Không để lộ mã code hay raw JSON cho user.
 4. Nếu kết quả API báo "error", giải thích ngắn gọn lỗi và cách khắc phục.
 
-[KẾT QUẢ API]: ${JSON.stringify(toolResult)}
+[KẾT QUẢ API]: ${lastToolResultStr}
 [CÂU HỎI BAN ĐẦU CỦA USER]: ${message}`;
 
-        finalReply = await generateAssistantText(summarizerPrompt);
-      } else {
-        // --- PHASE 2C: CHAT ---
-        finalReply = decisionData.reply || orchestratorResponse;
-      }
+            finalReply = await generateAssistantText(summarizerPrompt);
+            isDone = true;
+          }
+        } else if (decisionData.decision === 'FINISHED') {
+          finalReply = decisionData.reply || 'Đã hoàn tất các bước.';
+          isDone = true;
+        } else {
+          // --- PHASE 2C: CHAT ---
+          finalReply = decisionData.reply || orchestratorResponse;
+          isDone = true;
+        }
+      } // end while loop
     }
 
     // Attempt to extract action payloads from final reply if any
