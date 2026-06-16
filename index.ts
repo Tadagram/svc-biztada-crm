@@ -13,6 +13,7 @@ import routes from '@routes';
 const PORT = process.env.PORT || 3000;
 
 const fastify = Fastify({
+  ignoreTrailingSlash: true,
   keepAliveTimeout: 120000,
   requestTimeout: 120000,
   logger: true,
