@@ -19,11 +19,18 @@ export class McpServer {
       if (prisma) {
         const dbTool = await prisma.aiMcpTools.findUnique({ where: { name } });
         if (dbTool && dbTool.is_active) {
+          let resolvedEndpoint = dbTool.endpoint;
+          if (args) {
+            Object.keys(args).forEach((key) => {
+              resolvedEndpoint = resolvedEndpoint.replace(`{${key}}`, String(args[key]));
+            });
+          }
+
           result = await executeDynamicAPI(
             authHeader,
             dbTool.service,
             dbTool.http_method,
-            dbTool.endpoint,
+            resolvedEndpoint,
             args,
             businessId,
           );

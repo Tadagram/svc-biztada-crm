@@ -19,7 +19,11 @@ async function parseJsonSafely<T>(response: Response): Promise<T | null> {
  * @param path The API path starting with / (e.g. /api/v1/dashboard/activity)
  * @param authHeader The original Authorization header (Bearer <token>)
  */
-export async function fetchMarketingData(path: string, authHeader: string, businessId?: string): Promise<any> {
+export async function fetchMarketingData(
+  path: string,
+  authHeader: string,
+  businessId?: string,
+): Promise<any> {
   if (!authHeader) {
     throw new Error('Missing Authorization header for marketing API call');
   }
@@ -80,6 +84,9 @@ export async function executeDynamicAPI(
       'Content-Type': 'application/json',
       Authorization: authHeader,
       ...(businessId ? { 'X-Business-ID': businessId } : {}),
+      ...(endpoint.includes('/internal/')
+        ? { 'X-Internal-Token': process.env.INTERNAL_PORTAL_LICENSES_TOKEN || '' }
+        : {}),
     },
     signal: AbortSignal.timeout(20_000),
   };

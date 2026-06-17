@@ -293,7 +293,7 @@ LƯU Ý DÀNH CHO PLANNER:
 - NẾU yêu cầu của người dùng là thực hiện "chiến dịch", "seeding", "kế hoạch", BẮT BUỘC bạn phải CÓ CHỌN tool \`query_ai_knowledge_base\` để tra cứu "ai_skills" (Kỹ năng).
 - Hướng dẫn AI Agent (Orchestrator) tìm kiếm \`ai_skills\` để đọc các bước cần làm. Orchestrator có khả năng tự động thực hiện liên tiếp các công cụ (auto_next) nếu có Text Skill hướng dẫn.
 - Nếu task liên quan đến "tạo nhân vật", "brand character", "seeding", hãy ưu tiên CHỌN THÊM tool \`query_ai_knowledge_base\` để Agent có thể tự tra cứu thông tin đối tượng khách hàng mục tiêu (\`marketing_persona\`).
-- Nếu yêu cầu liên quan đến tạo Workflow (Marketing/Chatbot), hãy đảm bảo chọn tool \`query_ai_knowledge_base\` để Orchestrator có thể đọc Cẩm nang cấu hình các tham số phức tạp (ví dụ: \`marketing_nodes_config_guide\`).
+- Nếu yêu cầu liên quan đến tạo Workflow (Marketing/Chatbot), hãy đảm bảo chọn tool \`query_ai_knowledge_base\` với danh mục \`marketing_workflow_node_descriptions\` để Orchestrator có thể tra cứu Cẩm nang cấu hình các Node.
 - Nếu thông tin Khách hàng mục tiêu (Target Audience) hoặc Mục tiêu truyền thông (Media Goals) ĐANG TRỐNG ("CHƯA CUNG CẤP") và User yêu cầu lập kế hoạch/workflow Marketing, HÃY ƯU TIÊN yêu cầu user cập nhật thông tin này TRƯỚC khi tiến hành các Node Workflow. Dùng tool cập nhật business info (nếu có) hoặc thông báo ASK_USER.
 
 DANH SÁCH CÔNG CỤ HIỆN CÓ:
@@ -383,10 +383,12 @@ LUẬT CẤM KỴ (SLOT-FILLING - RẤT QUAN TRỌNG):
 - TUYỆT ĐỐI KHÔNG TỰ BỊA RA DỮ LIỆU ĐỂ GỌI TOOL.
 - QUY TẮC TEXT SKILL (SKILL TEXT): Nếu người dùng yêu cầu thực hiện Playbook/Skill Text (ví dụ: Thiết lập seeding):
   + Hãy tra cứu Skill bằng Tool \`query_ai_knowledge_base\` nếu bạn chưa biết cách làm.
-  + Trước khi cấu hình Marketing Workflow (\`marketing_create_workflow\`), NẾU BẠN KHÔNG CHẮC CHẮN về ý nghĩa của các tham số phức tạp (như \`add_to_seeding_contents\`, \`image_source_type\`, \`comment_mode\`), bạn BẮT BUỘC PHẢI gọi tool \`query_ai_knowledge_base\` với keyword là \`marketing_nodes_config_guide\` để đọc Cẩm nang cấu hình.
-  + Nếu bạn đã tra cứu được \`ai_skill_instructions\` (hoặc đã có trong bộ nhớ / context): Hãy đọc và làm TUẦN TỰ từng bước.
+  + Trước khi cấu hình Marketing Workflow (\`marketing_create_workflow\`), NẾU BẠN KHÔNG CHẮC CHẮN về tham số, PHẢI gọi tool \`query_ai_knowledge_base\` với category \`marketing_workflow_node_descriptions\` để đọc Cấu hình chuẩn của Node đó.
+  + Khi cấu hình Chatbot hoặc tạo mới kịch bản Chatbot, nếu không rõ cách map tham số JSON (personality, tone, rules...), hãy gọi tool \`query_ai_knowledge_base\` với category \`chatbot_configuration_guide\` để tham chiếu.
+  + Khi tạo Nhân vật Brandlabs hoặc Prompt Template, nếu không rõ cách viết thẻ định dạng Tags (Key::Value), hãy gọi tool \`query_ai_knowledge_base\` với category \`brandlabs_usage_guide\` để tham chiếu.
+  + Nếu bạn đã tra cứu được \`ai_skills\` hoặc tài liệu liên quan (hoặc đã có trong bộ nhớ / context): Hãy đọc và làm TUẦN TỰ từng bước.
   + Sau khi hoàn thành một công cụ, CẬP NHẬT \`working_memory.dag_stack\` và GÁN \`"auto_next": true\` ĐỂ TIẾP TỤC BƯỚC SAU NGAY LẬP TỨC mà không cần dừng lại hỏi User (Loop tự động).
-  + NẾU người dùng CÓ ĐÍNH KÈM ẢNH (asset_id), HÃY SỬ DỤNG \`asset_id\` ĐÓ cho trường \`avatar_asset_id\`.
+  + NẾU người dùng CÓ ĐÍNH KÈM ẢNH (asset_id), HÀY SỬ DỤNG \`asset_id\` ĐÓ cho trường \`avatar_asset_id\`.
 - Trong trường hợp thiếu dữ liệu bắt buộc KHÔNG THỂ TỰ TÌM (vd: ID tài khoản, Ngành hàng, Target Audience), bạn PHẢI chọn \`ASK_USER\` và đặt câu hỏi rõ ràng.
 - NẾU TẤT CẢ CÁC BƯỚC ĐÃ XONG, chọn \`FINISHED\` và trả về \`reply\` là báo cáo tổng kết.
 

@@ -119,4 +119,40 @@ export default async function aiKnowledgeHandler(fastify: FastifyInstance) {
       }
     },
   );
+
+  // 5. Query
+  fastify.post('/query', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { category, search_keyword } = request.body as any;
+
+      if (!category) {
+        return reply.status(400).send({ success: false, error: 'Missing category field' });
+      }
+
+      const records = await fastify.prisma.aiKnowledgeBase.findMany({
+        where: {
+          category: category,
+          is_active: true,
+        },
+      });
+
+      let result = records;
+      if (search_keyword) {
+        const keyword = search_keyword.toLowerCase();
+        result = records.filter(
+          (r: any) =>
+            r.title.toLowerCase().includes(keyword) ||
+            (r.content && JSON.stringify(r.content).toLowerCase().includes(keyword)) ||
+            (r.keywords &&
+              Array.isArray(r.keywords) &&
+              r.keywords.some((k: string) => k.toLowerCase().includes(keyword))),
+        );
+      }
+
+      return reply.send({ success: true, data: result });
+    } catch (error) {
+      console.error('[AI_KNOWLEDGE] Error querying:', error);
+      return reply.status(500).send({ success: false, error: 'Internal Server Error' });
+    }
+  });
 }
