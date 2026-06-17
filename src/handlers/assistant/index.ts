@@ -296,6 +296,7 @@ LƯU Ý DÀNH CHO PLANNER:
 - Nếu yêu cầu liên quan đến tạo Workflow (Marketing/Chatbot), hãy đảm bảo chọn tool \`query_ai_knowledge_base\` với danh mục \`marketing_workflow_node_descriptions\` để Orchestrator có thể tra cứu Cẩm nang cấu hình các Node.
 - Nếu yêu cầu liên quan đến việc xem báo cáo, quản lý tài khoản, lịch trình, dashboard hoặc tra cứu dữ liệu phần mềm Marketing, hãy CHỌN tool \`query_ai_knowledge_base\` với danh mục \`marketing_usage_guide\` để Orchestrator biết cách dùng hệ thống.
 - Nếu yêu cầu liên quan đến việc tra cứu thư viện ảnh, mẫu prompt, sinh ảnh AI, quản lý nhân vật hoặc sửa video của BrandLabs, hãy CHỌN tool \`query_ai_knowledge_base\` với danh mục \`brandlabs_usage_guide\` để tra cứu cẩm nang hệ thống BrandLabs.
+- Nếu yêu cầu liên quan đến cấu hình AI Chatbot, quản lý nền tảng, danh sách Fanpage/Zalo, tạo sản phẩm, hoặc tri thức Q&A của Chatbot, hãy CHỌN tool \`query_ai_knowledge_base\` với danh mục \`chatbot_configuration_guide\` để tra cứu cẩm nang hệ thống Chatbot.
 - Nếu thông tin Khách hàng mục tiêu (Target Audience) hoặc Mục tiêu truyền thông (Media Goals) ĐANG TRỐNG ("CHƯA CUNG CẤP") và User yêu cầu lập kế hoạch/workflow Marketing, HÃY ƯU TIÊN yêu cầu user cập nhật thông tin này TRƯỚC khi tiến hành các Node Workflow. Dùng tool cập nhật business info (nếu có) hoặc thông báo ASK_USER.
 
 DANH SÁCH CÔNG CỤ HIỆN CÓ:
