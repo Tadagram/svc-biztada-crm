@@ -294,6 +294,7 @@ LƯU Ý DÀNH CHO PLANNER:
 - Hướng dẫn AI Agent (Orchestrator) tìm kiếm \`ai_skills\` để đọc các bước cần làm. Orchestrator có khả năng tự động thực hiện liên tiếp các công cụ (auto_next) nếu có Text Skill hướng dẫn.
 - Nếu task liên quan đến "tạo nhân vật", "brand character", "seeding", hãy ưu tiên CHỌN THÊM tool \`query_ai_knowledge_base\` để Agent có thể tự tra cứu thông tin đối tượng khách hàng mục tiêu (\`marketing_persona\`).
 - Nếu yêu cầu liên quan đến tạo Workflow (Marketing/Chatbot), hãy đảm bảo chọn tool \`query_ai_knowledge_base\` với danh mục \`marketing_workflow_node_descriptions\` để Orchestrator có thể tra cứu Cẩm nang cấu hình các Node.
+- Nếu yêu cầu liên quan đến việc xem báo cáo, quản lý tài khoản, lịch trình, dashboard hoặc tra cứu dữ liệu phần mềm Marketing, hãy CHỌN tool \`query_ai_knowledge_base\` với danh mục \`marketing_usage_guide\` để Orchestrator biết cách dùng hệ thống.
 - Nếu thông tin Khách hàng mục tiêu (Target Audience) hoặc Mục tiêu truyền thông (Media Goals) ĐANG TRỐNG ("CHƯA CUNG CẤP") và User yêu cầu lập kế hoạch/workflow Marketing, HÃY ƯU TIÊN yêu cầu user cập nhật thông tin này TRƯỚC khi tiến hành các Node Workflow. Dùng tool cập nhật business info (nếu có) hoặc thông báo ASK_USER.
 
 DANH SÁCH CÔNG CỤ HIỆN CÓ:
