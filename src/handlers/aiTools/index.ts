@@ -1,13 +1,17 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 
+const AI_CONTROLLER_URL = process.env.AI_CONTROLLER_URL || 'http://svc-ai-controller.tadagram.svc.cluster.local:3100';
+
 export default async function aiToolsHandler(fastify: FastifyInstance) {
   // 1. Get List
-  fastify.get('/', async (_request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const records = await fastify.prisma.aiMcpTools.findMany({
-        orderBy: { created_at: 'desc' },
+      const qs = new URLSearchParams(request.query as any).toString();
+      const res = await fetch(`${AI_CONTROLLER_URL}/api/v1/strategy/capabilities?${qs}`, {
+        headers: { authorization: request.headers.authorization || '' },
       });
-      return reply.send({ success: true, data: records });
+      const data = await res.json();
+      return reply.status(res.status).send({ success: res.ok, data: data.data || data });
     } catch (error) {
       console.error('[AI_TOOLS] Error fetching list:', error);
       return reply.status(500).send({ success: false, error: 'Internal Server Error' });
@@ -17,45 +21,16 @@ export default async function aiToolsHandler(fastify: FastifyInstance) {
   // 2. Create
   fastify.post('/', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const {
-        name,
-        display_name,
-        description,
-        service,
-        action_type,
-        http_method,
-        endpoint,
-        parameter_schema,
-        is_active,
-      } = request.body as any;
-
-      if (!name || !description || !endpoint) {
-        return reply.status(400).send({ success: false, error: 'Missing required fields' });
-      }
-
-      let parsedSchema = parameter_schema;
-      if (typeof parameter_schema === 'string') {
-        try {
-          parsedSchema = JSON.parse(parameter_schema);
-        } catch {
-          parsedSchema = parameter_schema;
-        }
-      }
-
-      const newRecord = await fastify.prisma.aiMcpTools.create({
-        data: {
-          name,
-          display_name,
-          description,
-          service,
-          action_type,
-          http_method,
-          endpoint,
-          parameter_schema: parsedSchema,
-          is_active: is_active !== undefined ? is_active : true,
+      const res = await fetch(`${AI_CONTROLLER_URL}/api/v1/strategy/capabilities`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          authorization: request.headers.authorization || '',
         },
+        body: JSON.stringify(request.body),
       });
-      return reply.send({ success: true, data: newRecord });
+      const data = await res.json();
+      return reply.status(res.status).send({ success: res.ok, data: data.data || data });
     } catch (error) {
       console.error('[AI_TOOLS] Error creating:', error);
       return reply.status(500).send({ success: false, error: 'Internal Server Error' });
@@ -63,68 +38,37 @@ export default async function aiToolsHandler(fastify: FastifyInstance) {
   });
 
   // 3. Update
-  fastify.put(
-    '/:id',
-    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      try {
-        const { id } = request.params;
-        const {
-          name,
-          display_name,
-          description,
-          service,
-          action_type,
-          http_method,
-          endpoint,
-          parameter_schema,
-          is_active,
-        } = request.body as any;
-
-        let parsedSchema = parameter_schema;
-        if (typeof parameter_schema === 'string') {
-          try {
-            parsedSchema = JSON.parse(parameter_schema);
-          } catch {
-            parsedSchema = parameter_schema;
-          }
-        }
-
-        const updatedRecord = await fastify.prisma.aiMcpTools.update({
-          where: { id },
-          data: {
-            ...(name && { name }),
-            ...(display_name && { display_name }),
-            ...(description && { description }),
-            ...(service && { service }),
-            ...(action_type && { action_type }),
-            ...(http_method && { http_method }),
-            ...(endpoint && { endpoint }),
-            ...(parameter_schema !== undefined && { parameter_schema: parsedSchema }),
-            ...(is_active !== undefined && { is_active }),
-          },
-        });
-        return reply.send({ success: true, data: updatedRecord });
-      } catch (error) {
-        console.error('[AI_TOOLS] Error updating:', error);
-        return reply.status(500).send({ success: false, error: 'Internal Server Error' });
-      }
-    },
-  );
+  fastify.put('/:id', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+    try {
+      const body = { ...(request.body as any), capability_id: request.params.id };
+      const res = await fetch(`${AI_CONTROLLER_URL}/api/v1/strategy/capabilities`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          authorization: request.headers.authorization || '',
+        },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      return reply.status(res.status).send({ success: res.ok, data: data.data || data });
+    } catch (error) {
+      console.error('[AI_TOOLS] Error updating:', error);
+      return reply.status(500).send({ success: false, error: 'Internal Server Error' });
+    }
+  });
 
   // 4. Delete
-  fastify.delete(
-    '/:id',
-    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      try {
-        const { id } = request.params;
-        await fastify.prisma.aiMcpTools.delete({
-          where: { id },
-        });
-        return reply.send({ success: true });
-      } catch (error) {
-        console.error('[AI_TOOLS] Error deleting:', error);
-        return reply.status(500).send({ success: false, error: 'Internal Server Error' });
-      }
-    },
-  );
+  fastify.delete('/:id', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+    try {
+      const res = await fetch(`${AI_CONTROLLER_URL}/api/v1/strategy/capabilities/${request.params.id}`, {
+        method: 'DELETE',
+        headers: { authorization: request.headers.authorization || '' },
+      });
+      const data = await res.json();
+      return reply.status(res.status).send({ success: res.ok, data });
+    } catch (error) {
+      console.error('[AI_TOOLS] Error deleting:', error);
+      return reply.status(500).send({ success: false, error: 'Internal Server Error' });
+    }
+  });
 }

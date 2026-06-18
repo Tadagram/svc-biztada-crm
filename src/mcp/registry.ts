@@ -1,5 +1,7 @@
 import { executeDynamicAPI } from '../services/apiDispatcherClient';
 
+const AI_CONTROLLER_URL = process.env.AI_CONTROLLER_URL || 'http://svc-ai-controller.tadagram.svc.cluster.local:3100';
+
 export interface McpToolSchema {
   name: string;
   description: string;
@@ -26,23 +28,31 @@ export interface McpToolCallResponse {
 
 export async function getMcpToolsRegistry(
   authHeader?: string,
-  prisma?: any,
+  prisma?: any, // kept for backward compatibility signature
 ): Promise<McpToolSchema[]> {
   const registry: McpToolSchema[] = [];
 
-  if (prisma) {
-    try {
-      const dbTools = await prisma.aiMcpTools.findMany({ where: { is_active: true } });
+  try {
+    const res = await fetch(`${AI_CONTROLLER_URL}/api/v1/strategy/capabilities`, {
+      headers: { authorization: authHeader || '' },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const dbTools = data.data || [];
       for (const t of dbTools) {
-        registry.push({
-          name: t.name,
-          description: t.description,
-          inputSchema: (t.parameter_schema as any) || { type: 'object', properties: {} },
-        });
+        if (t.is_active !== false) {
+          registry.push({
+            name: t.capability_id || t.name,
+            description: t.description,
+            inputSchema: (t.parameter_schema as any) || { type: 'object', properties: {} },
+          });
+        }
       }
-    } catch (e) {
-      console.error('[MCP] Failed to fetch tools from DB', e);
+    } else {
+      console.error(`[MCP] Failed to fetch tools from AI Controller: ${res.statusText}`);
     }
+  } catch (e) {
+    console.error('[MCP] Failed to fetch tools from AI Controller', e);
   }
 
   if (authHeader) {
