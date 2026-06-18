@@ -28,7 +28,7 @@ export interface McpToolCallResponse {
 
 export async function getMcpToolsRegistry(
   authHeader?: string,
-  prisma?: any, // kept for backward compatibility signature
+  _prisma?: any, // kept for backward compatibility signature
 ): Promise<McpToolSchema[]> {
   const registry: McpToolSchema[] = [];
 

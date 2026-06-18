@@ -4,14 +4,14 @@ import { McpToolCallRequest, McpToolCallResponse, getMcpToolsRegistry } from './
 const AI_CONTROLLER_URL = process.env.AI_CONTROLLER_URL || 'http://svc-ai-controller.tadagram.svc.cluster.local:3100';
 
 export class McpServer {
-  public async getTools(authHeader?: string, prisma?: any) {
-    return await getMcpToolsRegistry(authHeader, prisma);
+  public async getTools(authHeader?: string, _prisma?: any) {
+    return await getMcpToolsRegistry(authHeader, _prisma);
   }
 
   public async callTool(
     authHeader: string,
     request: McpToolCallRequest,
-    prisma?: any,
+    _prisma?: any,
     businessId?: string,
   ): Promise<McpToolCallResponse> {
     const { name, arguments: args } = request;

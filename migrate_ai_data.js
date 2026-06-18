@@ -19,6 +19,8 @@ async function main() {
   const db = mongoClient.db("tadagram_ai");
   const capsCol = db.collection("strategy_api_capabilities");
   const chunksCol = db.collection("strategy_knowledge_chunks");
+  const memCol = db.collection("ai_user_memories");
+  const msgCol = db.collection("ai_chat_messages");
 
   // 1. Migrate AiMcpTools
   const tools = await prisma.aiMcpTools.findMany();
@@ -89,6 +91,38 @@ async function main() {
     } else {
       console.log(`Playbook Chunk ${p.name} already exists. Skipping.`);
     }
+  }
+
+  // 4. Migrate UserAssistantMemory
+  const memories = await prisma.userAssistantMemory.findMany();
+  console.log(`Found ${memories.length} UserAssistantMemory`);
+  for (const m of memories) {
+    const existing = await memCol.findOne({ user_id: m.user_id });
+    if (!existing) {
+      await memCol.insertOne({
+        user_id: m.user_id,
+        preferences: typeof m.preferences === 'string' ? JSON.parse(m.preferences) : m.preferences,
+        created_at: m.created_at,
+        updated_at: m.updated_at
+      });
+      console.log(`Inserted Memory: ${m.user_id}`);
+    }
+  }
+
+  // 5. Migrate AssistantMessage
+  const messages = await prisma.assistantMessage.findMany();
+  console.log(`Found ${messages.length} AssistantMessage`);
+  for (const msg of messages) {
+    // Only insert if missing by combination (since there's no unique id constraint mapped exactly)
+    // Actually we can just insert all, or use msg.id if we want
+    await msgCol.insertOne({
+      user_id: msg.user_id,
+      business_id: msg.business_id,
+      role: msg.role,
+      content: msg.content,
+      created_at: msg.created_at
+    });
+    console.log(`Inserted Message: ${msg.user_id} - ${msg.role}`);
   }
 
   await mongoClient.close();
