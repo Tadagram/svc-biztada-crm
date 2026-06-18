@@ -299,6 +299,13 @@ LƯU Ý DÀNH CHO PLANNER:
 - Nếu yêu cầu liên quan đến cấu hình AI Chatbot, quản lý nền tảng, danh sách Fanpage/Zalo, tạo sản phẩm, hoặc tri thức Q&A của Chatbot, hãy CHỌN tool \`query_ai_knowledge_base\` với danh mục \`chatbot_configuration_guide\` để tra cứu cẩm nang hệ thống Chatbot.
 - Nếu thông tin Khách hàng mục tiêu (Target Audience) hoặc Mục tiêu truyền thông (Media Goals) ĐANG TRỐNG ("CHƯA CUNG CẤP") và User yêu cầu lập kế hoạch/workflow Marketing, HÃY ƯU TIÊN yêu cầu user cập nhật thông tin này TRƯỚC khi tiến hành các Node Workflow. Dùng tool cập nhật business info (nếu có) hoặc thông báo ASK_USER.
 
+[TƯ DUY KẾ HOẠCH & ĐIỀU KIỆN TIÊN QUYẾT (DAG PREREQUISITES)]:
+1. Để làm một việc, hãy nghĩ xem nó cần ĐIỀU KIỆN TIÊN QUYẾT (Prerequisites) gì. 
+   - Ví dụ: Yêu cầu "Đăng bài seeding vào các nhóm facebook mỗi ngày". Điều kiện tiên quyết: Phải có Nhóm (Groups) đã join, có Tài khoản Seeding (Accounts), và có Nội dung (Seeding Contents).
+   - Nếu bạn chưa biết hệ thống đã có đủ các điều kiện tiên quyết này chưa, BẮT BUỘC kế hoạch của bạn phải bao gồm việc gọi các API GET (ví dụ: \`marketing_get_groups\`, \`marketing_get_accounts\`) để KIỂM TRA TRƯỚC. 
+   - Nếu kiểm tra thấy thiếu (vd: chưa có nhóm), phải BỔ SUNG KẾ HOẠCH PHỤ (Sub-plan) để xử lý (vd: dùng công cụ tìm nhóm, join nhóm) rồi mới thực hiện kế hoạch chính.
+2. [CONTEXT INJECTION]: Hãy phân tích [THÔNG TIN DOANH NGHIỆP HIỆN TẠI] để chuẩn bị sẵn các TỪ KHÓA (Keywords) tìm kiếm, Định hướng nội dung (Content Topics), và Phân khúc khách hàng (Demographics). Ghi chú rõ các thông số này vào bản \`plan\` để Orchestrator Agent dùng luôn mà không cần hỏi lại người dùng.
+
 DANH SÁCH CÔNG CỤ HIỆN CÓ:
 ${JSON.stringify([...allShortTools, ...internalTools], null, 2)}
 
@@ -325,7 +332,7 @@ Nếu không có công cụ nào phù hợp, hãy trả về mảng \`selected_t
 
       // --- PHASE 3: ORCHESTRATOR AGENT (SLOT FILLING & AUTO-EXECUTION LOOP) ---
       let loopCount = 0;
-      const MAX_LOOPS = 5;
+      const MAX_LOOPS = 12;
       let isDone = false;
       let lastToolResultStr = '';
 
@@ -376,14 +383,17 @@ CÁCH TRẢ VỀ KẾT QUẢ: Bắt buộc trả về duy nhất JSON:
   "tool_payload": {},
   "auto_next": true_hoặc_false,
   "working_memory": {
-    "dag_stack": "Cập nhật lại trạng thái các bước đã làm"
+    "sub_tasks_queue": ["Nhiệm vụ 1: Kiểm tra nhóm (Đang làm)", "Nhiệm vụ 2: Join nhóm", "Nhiệm vụ 3: Đăng bài"],
+    "dag_stack": "Cập nhật lại trạng thái các bước đã làm (Ví dụ: Đã kiểm tra nhóm -> Thiếu nhóm -> Thêm task Join nhóm)"
   },
   "reply": "Văn bản Markdown để hỏi/báo cáo người dùng (chỉ điền nếu ASK_USER hoặc FINISHED)"
 }
 \`\`\`
 
-LUẬT CẤM KỴ (SLOT-FILLING - RẤT QUAN TRỌNG): 
-- TUYỆT ĐỐI KHÔNG TỰ BỊA RA DỮ LIỆU ĐỂ GỌI TOOL.
+LUẬT CẤM KỴ (SLOT-FILLING & DAG REASONING - RẤT QUAN TRỌNG): 
+- TƯ DUY DAG: Dựa trên bản \`[PLANNER ĐỀ XUẤT]\`, hãy chia nhỏ công việc thành các \`sub_tasks_queue\`. NẾU KẾT QUẢ TỪ API CHECK (GET) trả về Rỗng (Ví dụ: fetch_groups = []), bạn PHẢI TỰ ĐỘNG CHÈN THÊM một kế hoạch phụ vào hàng đợi để giải quyết (Ví dụ: chèn thêm task tìm nhóm, gọi API crawl nhóm).
+- TỰ ĐỘNG ĐIỀN CONTEXT: Khi gọi các Tool cấu hình (tạo workflow, thu thập harvest, sinh prompt...), bạn BẮT BUỘC PHẢI tự động trích xuất các từ khóa (keywords), nhân khẩu học (demographics), và chủ đề (topics) từ [THÔNG TIN DOANH NGHIỆP HIỆN TẠI] để tự động điền vào \`tool_payload\`. KHÔNG ĐƯỢC lạm dụng ASK_USER nếu thông tin Doanh nghiệp đã gợi ý đủ ngữ cảnh.
+- TUYỆT ĐỐI KHÔNG TỰ BỊA RA ID HOẶC RECORD KHÔNG TỒN TẠI để gọi Tool.
 - QUY TẮC TEXT SKILL (SKILL TEXT): Nếu người dùng yêu cầu thực hiện Playbook/Skill Text (ví dụ: Thiết lập seeding):
   + Hãy tra cứu Skill bằng Tool \`query_ai_knowledge_base\` nếu bạn chưa biết cách làm.
   + Trước khi cấu hình Marketing Workflow (\`marketing_create_workflow\`), NẾU BẠN KHÔNG CHẮC CHẮN về tham số, PHẢI gọi tool \`query_ai_knowledge_base\` với category \`marketing_workflow_node_descriptions\` để đọc Cấu hình chuẩn của Node đó.
@@ -436,80 +446,103 @@ ${historyText || 'Chưa có lịch sử.'}
           finalReply =
             decisionData.reply || 'Để tôi hỗ trợ bạn tốt nhất, vui lòng cung cấp thêm thông tin.';
           isDone = true;
-        } else if (decisionData.decision === 'EXECUTE_TOOL' && decisionData.tool_name) {
+        } else if (
+          decisionData.decision === 'EXECUTE_TOOL' &&
+          (decisionData.tool_name ||
+            (decisionData.tool_calls && decisionData.tool_calls.length > 0))
+        ) {
           // --- PHASE 2B: EXECUTION AGENT ---
-          const toolName = decisionData.tool_name;
-          const toolArgs = decisionData.tool_payload || {};
-          toolActions.push(toolName);
+          // Hỗ trợ cả logic cũ (1 tool) và logic mới (nhiều tools chạy song song)
+          const calls = decisionData.tool_calls || [
+            { tool_name: decisionData.tool_name, tool_payload: decisionData.tool_payload || {} },
+          ];
+
+          const toolNames = calls.map((c: any) => c.tool_name).join(', ');
+          toolActions.push(...calls.map((c: any) => c.tool_name));
 
           sendSSE('progress', {
-            message: `Ghi chú: Đang tổng hợp dữ liệu để gọi lệnh ${toolName}...`,
+            message: `Ghi chú: Đang tổng hợp dữ liệu để thực thi lệnh (${calls.length > 1 ? 'Song song' : 'Tuần tự'}): ${toolNames}...`,
           });
           sendSSE('tool_call', {
-            name: toolName,
-            message: `Hệ thống đang truy xuất dữ liệu: ${toolName}...`,
+            name: toolNames,
+            message:
+              calls.length > 1
+                ? `Hệ thống đang chạy song song ${calls.length} tác vụ...`
+                : `Hệ thống đang truy xuất dữ liệu: ${toolNames}...`,
           });
 
-          let toolResult: any = null;
-          if (toolName === 'update_user_memory') {
-            const prefs = toolArgs || {};
-            await prisma.userAssistantMemory.upsert({
-              where: { user_id: userId },
-              update: { preferences: prefs },
-              create: { user_id: userId, preferences: prefs },
-            });
-            toolResult = { success: true, message: 'Memory updated successfully.' };
-          } else if (toolName === 'update_business_info') {
-            try {
-              const bizUpdateRes = await fetch(`${BUSINESS_CRM_URL}/api/business`, {
-                method: 'PATCH',
-                headers: {
-                  authorization: authHeader,
-                  'Content-Type': 'application/json',
-                  'x-business-id': businessId,
-                } as any,
-                body: JSON.stringify(toolArgs),
+          // Hàm thực thi 1 tool độc lập
+          const executeSingleTool = async (tName: string, tArgs: any) => {
+            let tResult: any;
+            if (tName === 'update_user_memory') {
+              const prefs = tArgs || {};
+              await prisma.userAssistantMemory.upsert({
+                where: { user_id: userId },
+                update: { preferences: prefs },
+                create: { user_id: userId, preferences: prefs },
               });
-              if (bizUpdateRes.ok) {
-                const updatedData = await bizUpdateRes.json();
-                toolResult = {
-                  success: true,
-                  message: 'Business info updated successfully.',
-                  data: updatedData,
-                };
-              } else {
-                const errData = await bizUpdateRes.text();
-                toolResult = { error: `Failed to update business info: ${errData}` };
+              tResult = { success: true, message: 'Memory updated successfully.' };
+            } else if (tName === 'update_business_info') {
+              try {
+                const bizUpdateRes = await fetch(`${BUSINESS_CRM_URL}/api/business`, {
+                  method: 'PATCH',
+                  headers: {
+                    authorization: authHeader,
+                    'Content-Type': 'application/json',
+                    'x-business-id': businessId,
+                  } as any,
+                  body: JSON.stringify(tArgs),
+                });
+                if (bizUpdateRes.ok) {
+                  const updatedData = await bizUpdateRes.json();
+                  tResult = { success: true, data: updatedData };
+                } else {
+                  tResult = {
+                    error: `Failed to update business info: ${await bizUpdateRes.text()}`,
+                  };
+                }
+              } catch (err: any) {
+                tResult = { error: err.message || 'Error calling business CRM' };
               }
-            } catch (err: any) {
-              toolResult = { error: err.message || 'Error calling business CRM' };
-            }
-          } else if (!authHeader) {
-            toolResult = { error: 'Missing authorization token to call tools.' };
-          } else {
-            try {
-              if (toolName === 'get_marketing_dashboard')
-                toolResult = await getMarketingDashboard(authHeader, businessId);
-              else if (toolName === 'get_worker_stats')
-                toolResult = await getWorkerStats(authHeader, businessId);
-              else if (toolName === 'get_active_workflows')
-                toolResult = await getActiveWorkflows(authHeader, businessId);
-              else if (toolName === 'get_dashboard_activity')
-                toolResult = await getDashboardActivity(authHeader, businessId);
-              else {
-                toolResult = await mcpServer.callTool(
-                  authHeader,
-                  { name: toolName, arguments: toolArgs },
-                  prisma,
-                  businessId,
-                );
+            } else if (!authHeader) {
+              tResult = { error: 'Missing authorization token to call tools.' };
+            } else {
+              try {
+                if (tName === 'get_marketing_dashboard')
+                  tResult = await getMarketingDashboard(authHeader, businessId);
+                else if (tName === 'get_worker_stats')
+                  tResult = await getWorkerStats(authHeader, businessId);
+                else if (tName === 'get_active_workflows')
+                  tResult = await getActiveWorkflows(authHeader, businessId);
+                else if (tName === 'get_dashboard_activity')
+                  tResult = await getDashboardActivity(authHeader, businessId);
+                else {
+                  tResult = await mcpServer.callTool(
+                    authHeader,
+                    { name: tName, arguments: tArgs },
+                    prisma,
+                    businessId,
+                  );
+                }
+              } catch (e: any) {
+                tResult = { error: e.message || 'Lỗi khi thực thi công cụ' };
               }
-            } catch (e: any) {
-              toolResult = { error: e.message || 'Lỗi khi thực thi công cụ' };
             }
-          }
+            return { tool: tName, result: tResult };
+          };
 
-          lastToolResultStr = JSON.stringify(toolResult);
+          // Thực thi tất cả các công cụ thông qua Promise.all (Parallel execution)
+          const results = await Promise.all(
+            calls.map((c: any) => executeSingleTool(c.tool_name, c.tool_payload || {})),
+          );
+
+          // Format lại kết quả
+          if (results.length === 1) {
+            lastToolResultStr = JSON.stringify(results[0].result);
+          } else {
+            lastToolResultStr = JSON.stringify(results);
+          }
+          // Đã chuyển nội dung xử lý vào hàm executeSingleTool ở trên
 
           if (!decisionData.auto_next) {
             // --- PHASE 3: SUMMARIZER AGENT ---

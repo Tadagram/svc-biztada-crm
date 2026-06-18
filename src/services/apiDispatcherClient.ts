@@ -1,8 +1,11 @@
 const MARKETING_API_URL = process.env.SVC_BUSINESS_MARKETING_URL ?? 'http://svc-business-marketing';
 const CHATBOT_API_URL = process.env.SVC_BUSINESS_CHATBOT_URL ?? 'http://svc-business-chatbot';
+const AI_CONTROLLER_URL =
+  process.env.SVC_AI_CONTROLLER_URL ?? 'http://svc-ai-controller.tadagram.svc.cluster.local:3100';
 
 function getServiceUrl(service: string): string {
   if (service === 'chatbot') return CHATBOT_API_URL;
+  if (service === 'ai-controller') return AI_CONTROLLER_URL;
   return MARKETING_API_URL; // default to marketing
 }
 
