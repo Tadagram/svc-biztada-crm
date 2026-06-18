@@ -562,6 +562,23 @@ Nhiệm vụ của bạn:
           }
         } else if (decisionData.decision === 'FINISHED') {
           finalReply = decisionData.reply || 'Đã hoàn tất các bước.';
+
+          // --- GIẢI PHÓNG BỘ NHỚ LÀM VIỆC KHI KẾT THÚC TASK ---
+          // Đảm bảo không bị ô nhiễm Context cho luồng công việc của phiên tiếp theo
+          if (!isGuest && userId && existingPrefs.working_memory) {
+            delete existingPrefs.working_memory;
+            workingMemoryStr = '';
+            await prisma.userAssistantMemory
+              .upsert({
+                where: { user_id: userId },
+                update: { preferences: existingPrefs },
+                create: { user_id: userId, preferences: existingPrefs },
+              })
+              .catch((err) =>
+                request.log.error({ err }, 'Failed to clear working memory on finish'),
+              );
+          }
+
           isDone = true;
         } else {
           // --- PHASE 2C: CHAT ---
