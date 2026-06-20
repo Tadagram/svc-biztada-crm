@@ -29,7 +29,7 @@ const SERVICE_WORKER_TYPE = 'crm'; // must NOT be "ai-controller" (blocked for l
  * Signs a short-lived Worker JWT using the shared JWT_SECRET_KEY that
  * svc-ai-controller uses for its DualAuthMiddleware.
  */
-function signWorkerJwt(): string {
+export function signWorkerJwt(): string {
   if (!AI_CONTROLLER_JWT_SECRET) {
     throw new Error('AI_CONTROLLER_JWT_SECRET is not configured');
   }
