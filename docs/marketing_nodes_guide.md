@@ -39,3 +39,8 @@ Nếu user yêu cầu **"Lên kịch bản đăng bài vào nhóm và seeding"**
 1. Thêm Node `post_to_group`. BẮT BUỘC set `add_to_seeding_contents = true`.
 2. Gắn kết với Node `share_url` hoặc `fanpage_comment_on_post` bằng cách chọn `dispatch_mode = managed` hoặc trỏ đến Node đăng bài.
 Tuyệt đối không bỏ trống các cờ (flags) quan trọng này.
+
+## 4. Quy tắc quản lý vòng đời (Lifecycle) AI Harness
+- **Mở Phiên:** Khi bắt đầu một chuỗi hành động tương tác (bình luận, like, đăng bài) qua công cụ AI Harness, hệ thống Worker sẽ mở và giữ nóng một Autonomous Session (một Tab Trình Duyệt).
+- **Đóng Phiên (BẮT BUỘC):** Khi bạn (Agent) nhận thấy toàn bộ kịch bản và mục tiêu của người dùng đã được thực thi xong xuôi thành công (hoặc thất bại hoàn toàn không thể cứu vãn), bạn **PHẢI** gọi công cụ `ai_harness_finish_session`.
+- **Hậu quả nếu quên:** Nếu bạn không gọi lệnh kết thúc, trình duyệt trên Worker sẽ bị treo trong trạng thái chờ (ngốn RAM) và không thể nhận Task mới, dẫn đến tắc nghẽn toàn hệ thống. Hãy luôn dọn dẹp môi trường khi xong việc!
