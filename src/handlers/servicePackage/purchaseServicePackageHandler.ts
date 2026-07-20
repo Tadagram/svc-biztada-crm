@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { Prisma } from '@prisma/client';
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { issuePortalLicensesBatch } from '@services/corePortalLicenses';
+import { updateUserSubscription } from '@services/corePortalLicenses';
 import { calcBonusLicenseCount } from './servicePackageBonus';
 import { resolvePartnerContext } from '@/utils/partnerContext';
 import { resolvePartnerSellerUserId } from '@/utils/resolvePartnerSeller';
@@ -132,13 +132,9 @@ export async function handler(
   }
 
   try {
-    await issuePortalLicensesBatch({
-      buyer_user_id: caller.userId,
-      seller_user_id: sellerUserId ?? undefined,
-      // expires_at KHÔNG truyền — key sinh ra với NULL.
-      // Expire chỉ bắt đầu tính khi Portal kích hoạt key (ActivateLicense trong Go).
-      issued_for_note: coreNoteRef,
-      quantity: issuedLicenseCount,
+    await updateUserSubscription(caller.userId, {
+      subscription_tier: servicePackage.type || 'premium',
+      subscription_expires_at: expiresAt.toISOString(),
     });
 
     const [purchase, creditBalance] = await prisma.$transaction([

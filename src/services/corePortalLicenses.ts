@@ -1,4 +1,4 @@
-﻿const CORE_API_URL =
+const CORE_API_URL =
   process.env.CORE_API_URL ?? 'http://svc-core-api.tadagram.svc.cluster.local:3000';
 const INTERNAL_PORTAL_LICENSES_TOKEN = process.env.INTERNAL_PORTAL_LICENSES_TOKEN ?? '';
 
@@ -79,6 +79,32 @@ export async function issuePortalLicensesBatch(
     );
     throw new Error(
       body?.error?.message ?? body?.message ?? `Bulk issue failed with status ${response.status}`,
+    );
+  }
+}
+
+export async function updateUserSubscription(
+  userId: string,
+  payload: { subscription_tier: string; subscription_expires_at: string | null },
+): Promise<void> {
+  const response = await fetch(
+    `${CORE_API_URL}/internal/users/${encodeURIComponent(userId)}/subscription`,
+    {
+      method: 'PUT',
+      headers: getInternalHeaders(),
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(30_000),
+    },
+  );
+
+  if (!response.ok) {
+    const body = await parseJsonSafely<{ error?: { message?: string }; message?: string }>(
+      response,
+    );
+    throw new Error(
+      body?.error?.message ??
+        body?.message ??
+        `Update subscription failed with status ${response.status}`,
     );
   }
 }
