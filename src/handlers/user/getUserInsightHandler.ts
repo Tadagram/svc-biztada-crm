@@ -1,42 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { UserRole, TopUpStatus } from '@prisma/client';
 import { USER_ROLES } from '@/utils/constants';
-import { listPortalLicensesByBuyer } from '@services/corePortalLicenses';
 import { listPortalWorkers } from '@services/corePortalWorkers';
-
-type LicenseStatus = 'unused' | 'used' | 'expired';
-
-function parsePurchaseId(noteRef?: string | null): string | null {
-  if (!noteRef) return null;
-
-  const match = noteRef.match(/crm_purchase[:#/-]([0-9a-fA-F-]{36})/);
-  if (match?.[1]) {
-    return match[1];
-  }
-
-  if (/^[0-9a-fA-F-]{36}$/.test(noteRef)) {
-    return noteRef;
-  }
-
-  return null;
-}
-
-function deriveLicenseStatus(
-  expiresAt: string | null,
-  usedByPortalId: string | null,
-): LicenseStatus {
-  if (usedByPortalId) {
-    if (expiresAt && new Date(expiresAt).getTime() < Date.now()) {
-      return 'expired';
-    }
-    return 'used';
-  }
-
-  if (expiresAt && new Date(expiresAt).getTime() < Date.now()) {
-    return 'expired';
-  }
-  return 'unused';
-}
 
 function buildWhereClause(
   userId: string,
@@ -145,18 +110,6 @@ export async function handler(
     }),
   ]);
 
-  let portalLicenses: Awaited<ReturnType<typeof listPortalLicensesByBuyer>>['data'] = [];
-  try {
-    const licensesPayload = await listPortalLicensesByBuyer({
-      buyerUserId: userId,
-      page: 1,
-      pageSize: 100,
-    });
-    portalLicenses = licensesPayload.data;
-  } catch (error) {
-    request.log.warn({ err: error, userId }, 'Failed to fetch portal licenses for user insight');
-  }
-
   let portalWorkers: Awaited<ReturnType<typeof listPortalWorkers>> = [];
   try {
     portalWorkers = await listPortalWorkers({ userId });
@@ -164,31 +117,10 @@ export async function handler(
     request.log.warn({ err: error, userId }, 'Failed to fetch portal workers for user insight');
   }
 
-  const purchasesById = new Map<string, any>(
-    purchases.map((purchase: any) => [purchase.service_package_purchase_id, purchase]),
-  );
-
-  const licenseItems = portalLicenses.map((license) => {
-    const purchaseId = parsePurchaseId(license.issued_for_note);
-    const purchase = purchaseId ? purchasesById.get(purchaseId) : null;
-    const status = deriveLicenseStatus(license.expires_at, license.used_by_portal_id);
-
-    return {
-      key_id: license.id,
-      license_key: license.license_key,
-      status,
-      expires_at: license.expires_at,
-      activated_at: license.activated_at,
-      used_by_portal_id: license.used_by_portal_id,
-      purchase_id: purchaseId,
-      product_code: purchase?.service_package.product_code ?? null,
-      service_package_id: purchase?.service_package_id ?? null,
-    };
-  });
-
-  const activeLicenseCount = licenseItems.filter((item) => item.status === 'used').length;
-  const unusedLicenseCount = licenseItems.filter((item) => item.status === 'unused').length;
-  const expiredLicenseCount = licenseItems.filter((item) => item.status === 'expired').length;
+  const licenseItems: any[] = [];
+  const activeLicenseCount = 0;
+  const unusedLicenseCount = 0;
+  const expiredLicenseCount = 0;
 
   const totalCredit = Number(creditLedgerCreditAgg._sum.amount ?? 0);
   const totalDebit = Number(creditLedgerDebitAgg._sum.amount ?? 0);
