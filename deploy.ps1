@@ -3,7 +3,7 @@
 # SVC-AI-CONTROLLER DEPLOYMENT SCRIPT
 # ==============================================================================
 # Purpose: Deploy svc-ai-controller to DigitalOcean Kubernetes
-# Domain: biztada-crm.tadagram.com
+# Domain: svc-biztada-crm.tadagram.com
 # ==============================================================================
 
 param(
@@ -24,7 +24,7 @@ Write-Host " DEPLOYING $SERVICE_NAME" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "Tag: $Tag" -ForegroundColor Yellow
 Write-Host "Registry: $REGISTRY" -ForegroundColor Yellow
-Write-Host "Domain: biztada-crm.tadagram.com" -ForegroundColor Yellow
+Write-Host "Domain: svc-biztada-crm.tadagram.com" -ForegroundColor Yellow
 Write-Host ""
 
 # ==============================================================================
@@ -196,7 +196,7 @@ Write-Host ""
 Write-Host "  Testing health endpoint..." -ForegroundColor Cyan
 Start-Sleep -Seconds 5  # Wait for ingress to propagate
 
-$healthUrl = "https://biztada-crm.tadagram.com/health"
+$healthUrl = "https://svc-biztada-crm.tadagram.com/health"
 try {
     $response = Invoke-WebRequest -Uri $healthUrl -Method Get -TimeoutSec 10
     
@@ -222,7 +222,7 @@ Write-Host ""
 Write-Host "Service: $SERVICE_NAME" -ForegroundColor White
 Write-Host "Image: ${IMAGE_NAME}:${Tag}" -ForegroundColor White
 Write-Host "Namespace: $NAMESPACE" -ForegroundColor White
-Write-Host "Domain: https://biztada-crm.tadagram.com" -ForegroundColor White
+Write-Host "Domain: https://svc-biztada-crm.tadagram.com" -ForegroundColor White
 Write-Host ""
 Write-Host "Useful Commands:" -ForegroundColor Yellow
 Write-Host "  View logs:    kubectl logs -f deployment/$SERVICE_NAME -n $NAMESPACE" -ForegroundColor Gray
@@ -232,9 +232,9 @@ Write-Host "  Restart:      kubectl rollout restart deployment/$SERVICE_NAME -n 
 Write-Host "  Scale:        kubectl scale deployment/$SERVICE_NAME --replicas=5 -n $NAMESPACE" -ForegroundColor Gray
 Write-Host ""
 Write-Host "API Endpoints:" -ForegroundColor Yellow
-Write-Host "  Health:               GET  https://biztada-crm.tadagram.com/health" -ForegroundColor Gray
-Write-Host "  Worker Register:      POST https://biztada-crm.tadagram.com/api/v1/accounts" -ForegroundColor Gray
-Write-Host "  Create Task:          POST https://biztada-crm.tadagram.com/api/v1/brand-characters" -ForegroundColor Gray
-Write-Host "  List Prompts:         GET  https://biztada-crm.tadagram.com/api/v1/my-workers" -ForegroundColor Gray
+Write-Host "  Health:               GET  https://svc-biztada-crm.tadagram.com/health" -ForegroundColor Gray
+Write-Host "  Worker Register:      POST https://svc-biztada-crm.tadagram.com/api/v1/accounts" -ForegroundColor Gray
+Write-Host "  Create Task:          POST https://svc-biztada-crm.tadagram.com/api/v1/brand-characters" -ForegroundColor Gray
+Write-Host "  List Prompts:         GET  https://svc-biztada-crm.tadagram.com/api/v1/my-workers" -ForegroundColor Gray
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
