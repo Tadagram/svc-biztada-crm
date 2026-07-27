@@ -576,14 +576,8 @@ model ServicePackages {
   service_package_id      String             @id @default(uuid()) @db.Char(36)
   product_code            String             @unique @db.VarChar(64)
   price_per_month         Decimal            @db.Decimal(15, 2)
-  license_key_count       Int
-  facebook_personal_limit Int
-  facebook_fanpage_limit  Int
-  zalo_limit              Int
-  tiktok_limit            Int
-  telegram_limit          Int
+  ai_query_quota          Int                @default(0)
   bonus                   String?            @db.VarChar(255)
-  agent_discount_percent  Int                @default(0)
   community_support       Boolean            @default(true)
   support_24_7            Boolean            @default(false)
   type                    ServicePackageType
@@ -606,7 +600,7 @@ model ServicePackagePurchases {
   status                      ServicePackagePurchaseStatus  @default(processing)
   channel                     ServicePackagePurchaseChannel @default(direct)
   seller_user_id              String?                       @db.Char(36)
-  license_key_count_snapshot  Int
+  ai_query_quota_snapshot     Int                           @default(0)
   unit_price_usd              Decimal                       @db.Decimal(15, 2)
   total_price_usd             Decimal                       @db.Decimal(15, 2)
   currency                    String                        @default("USD") @db.VarChar(8)

@@ -1,8 +1,7 @@
 import { randomUUID } from 'crypto';
 import { Prisma } from '@prisma/client';
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { updateUserSubscription } from '@services/corePortalLicenses';
-import { calcBonusLicenseCount } from './servicePackageBonus';
+import { addQuota } from '@/services/aiControllerClient';
 import { resolvePartnerContext } from '@/utils/partnerContext';
 import { resolvePartnerSellerUserId } from '@/utils/resolvePartnerSeller';
 
@@ -59,14 +58,7 @@ export async function handler(
   const coreNoteRef = `crm_purchase:${purchaseId}`;
   const totalPriceUsd = new Prisma.Decimal(servicePackage.price_per_month);
   const totalPriceCredits = totalPriceUsd.mul(CREDIT_PER_USD);
-  const baseLicenseCount = Number(servicePackage.license_key_count) || 0;
-  const bonusPercent = Number(servicePackage.agent_discount_percent) || 0;
-  const bonusLicenseCount = calcBonusLicenseCount(
-    baseLicenseCount,
-    bonusPercent,
-    servicePackage.type,
-  );
-  const issuedLicenseCount = baseLicenseCount + bonusLicenseCount;
+  const aiQueryQuota = Number(servicePackage.ai_query_quota) || 0;
 
   try {
     await prisma.$transaction(async (tx: any) => {
@@ -115,7 +107,7 @@ export async function handler(
           status: 'processing',
           channel: sellerUserId ? 'agency' : 'direct',
           seller_user_id: sellerUserId,
-          license_key_count_snapshot: issuedLicenseCount,
+          ai_query_quota_snapshot: aiQueryQuota,
           unit_price_usd: totalPriceUsd,
           total_price_usd: totalPriceUsd,
           currency: 'USD',
@@ -132,10 +124,7 @@ export async function handler(
   }
 
   try {
-    await updateUserSubscription(caller.userId, {
-      subscription_tier: servicePackage.type || 'premium',
-      subscription_expires_at: expiresAt.toISOString(),
-    });
+    await addQuota(caller.userId, aiQueryQuota);
 
     const [purchase, creditBalance] = await prisma.$transaction([
       prisma.servicePackagePurchases.update({
@@ -160,10 +149,7 @@ export async function handler(
         seller_user_id: purchase.seller_user_id,
         service_package_id: purchase.service_package_id,
         product_code: purchase.service_package.product_code,
-        license_key_count: purchase.license_key_count_snapshot,
-        base_license_key_count: baseLicenseCount,
-        bonus_license_key_count: bonusLicenseCount,
-        bonus_percent: bonusPercent,
+        ai_query_quota: purchase.ai_query_quota_snapshot,
         total_price_usd: purchase.total_price_usd.toString(),
         total_price_credits: totalPriceCredits.toString(),
         purchased_at: purchase.purchased_at.toISOString(),

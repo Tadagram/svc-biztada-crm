@@ -7,14 +7,8 @@ interface UpdateServicePackageParams {
 interface UpdateServicePackageBody {
   product_code?: string;
   price_per_month?: number;
-  license_key_count?: number;
-  facebook_personal_limit?: number;
-  facebook_fanpage_limit?: number;
-  zalo_limit?: number;
-  tiktok_limit?: number;
-  telegram_limit?: number;
+  ai_query_quota?: number;
   bonus?: string | null;
-  agent_discount_percent?: number;
   community_support?: boolean;
   support_24_7?: boolean;
   type?: 'personal' | 'enterprise';
@@ -52,22 +46,8 @@ export async function handler(
       data: {
         ...(body.product_code !== undefined ? { product_code: body.product_code.trim() } : {}),
         ...(body.price_per_month !== undefined ? { price_per_month: body.price_per_month } : {}),
-        ...(body.license_key_count !== undefined
-          ? { license_key_count: body.license_key_count }
-          : {}),
-        ...(body.facebook_personal_limit !== undefined
-          ? { facebook_personal_limit: body.facebook_personal_limit }
-          : {}),
-        ...(body.facebook_fanpage_limit !== undefined
-          ? { facebook_fanpage_limit: body.facebook_fanpage_limit }
-          : {}),
-        ...(body.zalo_limit !== undefined ? { zalo_limit: body.zalo_limit } : {}),
-        ...(body.tiktok_limit !== undefined ? { tiktok_limit: body.tiktok_limit } : {}),
-        ...(body.telegram_limit !== undefined ? { telegram_limit: body.telegram_limit } : {}),
+        ...(body.ai_query_quota !== undefined ? { ai_query_quota: body.ai_query_quota } : {}),
         ...(body.bonus !== undefined ? { bonus: body.bonus?.trim() || null } : {}),
-        ...(body.agent_discount_percent !== undefined
-          ? { agent_discount_percent: body.agent_discount_percent }
-          : {}),
         ...(body.community_support !== undefined
           ? { community_support: body.community_support }
           : {}),
