@@ -60,8 +60,10 @@ export async function handler(
       total_price_usd: purchase.total_price_usd.toString(),
       purchased_at: purchase.purchased_at.toISOString(),
       core_note_ref: purchase.core_note_ref,
+      ai_query_quota: purchase.ai_query_quota_snapshot,
       package: {
         price_per_month: purchase.service_package.price_per_month.toString(),
+        ai_query_quota: purchase.service_package.ai_query_quota,
         facebook_personal_limit: purchase.service_package.facebook_personal_limit,
         facebook_fanpage_limit: purchase.service_package.facebook_fanpage_limit,
         zalo_limit: purchase.service_package.zalo_limit,
