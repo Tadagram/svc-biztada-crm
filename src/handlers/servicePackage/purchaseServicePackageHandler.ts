@@ -124,7 +124,7 @@ export async function handler(
   }
 
   try {
-    await addQuota(caller.userId, aiQueryQuota);
+    await addQuota(caller.userId, aiQueryQuota, 30);
 
     const [purchase, creditBalance] = await prisma.$transaction([
       prisma.servicePackagePurchases.update({

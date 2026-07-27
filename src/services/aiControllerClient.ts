@@ -245,7 +245,11 @@ export async function generateAssistantText(prompt: string): Promise<string> {
   return pollTextResult(task_id);
 }
 
-export async function addQuota(userId: string, quotaToAdd: number): Promise<void> {
+export async function addQuota(
+  userId: string,
+  quotaToAdd: number,
+  validityDays = 0,
+): Promise<void> {
   const token = signWorkerJwt();
 
   const response = await fetchWithRetry(`${AI_CONTROLLER_URL}/internal/quota/add`, {
@@ -257,6 +261,7 @@ export async function addQuota(userId: string, quotaToAdd: number): Promise<void
     body: JSON.stringify({
       user_id: userId,
       quota_to_add: quotaToAdd,
+      validity_days: validityDays,
     }),
     signal: AbortSignal.timeout(10_000),
   });
