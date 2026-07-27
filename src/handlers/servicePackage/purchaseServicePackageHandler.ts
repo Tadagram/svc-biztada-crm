@@ -149,7 +149,7 @@ export async function handler(
         seller_user_id: purchase.seller_user_id,
         service_package_id: purchase.service_package_id,
         product_code: purchase.service_package.product_code,
-        ai_query_quota: purchase.ai_query_quota_snapshot,
+        ai_query_quota_snapshot: purchase.ai_query_quota_snapshot,
         total_price_usd: purchase.total_price_usd.toString(),
         total_price_credits: totalPriceCredits.toString(),
         purchased_at: purchase.purchased_at.toISOString(),
