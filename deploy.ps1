@@ -1,8 +1,8 @@
 #!/usr/bin/env pwsh
 # ==============================================================================
-# SVC-AI-CONTROLLER DEPLOYMENT SCRIPT
+# SVC-BIZTADA-CRM DEPLOYMENT SCRIPT
 # ==============================================================================
-# Purpose: Deploy svc-ai-controller to Local K3d Server (k3d-mycluster)
+# Purpose: Deploy svc-biztada-crm to Local K3d Server (k3d-mycluster)
 # Domain: svc-biztada-crm.tadagram.com
 # ==============================================================================
 
@@ -79,25 +79,43 @@ if (-not $DeployOnly) {
 if (-not $DeployOnly) {
     Write-Host "  Step 3: Pushing to Local Container Registry (registry.tadagram.com)..." -ForegroundColor Green
     
-    # Login to DO registry (assumes doctl is configured)
-    # # doctl registry login (Removed: Switched to local registry)
-    # if ($LASTEXITCODE -ne 0) {
-    #    Write-Host " Registry login failed!" -ForegroundColor Red
-    #    exit 1
-    # }
-    
+    # Ensure cloudflared TCP access tunnel is listening on port 5000 for local registry
+    if (-not (Get-NetTCPConnection -LocalPort 5000 -ErrorAction SilentlyContinue)) {
+        Write-Host "  -> Auto-launching cloudflared TCP tunnel for registry on port 5000..." -ForegroundColor Cyan
+        Start-Process -FilePath "cloudflared" -ArgumentList "access tcp --hostname registry.tadagram.com --url 0.0.0.0:5000" -WindowStyle Hidden -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 3
+    }
+
+    # Ensure local TCP proxy is running in Docker for direct tunnel transmission without HTTPS conflicts
+    try { docker rm -f registry-proxy 2>$null } catch {}
+    try {
+        docker run -d --net=host --name registry-proxy alpine/socat tcp-listen:5000,reuseaddr,fork tcp:host.docker.internal:5000 2>$null
+    } catch {}
+
+    # Tag for direct tunnel transmission via 127.0.0.1:5000
+    $LOCAL_TUNNEL_IMAGE = "127.0.0.1:5000/tadagram/${SERVICE_NAME}:${Tag}"
+    docker tag "${IMAGE_NAME}:${Tag}" $LOCAL_TUNNEL_IMAGE
+    if ($Tag -ne "latest") {
+        docker tag "${IMAGE_NAME}:${Tag}" "127.0.0.1:5000/tadagram/${SERVICE_NAME}:latest"
+    }
+
     # Push image
-    docker push "${IMAGE_NAME}:${Tag}"
+    docker push $LOCAL_TUNNEL_IMAGE
     if ($LASTEXITCODE -ne 0) {
-        Write-Host " Docker push failed!" -ForegroundColor Red
-        exit 1
+        Write-Host " Docker push failed via tunnel 127.0.0.1:5000, attempting default route..." -ForegroundColor Yellow
+        docker push "${IMAGE_NAME}:${Tag}"
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host " Docker push failed!" -ForegroundColor Red
+            exit 1
+        }
     }
     
     if ($Tag -ne "latest") {
-        docker push "${IMAGE_NAME}:latest"
+        docker push "127.0.0.1:5000/tadagram/${SERVICE_NAME}:latest" 2>$null
+        docker push "${IMAGE_NAME}:latest" 2>$null
     }
     
-    Write-Host " Image pushed to registry" -ForegroundColor Green
+    Write-Host " Image pushed to registry successfully" -ForegroundColor Green
     Write-Host ""
 }
 
