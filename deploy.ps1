@@ -2,7 +2,7 @@
 # ==============================================================================
 # SVC-AI-CONTROLLER DEPLOYMENT SCRIPT
 # ==============================================================================
-# Purpose: Deploy svc-ai-controller to DigitalOcean Kubernetes
+# Purpose: Deploy svc-ai-controller to Local K3d Server (k3d-mycluster)
 # Domain: svc-biztada-crm.tadagram.com
 # ==============================================================================
 
@@ -15,7 +15,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $SERVICE_NAME = "svc-biztada-crm"
-$REGISTRY = "registry.digitalocean.com/tadabiz-registry"
+$REGISTRY = "registry.tadagram.com/tadagram"
 $IMAGE_NAME = "$REGISTRY/$SERVICE_NAME"
 $NAMESPACE = "tadagram"
 
@@ -77,10 +77,10 @@ if (-not $DeployOnly) {
 # STEP 3: Push to Registry
 # ==============================================================================
 if (-not $DeployOnly) {
-    Write-Host "  Step 3: Pushing to DigitalOcean Registry..." -ForegroundColor Green
+    Write-Host "  Step 3: Pushing to Local Container Registry (registry.tadagram.com)..." -ForegroundColor Green
     
     # Login to DO registry (assumes doctl is configured)
-    # doctl registry login
+    # # doctl registry login (Removed: Switched to local registry)
     # if ($LASTEXITCODE -ne 0) {
     #    Write-Host " Registry login failed!" -ForegroundColor Red
     #    exit 1
