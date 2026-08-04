@@ -145,10 +145,19 @@ $manifests = @(
 
 foreach ($manifest in $manifests) {
     $path = "../../k8s/$SERVICE_NAME/$manifest"
+    $k8s_folder_alt = $SERVICE_NAME.Replace("svc-", "")
+    $alt_path = "../../k8s/$k8s_folder_alt/$manifest"
     
+    $actual_path = ""
     if (Test-Path $path) {
+        $actual_path = $path
+    } elseif (Test-Path $alt_path) {
+        $actual_path = $alt_path
+    }
+    
+    if ($actual_path -ne "") {
         Write-Host "  Applying $manifest..." -ForegroundColor Cyan
-        kubectl apply -f $path -n $NAMESPACE
+        kubectl apply -f $actual_path -n $NAMESPACE
         
         if ($LASTEXITCODE -ne 0) {
             Write-Host "    Warning: Failed to apply $manifest" -ForegroundColor Yellow
@@ -156,7 +165,7 @@ foreach ($manifest in $manifests) {
             Write-Host "   Applied $manifest" -ForegroundColor Green
         }
     } else {
-        Write-Host "    Warning: $manifest not found" -ForegroundColor Yellow
+        Write-Host "    Warning: $manifest not found in either $path or $alt_path" -ForegroundColor Yellow
     }
 }
 
