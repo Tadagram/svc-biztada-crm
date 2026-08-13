@@ -116,8 +116,21 @@ Write-Host "  Step 4: Deploying to Kubernetes..." -ForegroundColor Green
 # Check kubectl connection
 kubectl cluster-info | Select-Object -First 1
 if ($LASTEXITCODE -ne 0) {
-    Write-Host " kubectl not connected to cluster!" -ForegroundColor Red
-    exit 1
+    Write-Host " kubectl not connected to cluster! Auto-triggering start_dev_env.ps1..." -ForegroundColor Yellow
+    $start_env_script = "D:\Projects\local-server\start_dev_env.ps1"
+    if (Test-Path $start_env_script) {
+        & $start_env_script
+        Start-Sleep -Seconds 3
+        kubectl cluster-info | Select-Object -First 1
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host " kubectl still not connected to cluster after retry!" -ForegroundColor Red
+            exit 1
+        }
+        Write-Host " Environment auto-recovered successfully!" -ForegroundColor Green
+    } else {
+        Write-Host " kubectl not connected to cluster!" -ForegroundColor Red
+        exit 1
+    }
 }
 
 # Apply manifests in order
@@ -238,3 +251,4 @@ Write-Host "  Create Task:          POST https://svc-biztada-crm.tadagram.com/ap
 Write-Host "  List Prompts:         GET  https://svc-biztada-crm.tadagram.com/api/v1/my-workers" -ForegroundColor Gray
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
+
