@@ -59,26 +59,27 @@ const DEFAULT_SERVICE_PACKAGES = [
 ];
 
 async function ensureDefaultServicePackages(prisma: any) {
-  const count = await prisma.servicePackages.count();
-  if (count > 0) return;
-
-  await prisma.servicePackages.createMany({
-    data: DEFAULT_SERVICE_PACKAGES.map((item) => {
-      return {
-        product_code: item.product_code,
-        price_per_month: item.price_per_month,
-        ai_query_quota: item.ai_query_quota,
-        bonus: item.bonus,
-        community_support: item.community_support,
-        support_24_7: item.support_24_7,
-        type: item.type,
-        is_popular: item.is_popular,
-        sort_order: item.sort_order,
-        is_active: true,
-      };
-    }),
-    skipDuplicates: true,
-  });
+  for (const item of DEFAULT_SERVICE_PACKAGES) {
+    const existing = await prisma.servicePackages.findUnique({
+      where: { product_code: item.product_code },
+    });
+    if (!existing) {
+      await prisma.servicePackages.create({
+        data: {
+          product_code: item.product_code,
+          price_per_month: item.price_per_month,
+          ai_query_quota: item.ai_query_quota || 0,
+          bonus: item.bonus,
+          community_support: item.community_support,
+          support_24_7: item.support_24_7,
+          type: item.type,
+          is_popular: item.is_popular,
+          sort_order: item.sort_order,
+          is_active: true,
+        },
+      });
+    }
+  }
 }
 
 export async function handler(

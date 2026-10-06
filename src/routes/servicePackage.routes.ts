@@ -1,4 +1,4 @@
-﻿import { FastifyInstance, RouteHandlerMethod } from 'fastify';
+import { FastifyInstance, RouteHandlerMethod } from 'fastify';
 import { handler as listServicePackagesHandler } from '@handlers/servicePackage/listServicePackagesHandler';
 import { handler as purchaseServicePackageHandler } from '@handlers/servicePackage/purchaseServicePackageHandler';
 import { handler as listServicePackagePurchasesHandler } from '@handlers/servicePackage/listServicePackagePurchasesHandler';
@@ -17,7 +17,7 @@ import {
 async function servicePackageRoutes(fastify: FastifyInstance) {
   fastify.get(
     '/',
-    { schema: listServicePackagesSchema, preHandler: [fastify.authenticate] },
+    { schema: listServicePackagesSchema, preHandler: [fastify.optionalAuthenticate] },
     listServicePackagesHandler as RouteHandlerMethod,
   );
 

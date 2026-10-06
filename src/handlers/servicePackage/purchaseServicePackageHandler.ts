@@ -1,6 +1,8 @@
 import { randomUUID } from 'crypto';
 import { Prisma } from '@prisma/client';
-import { updateUserSubscription, extendCloudVMPortal } from '@/services/corePortalLicenses';
+import { FastifyRequest, FastifyReply } from 'fastify';
+import { extendCloudVMPortal } from '@/services/corePortalLicenses';
+import { addQuota } from '@/services/aiControllerClient';
 import { resolvePartnerContext } from '@/utils/partnerContext';
 import { resolvePartnerSellerUserId } from '@/utils/resolvePartnerSeller';
 
