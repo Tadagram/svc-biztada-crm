@@ -9,6 +9,32 @@ interface ListServicePackagesQuery {
 
 const DEFAULT_SERVICE_PACKAGES = [
   {
+    product_code: 'CLOUD_VM_30_DAYS',
+    price_per_month: 20,
+    license_key_count: 1,
+    account_limit: 999999,
+    bonus: null,
+    agent_discount_percent: 0,
+    community_support: true,
+    support_24_7: true,
+    type: 'personal' as ServicePackageType,
+    is_popular: true,
+    sort_order: 1,
+  },
+  {
+    product_code: 'CLOUD_VM_90_DAYS',
+    price_per_month: 50,
+    license_key_count: 1,
+    account_limit: 999999,
+    bonus: null,
+    agent_discount_percent: 0,
+    community_support: true,
+    support_24_7: true,
+    type: 'personal' as ServicePackageType,
+    is_popular: true,
+    sort_order: 2,
+  },
+  {
     product_code: 'PERSONAL_20',
     price_per_month: 20,
     ai_query_quota: 500,

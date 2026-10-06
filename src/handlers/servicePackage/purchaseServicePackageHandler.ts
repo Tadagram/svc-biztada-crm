@@ -1,7 +1,6 @@
 import { randomUUID } from 'crypto';
 import { Prisma } from '@prisma/client';
-import { FastifyReply, FastifyRequest } from 'fastify';
-import { addQuota } from '@/services/aiControllerClient';
+import { updateUserSubscription, extendCloudVMPortal } from '@/services/corePortalLicenses';
 import { resolvePartnerContext } from '@/utils/partnerContext';
 import { resolvePartnerSellerUserId } from '@/utils/resolvePartnerSeller';
 
@@ -10,12 +9,6 @@ const CREDIT_PER_USD = new Prisma.Decimal(10);
 interface PurchaseServicePackageBody {
   service_package_id: string;
   seller_user_id?: string | null;
-}
-
-function addOneMonth(baseDate: Date): Date {
-  const next = new Date(baseDate);
-  next.setUTCMonth(next.getUTCMonth() + 1);
-  return next;
 }
 
 function getErrorMessage(error: unknown): string {
@@ -52,9 +45,14 @@ export async function handler(
     });
   }
 
+  let durationDays = 30;
+  if (servicePackage.product_code === 'CLOUD_VM_90_DAYS') {
+    durationDays = 90;
+  }
+
   const purchaseId = randomUUID();
   const purchasedAt = new Date();
-  const expiresAt = addOneMonth(purchasedAt);
+  const expiresAt = new Date(purchasedAt.getTime() + durationDays * 24 * 3600 * 1000);
   const coreNoteRef = `crm_purchase:${purchaseId}`;
   const totalPriceUsd = new Prisma.Decimal(servicePackage.price_per_month);
   const totalPriceCredits = totalPriceUsd.mul(CREDIT_PER_USD);
@@ -125,6 +123,8 @@ export async function handler(
 
   try {
     await addQuota(caller.userId, aiQueryQuota, 30);
+
+    await extendCloudVMPortal(caller.userId, durationDays);
 
     const [purchase, creditBalance] = await prisma.$transaction([
       prisma.servicePackagePurchases.update({

@@ -46,3 +46,20 @@ export async function updateUserSubscription(
     );
   }
 }
+
+export async function extendCloudVMPortal(userId: string, durationDays: number): Promise<void> {
+  try {
+    const response = await fetch(`${CORE_API_URL}/internal/worker-portal/subscription/extend`, {
+      method: 'POST',
+      headers: getInternalHeaders(),
+      body: JSON.stringify({ user_id: userId, duration_days: durationDays }),
+      signal: AbortSignal.timeout(30_000),
+    });
+
+    if (!response.ok) {
+      console.warn(`[extendCloudVMPortal] failed with status ${response.status}`);
+    }
+  } catch (err) {
+    console.warn('[extendCloudVMPortal] error:', err);
+  }
+}
