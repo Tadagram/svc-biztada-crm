@@ -50,6 +50,10 @@ export async function handler(
   let durationDays = 30;
   if (servicePackage.product_code === 'CLOUD_VM_90_DAYS') {
     durationDays = 90;
+  } else if (servicePackage.product_code === 'CLOUD_VM_180_DAYS') {
+    durationDays = 180;
+  } else if (servicePackage.product_code === 'CLOUD_VM_365_DAYS') {
+    durationDays = 365;
   }
 
   const purchaseId = randomUUID();
